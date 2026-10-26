@@ -1,0 +1,24 @@
+# Test Nextcloud for nc-projects. Throwaway: wipe with `docker compose down -v`.
+# Its own project name, volume and port, so it can never touch the live server.
+name: nc-projects-test
+
+services:
+  nextcloud:
+    # Same version as the live server (33.0.10). NC_IMAGE overrides the
+    # registry, e.g. mirror.gcr.io/library/nextcloud:33.0.10-apache.
+    image: ${NC_IMAGE:-nextcloud:33.0.10-apache}
+    restart: "no"
+    ports:
+      - "127.0.0.1:${NC_TEST_PORT:-8089}:80"
+    environment:
+      SQLITE_DATABASE: nextcloud
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: admin-test-only
+      NEXTCLOUD_TRUSTED_DOMAINS: "localhost 127.0.0.1"
+    volumes:
+      - html:/var/www/html
+      # From P01 on: serve the built app straight from this clone.
+      # - ..:/var/www/html/custom_apps/cc_projects:ro
+
+volumes:
+  html:
