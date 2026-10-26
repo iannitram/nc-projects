@@ -12,6 +12,26 @@ All three phases of the roadmap make up 1.0: phase 1 (view, add, reorder), phase
 
 Each Must is checked in the **test container**, a throwaway Nextcloud with the same Tasks version as live, seeded with **fixture lists** (sample lists named like my eight areas, plus one shared list, one agent queue and one Deck board, all with made-up tasks). A check is a script or numbered steps anyone can repeat there. The live server is never used for a check.
 
+**Reading a stored task.** Where a check says "read the stored task" or "compare stored copies", it means fetching the task's raw iCalendar text from the test container over CalDAV (a plain GET of the task's URL) with the test kit's read script, and diffing before and after copies as text.
+
+**Phone width** means a 390 by 844 viewport with touch input on.
+
+**The fixture tasks** every check relies on (made-up titles, shaped like real data):
+
+| Fixture | Where | Used by |
+|---|---|---|
+| One open project per area, ordered, with three ordered tasks | Each of the eight area lists | M1, M2, M10, M12 |
+| A project with a child on another area's list | Project on one list, child on another | M3, M17 |
+| A four-level chain under a project (task, subtask, sub-subtask, one more) | One list | M3, M4 |
+| A project with 10 tasks across two levels, 4 completed | One list | M5, M6 |
+| A project tagged `blocked`, and one tagged `someday` | One list | M7 |
+| A project whose tasks are all completed but which is still open | One list | M8 |
+| A project mixing ordered tasks and three unordered tasks with different creation times | One list | M11 |
+| A task carrying `X-CC-*` and `X-FORK-*` properties and a parameter the app doesn't use | One list | M15 |
+| A task with one subtask, under a project on a different list from a second project | Two lists | M17 |
+| An orphan (links to a completed parent) and an untagged parent with two children | One list | M20 |
+| A list shared by another account, an agent queue (`*_shared_by_*`) and a Deck board (`app-generated--deck--*`), each holding a `project` task | Outside the areas | M1, M2 |
+
 ### Phase 1: view, add, reorder
 
 **M1. Areas.** WHEN I open Projects, THE APP SHALL show one section per area (Personal, The Channel, Van, Barnum, Cheltenham, DCIS, DPS, System), matched by the list's display name, and no other list.
@@ -43,8 +63,8 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 - Check: read those two cards and their position.
 
 **M8. Done strip.** WHEN I check off a project, THE APP SHALL move it into a collapsed Done strip at the bottom of its area; a project whose tasks are all done but which I have not checked off SHALL stay open.
-- Done looks like: checking off a fixture project moves it to the strip; a fixture project at 100% stays open.
-- Check: check off one project; look at the 100% project.
+- Done looks like: checking off a fixture project moves it into the strip, which starts collapsed; a fixture project at 100% stays open.
+- Check: check off one project; reload and confirm the strip is collapsed and holds it; look at the 100% project.
 
 **M9. Add task.** WHEN I type a title in "+ Add task" under a project and confirm, THE APP SHALL create a task on the project's own list, linked to the project by a bare `RELATED-TO`, and show it at the bottom of the project with no sort order.
 - Done looks like: the new task shows last in the panel and appears under the project in the Tasks app.
@@ -59,8 +79,8 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 - Check: read the order of a fixture project that mixes ordered and unordered tasks.
 
 **M12. Reorder projects.** WHEN I drag a project card to a new place in its area, THE APP SHALL keep it there after a reload, stored the same way on the project task.
-- Done looks like: same card order after reload.
-- Check: drag a card; reload.
+- Done looks like: same card order after reload; only the moved project's stored copy changed, in `X-APPLE-SORT-ORDER`.
+- Check: drag a card; reload; compare the stored copies before and after.
 
 **M13. Refresh.** WHEN the tab regains focus, or every two minutes while it is open, THE APP SHALL pick up changes made elsewhere without a full page reload.
 - Done looks like: a task added to a fixture list through CalDAV appears within two minutes, or at once on refocus.
@@ -76,7 +96,7 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 
 **M16. Phone.** WHEN I open Projects in a phone browser, THE APP SHALL lay out to fit the screen, and long-pressing a task or card SHALL start a drag.
 - Done looks like: no sideways scrolling at phone width; a long-press drag reorders a task.
-- Check: open the panel at a phone viewport with touch on; long-press and drag a task.
+- Check: open the panel at phone width; long-press and drag a task; reload and confirm the new order.
 
 ### Phase 2: move, edit, create projects
 
