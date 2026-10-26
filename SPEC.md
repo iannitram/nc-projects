@@ -1,6 +1,6 @@
 # Projects: spec
 
-**Approval:** not yet (first approved 2026-10-26; reset the same day when reading the Tasks app changed M5, M6, M8, M10, M11 and M18).
+**Approval:** 2026-10-26, in a session with Claude Code (re-approved after M5, M6, M8, M10, M11 and M18 were matched to the Tasks app). A changed Must or Won't sets this back to "not yet".
 
 ## 1.0 in one sentence
 
