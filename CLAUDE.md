@@ -5,6 +5,6 @@
 - **Phase 0 first.** P00's checks (how Tasks writes `X-APPLE-SORT-ORDER`, the deep-link format, MOVE support, the test container) come before any order or move code.
 - **Hyperion machine rules apply.** This clone lives at `B:\dev\nc-projects`. Heavy commands (builds, `npm install`, multi-minute test runs) go through the dev gate: `python3 "B:/dev/potn-dev/tools/dev-gate.py" run --who nc-projects --cwd B:/dev/nc-projects -- <one command>` (one command after the `--`, never `cd x && ...`; exit 75 = not now, nothing ran). Full rules: part 1 of `J:\Nextcloud\Workspaces\CLAUDE.md`.
 - **Keep code out of the vault.** The vault workspace holds docs only.
-- **Develop against the test Nextcloud container.** Installing into the live Nextcloud (copy into `custom_apps/cc_projects`, `occ app:enable`) needs Ian's yes every time. Never touch the `nextcloud` compose project or its volumes.
+- **Develop against the test Nextcloud container.** Installing into the live Nextcloud (copy into `custom_apps/cc_projects`, `occ app:enable`) needs Ian's yes every time. Never touch the live Nextcloud's compose project or its volumes (`open-webui-fork_nextcloud-data`, `open-webui-fork_nextcloud-db-data`, per potn-dev `MACHINES.md`). The test container is compose project `nc-projects-test` (`test-env/`); `test-env/reset.sh` removes only that.
 - **The live data is shared with agents.** Never write to Ian's real task lists from tests or scripts. Fixtures are copied shapes, with no personal content.
 - **Commit identity:** `iannitram <4624371+iannitram@users.noreply.github.com>`.

@@ -30,7 +30,7 @@ Goal: a project manager over Nextcloud Tasks, built in three phases (Ian, 2026-1
 
 | ID | Item | Complexity | Notes |
 |---|---|---|---|
-| P00 | **Pre-flight checks** | Low | (a) ~~Read how Tasks 0.18.1 computes and writes `X-APPLE-SORT-ORDER`~~: answered 2026-10-26 from the Tasks source. (b) ~~Find the Tasks deep-link URL format~~: answered 2026-10-26. (c) ~~Confirm `cdav-library` exposes MOVE for P12~~: yes, answered 2026-10-26 (CODE_MAP §Facts). (d) Stand up the test Nextcloud container (33.x, Tasks 0.18.1) seeded with fixture lists. Record answers in CODE_MAP §Facts |
+| P00 | **Pre-flight checks** | Low | (a) ~~Read how Tasks 0.18.1 computes and writes `X-APPLE-SORT-ORDER`~~: answered 2026-10-26 from the Tasks source. (b) ~~Find the Tasks deep-link URL format~~: answered 2026-10-26. (c) ~~Confirm `cdav-library` exposes MOVE for P12~~: yes, answered 2026-10-26 (CODE_MAP §Facts). (d) Stand up the test Nextcloud container (33.x, Tasks 0.18.1) seeded with fixture lists: recipe in `test-env/`, verified in a cloud sandbox 2026-10-26 except the Tasks and Deck installs; run it once on Hyperion to close (d). Record answers in CODE_MAP §Facts |
 
 ### Phase 1: view, add, reorder
 

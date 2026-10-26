@@ -34,7 +34,7 @@ Server (PHP): serves the page only. No data endpoints.
 | Path | Job | IDs |
 |---|---|---|
 | `src/services/dav.js` | `@nextcloud/cdav-library` client: discover calendars, REPORT VTODOs, PUT with If-Match, MOVE between calendars (with If-Match; re-read after, since the etag is stale) | P02, P07, P10, P12 |
-| `src/services/areas.js` | Which calendars are areas: the 8 display names, plus the exclusions (lists shared by other people, today Farm Boy; `*_shared_by_*`, `app-generated--deck--*`) | P02 |
+| `src/services/areas.js` | Which calendars are areas: only lists that hold tasks (VTODO), then the 8 display names, plus the exclusions (lists shared by other people, today Farm Boy; `*_shared_by_*`, `app-generated--deck--*`) | P02 |
 | `src/models/Task.js` | `ical.js` wrapper for one VTODO: typed getters and setters for the fields the app uses; **keeps every other property and parameter untouched on write** | P03 |
 | `src/models/tree.js` | Pure function: tasks → areas → projects → task tree (follows RELATED-TO across lists, max depth 3, with a count of what lies deeper for "+N deeper"; progress counts every descendant). Also returns orphans and untagged parents for the tray | P04, P15 |
 | `src/models/sortOrder.js` | Pure order math, a copy of Tasks' rule (§Facts): effective order, place a moved task at neighbour ±1, bump later colliding siblings | P08, P09 |
@@ -68,6 +68,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `package.json`, `vite.config.js` | Build with `@nextcloud/vite-config`; test with Vitest |
 | `scripts/fetch-tasks-ref.sh` | Shallow-clone Nextcloud Tasks (default v0.18.1) into git-ignored `reference/tasks` for reading |
 | `scripts/dav-get.sh` | Print one stored task's raw iCalendar from the **test** container (CalDAV GET), for the spec's "read the stored task" checks |
+| `test-env/` | The test container: `compose.yaml`, `setup.sh`, `reset.sh`, `seed.py` (fixture lists and tasks) |
 | `scripts/deploy-test.sh` | Build and copy into the **test** container, then `occ app:enable cc_projects` there |
 | `.gitignore` | `node_modules/`, `vendor/`, `js/` build output |
 
@@ -90,7 +91,7 @@ Live install (copy into the live `custom_apps/cc_projects` + `occ app:enable cc_
 | How Tasks 0.18.1 writes `X-APPLE-SORT-ORDER` | Integer, ascending (lower first). Missing → effective value = seconds from 2001-01-01T00:00 to CREATED (0 if no CREATED); nothing is written until a drag. Drag: moved task = next sibling − 1 if that is above the previous sibling, else previous + 1, floor 0; then each later sibling whose value is ≤ the one before is set to that + 1 (a bump, written). Ties keep load order. Manual sort ignores pinned and completion | `src/models/task.js` 163-167, 807-822, 901-918; `src/components/TaskDragContainer.vue` 95-157; `src/store/storeHelper.js` 228-286, 452 (tag v0.18.1) |
 | Tasks deep-link URL for one task | `<generateUrl('apps/tasks')>/calendars/<calendar URI segment>/tasks/<task file name incl. .ics>` (history routing, no `#`). Without the calendar: `/apps/tasks/collections/all/tasks/<file>.ics`. Don't copy the stale `/#/` form in `TaskCreateDialog.vue` | `src/views/Dashboard.vue` 205; `src/router.js` 33-93; `src/store/tasks.js` 159-171 |
 | `cdav-library` MOVE support | Yes. `VObject.move(calendar, overwrite=false, headers={})` sends MOVE with `Overwrite: F`; `headers` carries `If-Match`. Keeps the file name; refuses same list, other collection type, read-only target. Updates `url` but not `etag`, so re-read after | `@nextcloud/cdav-library` 2.6.2 `dist/index.mjs` (DavObject.move), checked 2026-10-26 |
-| Test container recipe | *(open)* | |
+| Test container recipe | `test-env/` (see its README): compose project `nc-projects-test`, Nextcloud 33.0.10 + Tasks 0.18.1, SQLite, `127.0.0.1:8089`; `setup.sh` installs, makes users `owner`/`other`/`agent`, seeds the fixture lists with `seed.py`. Verified 2026-10-26 in a cloud sandbox (Nextcloud, users, lists, shares, 78 tasks; Tasks and Deck install not reachable there): run once on Hyperion to confirm the Tasks and Deck steps | `test-env/` |
 
 ### How Tasks behaves (read from v0.18.1 source, 2026-10-26)
 
