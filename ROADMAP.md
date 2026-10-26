@@ -30,7 +30,7 @@ Goal: a project manager over Nextcloud Tasks, built in three phases (Ian, 2026-1
 
 | ID | Item | Complexity | Notes |
 |---|---|---|---|
-| P00 | **Pre-flight checks** | Low | (a) Read how Tasks 0.18.1 computes and writes `X-APPLE-SORT-ORDER` (units, direction, what it does with ties and with tasks that have none), so our order and Tasks' manual sort agree. (b) Find the Tasks deep-link URL format for "open in Tasks". (c) ~~Confirm `cdav-library` exposes MOVE for P12~~: yes, answered 2026-10-26 (CODE_MAP §Facts). (d) Stand up the test Nextcloud container (33.x, Tasks 0.18.1) seeded with fixture lists. Record answers in CODE_MAP §Facts |
+| P00 | **Pre-flight checks** | Low | (a) ~~Read how Tasks 0.18.1 computes and writes `X-APPLE-SORT-ORDER`~~: answered 2026-10-26 from the Tasks source. (b) ~~Find the Tasks deep-link URL format~~: answered 2026-10-26. (c) ~~Confirm `cdav-library` exposes MOVE for P12~~: yes, answered 2026-10-26 (CODE_MAP §Facts). (d) Stand up the test Nextcloud container (33.x, Tasks 0.18.1) seeded with fixture lists. Record answers in CODE_MAP §Facts |
 
 ### Phase 1: view, add, reorder
 
@@ -41,9 +41,9 @@ Goal: a project manager over Nextcloud Tasks, built in three phases (Ian, 2026-1
 | P03 | **Task model**: parse and write VTODOs | Medium | Needs P00(a). Fields: UID, SUMMARY, STATUS, COMPLETED, DUE, PRIORITY, CATEGORIES, RELATED-TO, X-APPLE-SORT-ORDER, etag, calendar. **Must round-trip every property it doesn't understand** (agents write `X-CC-*`). Unit tests on fixtures |
 | P04 | **Tree builder**: areas → projects → tasks | Medium | Needs P02, P03. Project = category `project`. Children by RELATED-TO across lists, up to 3 levels; count what lies deeper for the "+N deeper" note. Orphans and untagged parents are set aside for P15, not shown |
 | P05 | **Panel view** | Medium | Needs P04, P00(b). Areas, project cards, open tasks, collapsible subtasks with a "+N deeper" note past level 3 (opens that task in Tasks), done/total progress bar over every task at every level under the project, "show done" toggle |
-| P06 | **Status badges and Done strip** | Low | Needs P05. `blocked` red, `someday` greyed and sunk to the bottom of its area; completed projects in a collapsed Done strip per area |
+| P06 | **Status badges and Done strip** | Low | Needs P05. `blocked` red, `someday` greyed and sunk to the bottom of its area; completed projects in a collapsed Done strip per area. Checking off a project also checks off its open tasks (as Tasks does) |
 | P07 | **+ Add task** under a project | Low | Needs P05. New VTODO on the project's list with bare `RELATED-TO:<project uid>`; lands at the bottom (no sort order until a drag) |
-| P08 | **Drag to reorder tasks** within a project | Medium | Needs P05, P00(a). Writes `X-APPLE-SORT-ORDER` only on moved tasks where possible; unordered tasks sit at the bottom, newest last, and get an order on the first drag in that project |
+| P08 | **Drag to reorder tasks** within a project | Medium | Needs P05, P00(a). Tasks' own rule (CODE_MAP §Facts): moved task takes neighbour ±1, later colliding siblings bumped by one; unordered tasks placed by creation time exactly as Tasks does |
 | P09 | **Drag to reorder projects** within an area | Low | Needs P08. Same order field, on the project VTODOs |
 | P10 | **Refresh and conflict safety** | Medium | Needs P05. Refresh on tab focus and every ~2 min (etag/ctag compare, not a full reload). Every PUT sends If-Match; a 412 reloads that task and shows a quiet notice |
 | P11 | **Phone layout** | Medium | Needs P05, P08. Responsive in Nextcloud's mobile web view; long-press to drag on touch |
@@ -53,7 +53,7 @@ Goal: a project manager over Nextcloud Tasks, built in three phases (Ian, 2026-1
 | ID | Feature | Complexity | Notes |
 |---|---|---|---|
 | P12 | **Drag a task onto another project** | High | Needs P08, P00(c). Changes RELATED-TO. If the target project is on a different list, the task also MOVEs to that list, so the Tasks app nests it correctly. Subtasks move with it |
-| P13 | **Quick inline edits** | Medium | Needs P05. Check off, rename, due date, priority. Anything bigger: "open in Tasks" link (P00(b)) |
+| P13 | **Quick inline edits** | Medium | Needs P05. Check off (cascades down to open subtasks; reopening reopens closed parents, as Tasks does), rename, due date, priority. Anything bigger: "open in Tasks" link (P00(b)) |
 | P14 | **+ New project** per area | Low | Needs P05. Creates a VTODO with category `project` on that area's list, same shape agents create |
 
 ### Phase 3: tidy up

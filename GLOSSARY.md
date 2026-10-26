@@ -13,6 +13,7 @@ Terms used in the spec's Musts, with the meaning the app gives them.
 | **"+ New project"** | The button on an area that creates a `project`-tagged task on that area's list. |
 | **Agent fields** | Properties agents write that the app never edits but always keeps: `X-CC-*` and `X-FORK-*`. |
 | **CalDAV** | The standard protocol Nextcloud uses to store and serve tasks. The app, the Tasks app, phones and agents all read and write tasks through it. |
+| **Cancelled** | A task with status Cancelled. Closed, like a completed task, but left out of the progress bar. |
 | **Category** | A task's tag (iCalendar `CATEGORIES`). `project`, `blocked` and `someday` have meaning here. |
 | **Conflict** | Trying to write a task that changed elsewhere since the panel loaded it. Detected by etag; the write is refused. |
 | **Deck board** | A list Nextcloud Deck generates in CalDAV (`app-generated--deck--*`). Never an area. |
@@ -33,14 +34,14 @@ Terms used in the spec's Musts, with the meaning the app gives them.
 | **Quick edit** | Check off, rename, due date or priority, done in the panel. Anything else goes through Open in Tasks. |
 | **Re-link (re-parent)** | Changing a task's parent link to point at a different project. |
 | **Refresh** | Re-reading what changed on the server (by etag) without reloading the page: on tab focus and every two minutes. |
-| **Renumber** | Rewriting the sort order of every task in one project, once, when there is no room left between two neighbours. |
+| **Bump** | When a drag leaves a later sibling with a number no higher than the one before it, raising that sibling's number by one, as the Tasks app does. |
 | **Round-trip** | Reading a task and writing it back with every property and parameter the app did not edit unchanged. |
 | **Shared list** | A list another person shares with the owner. Never an area. |
-| **Show done** | A per-project toggle that shows or hides its completed tasks. |
-| **Sort order** | A task's `X-APPLE-SORT-ORDER`, the field the Tasks app's manual sort uses. Drag order is stored here. |
+| **Show done** | A per-project toggle that shows or hides its completed tasks. Remembered in this browser only; writes nothing. |
+| **Sort order** | A task's `X-APPLE-SORT-ORDER`, the field the Tasks app's manual sort uses: lower numbers first. Drag order is stored here. |
 | **Subtask** | A task linked under another task rather than directly under the project. Shown nested, up to three levels. |
 | **Tasks app** | Nextcloud's own Tasks app, at the same version as on the live server. Its manual sort reads the same sort order. |
 | **Test container** | A throwaway Nextcloud with the same Tasks version as live, seeded with fixture lists, used for every check. |
-| **Unordered task** | A task with no sort order (often agent-filed). Sits below ordered tasks, newest last, until the first drag. |
+| **Unordered task** | A task with no sort order (often agent-filed). Placed by its creation time, as the Tasks app does: seconds from 2001-01-01 to its creation, so new ones land at the bottom, newest last. |
 | **Untagged parent** | A task that has children but no `project` category. Listed in the Needs filing tray. |
 | **"+N deeper"** | The note at the third level of nesting that counts hidden deeper tasks and opens that task in Tasks. |

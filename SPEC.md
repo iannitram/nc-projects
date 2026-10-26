@@ -1,6 +1,6 @@
 # Projects: spec
 
-**Approval:** 2026-10-26, in a session with Claude Code. A changed Must or Won't sets this back to "not yet".
+**Approval:** not yet (first approved 2026-10-26; reset the same day when reading the Tasks app changed M5, M6, M8, M10, M11 and M18).
 
 ## 1.0 in one sentence
 
@@ -23,10 +23,10 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 | One open project per area, ordered, with three ordered tasks | Each of the eight area lists | M1, M2, M10, M12 |
 | A project with a child on another area's list | Project on one list, child on another | M3, M17 |
 | A four-level chain under a project (task, subtask, sub-subtask, one more) | One list | M3, M4 |
-| A project with 10 tasks across two levels, 4 completed | One list | M5, M6 |
+| A project with 10 tasks across two levels, 4 completed, plus one cancelled | One list | M5, M6 |
 | A project tagged `blocked`, and one tagged `someday` | One list | M7 |
 | A project whose tasks are all completed but which is still open | One list | M8 |
-| A project mixing ordered tasks and three unordered tasks with different creation times | One list | M11 |
+| A project mixing ordered tasks with three unordered tasks: two created after the ordered ones, one created before them | One list | M10, M11 |
 | A task carrying `X-CC-*` and `X-FORK-*` properties and a parameter the app doesn't use | One list | M15 |
 | A task with one subtask, under a project on a different list from a second project | Two lists | M17 |
 | An orphan (links to a completed parent) and an untagged parent with two children | One list | M20 |
@@ -50,33 +50,34 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 - Done looks like: the fixture four-level chain shows "+1 deeper"; clicking it opens the level-3 task in Tasks.
 - Check: open the fixture project with a four-level chain; click the note.
 
-**M5. Progress.** WHEN I look at a project card, THE APP SHALL show a done/total bar counting every task at every level under the project, across lists.
-- Done looks like: a fixture project with 4 of 10 descendant tasks completed shows 4/10.
+**M5. Progress.** WHEN I look at a project card, THE APP SHALL show a done/total bar counting every task at every level under the project, across lists, leaving cancelled tasks out of both numbers.
+- Done looks like: a fixture project with 4 of 10 descendant tasks completed, plus one cancelled, shows 4/10.
 - Check: read the bar on that fixture project.
 
-**M6. Show done.** WHEN I turn on "show done" for a project, THE APP SHALL show its completed tasks; when it is off, completed tasks SHALL be hidden.
-- Done looks like: completed fixture tasks appear and disappear with the toggle.
-- Check: toggle it on a fixture project with completed tasks.
+**M6. Show done.** WHEN I turn on "show done" for a project, THE APP SHALL show its completed tasks; when it is off, completed tasks SHALL be hidden. The setting SHALL be remembered per project in this browser and SHALL write nothing to the task data.
+- Done looks like: completed fixture tasks appear and disappear with the toggle; after a reload the toggle keeps its setting; the project's stored copy is unchanged.
+- Check: toggle it on a fixture project with completed tasks; reload; compare the project's stored copy before and after.
 
 **M7. Status badges.** WHEN a project has the category `blocked`, THE APP SHALL show a red "blocked" badge; WHEN it has `someday`, THE APP SHALL grey the card and place it below the area's other open projects.
 - Done looks like: the fixture blocked project has a red badge; the someday project is grey and last.
 - Check: read those two cards and their position.
 
-**M8. Done strip.** WHEN I check off a project, THE APP SHALL move it into a collapsed Done strip at the bottom of its area; a project whose tasks are all done but which I have not checked off SHALL stay open.
-- Done looks like: checking off a fixture project moves it into the strip, which starts collapsed; a fixture project at 100% stays open.
+**M8. Done strip.** WHEN I check off a project, THE APP SHALL check off every open task under it (as the Tasks app does) and move the project into a collapsed Done strip at the bottom of its area; a project whose tasks are all done but which I have not checked off SHALL stay open.
+- Done looks like: checking off a fixture project completes its open tasks and moves it into the strip, which starts collapsed; a fixture project at 100% stays open.
 - Check: check off one project; reload and confirm the strip is collapsed and holds it; look at the 100% project.
 
 **M9. Add task.** WHEN I type a title in "+ Add task" under a project and confirm, THE APP SHALL create a task on the project's own list, linked to the project by a bare `RELATED-TO`, and show it at the bottom of the project with no sort order.
 - Done looks like: the new task shows last in the panel and appears under the project in the Tasks app.
 - Check: add a task; read the stored task's list, `RELATED-TO` and `X-APPLE-SORT-ORDER` (absent); open the project in Tasks.
 
-**M10. Reorder tasks.** WHEN I drag a task to a new place among its siblings, THE APP SHALL keep it there after a reload and the Tasks app's manual sort SHALL show the same order, writing `X-APPLE-SORT-ORDER` only on tasks that moved (unless the project must be renumbered once because the gaps ran out).
-- Done looks like: same order in Projects after reload and in Tasks' manual sort; only the moved task's stored copy changed.
+**M10. Reorder tasks.** WHEN I drag a task to a new place among its siblings, THE APP SHALL keep it there after a reload and the Tasks app's manual sort SHALL show the same order, using the Tasks app's own rule: the moved task takes a neighbour's number plus or minus one, and only a later sibling whose number would collide is bumped.
+- Done looks like: same order in Projects after reload and in Tasks' manual sort; only the moved task's stored copy changed (plus any bumped sibling).
+- Second check: do the same drag in the Tasks app on a copy of the fixture project; the stored numbers match.
 - Check: drag a task; reload; open Tasks with manual sort; compare the stored copies before and after.
 
-**M11. Unordered tasks.** WHEN tasks have no sort order (for example, filed by an agent), THE APP SHALL show them below the ordered ones, newest last, until the first drag in that project gives them a place.
-- Done looks like: fixture tasks without a sort order sit at the bottom by creation time.
-- Check: read the order of a fixture project that mixes ordered and unordered tasks.
+**M11. Unordered tasks.** WHEN a task has no sort order (for example, filed by an agent), THE APP SHALL place it by its creation time exactly as the Tasks app does, so a newly created task lands at the bottom, newest last, and Projects and Tasks always show the same order.
+- Done looks like: in the fixture project the new unordered tasks sit at the bottom by creation time, the old unordered task sits where Tasks shows it, and Tasks' manual sort shows the identical order.
+- Check: read the order of the fixture project in Projects and in Tasks' manual sort; compare.
 
 **M12. Reorder projects.** WHEN I drag a project card to a new place in its area, THE APP SHALL keep it there after a reload, stored the same way on the project task.
 - Done looks like: same card order after reload; only the moved project's stored copy changed, in `X-APPLE-SORT-ORDER`.
@@ -104,9 +105,9 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 - Done looks like: in Tasks, the task and its subtasks sit under the new project on the new project's list.
 - Check: drag a fixture task with a subtask onto a project on another list; open both lists in Tasks.
 
-**M18. Quick edits.** WHEN I check off, rename, or change the due date or priority of a task in the panel, THE APP SHALL save that change; every task SHALL also have an "open in Tasks" link for anything bigger.
-- Done looks like: each edit shows in the Tasks app; the link opens that task in Tasks.
-- Check: make each of the four edits on a fixture task; open it in Tasks; click the link.
+**M18. Quick edits.** WHEN I check off, rename, or change the due date or priority of a task in the panel, THE APP SHALL save that change the way the Tasks app writes it; checking off a task SHALL also check off its open subtasks, and reopening a task SHALL reopen its closed parents, as the Tasks app does. Every task SHALL also have an "open in Tasks" link for anything bigger.
+- Done looks like: each edit shows in the Tasks app; checking off a task with an open subtask completes both; reopening that subtask reopens its parent; the link opens that task in Tasks.
+- Check: make each of the four edits on a fixture task; check off and reopen within the fixture chain; open them in Tasks; click the link.
 
 **M19. New project.** WHEN I use "+ New project" on an area, THE APP SHALL create a task with the category `project` on that area's list and show it as a card.
 - Done looks like: the new card appears; in Tasks it is an ordinary task tagged `project`.
@@ -171,4 +172,4 @@ The full list, with reasons, is in the decision records (ADRs). In short:
 
 ## Further notes
 
-- Phase 0 pre-flight answers go in the code map's Facts table. Found so far: the CalDAV library Tasks ships (`@nextcloud/cdav-library` 2.6.2) can move a task between lists and lets the caller send `If-Match`; after a move it keeps the old etag, so the app re-reads the task.
+- Phase 0 pre-flight answers go in the code map's Facts table. The sort-order rule and the "open in Tasks" link format were read from the Tasks app's source on 2026-10-26. Found so far: the CalDAV library Tasks ships (`@nextcloud/cdav-library` 2.6.2) can move a task between lists and lets the caller send `If-Match`; after a move it keeps the old etag, so the app re-reads the task.
