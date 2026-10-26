@@ -1,6 +1,6 @@
 # Projects: spec
 
-**Approval:** not yet
+**Approval:** 2026-10-26, in a session with Claude Code. A changed Must or Won't sets this back to "not yet".
 
 ## 1.0 in one sentence
 
