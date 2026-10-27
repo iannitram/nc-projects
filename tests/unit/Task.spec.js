@@ -38,24 +38,9 @@ describe('Task', () => {
 			expect(Task.fromIcs(ics, where).toIcs()).toBe(ics)
 		}
 	})
-	it('keeps agent properties, unknown parameters, and unrelated links when editing', async () => {
-		const task = Task.fromIcs(await fixture('task-rich.ics'), where)
-		task.summary = 'Edited fixture task'
-		const ics = task.toIcs()
-		expect(ics).toContain('SUMMARY:Edited fixture task')
-		expect(ics).toContain('RELATED-TO:parent-bare-001')
-		expect(ics).toContain('RELATED-TO;RELTYPE=CHILD:child-001')
-		expect(ics).toContain('X-CC-STATE;X-CC-MODE=fixture:queued')
-		expect(ics).toContain('X-FORK-META;X-UNKNOWN="alpha,beta";X-LIST="one,two":made-up')
-	})
-	it('reads RELTYPE=PARENT and writes a bare parent link without losing its other parameter', async () => {
+	it('reads RELTYPE=PARENT without losing its other parameter', async () => {
 		const task = Task.fromIcs(await fixture('task-parent-reltype.ics'), where)
 		expect(task.parentUid).toBe('parent-001')
-		task.parentUid = 'replacement-parent-001'
-		const ics = task.toIcs()
-		expect(ics).toContain('RELATED-TO;X-REL-CUE=fixture:replacement-parent-001')
-		expect(ics).toContain('RELATED-TO;RELTYPE=SIBLING:peer-001')
-		expect(ics).toContain('X-CC-ASSIGNMENT;X-TRACE=kept:example')
 	})
 	it('recognises completed and cancelled tasks as closed', async () => {
 		const completed = Task.fromIcs(await fixture('task-completed.ics'), where)
