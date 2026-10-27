@@ -236,10 +236,10 @@ function buildProjectChildren(projectUid, maxDepth, childrenByParentUid) {
  */
 export function buildTree(areas, tasks, options = {}) {
 	const maxDepth = typeof options.maxDepth === 'number' ? options.maxDepth : 3
-
+	const inputTasks = (tasks || []).filter(Boolean)
 	const childrenByParentUid = new Map()
-	for (const task of tasks || []) {
-		if (task && task.parentUid) {
+	for (const task of inputTasks) {
+		if (task.parentUid) {
 			let list = childrenByParentUid.get(task.parentUid)
 			if (!list) {
 				list = []
@@ -247,6 +247,48 @@ export function buildTree(areas, tasks, options = {}) {
 			}
 			list.push(task)
 		}
+	}
+	const tasksByUid = new Map()
+	for (const task of inputTasks) {
+		if (task.uid && !tasksByUid.has(task.uid)) {
+			tasksByUid.set(task.uid, task)
+		}
+	}
+	const isOpen = (task) => !isTaskCompleted(task) && !isTaskCancelled(task)
+	const isUnderProject = (task) => {
+		let parentUid = task.parentUid
+		const seen = new Set()
+		while (parentUid && !seen.has(parentUid)) {
+			seen.add(parentUid)
+			const parent = tasksByUid.get(parentUid)
+			if (!parent) {
+				return false
+			}
+			if (isProject(parent)) {
+				return true
+			}
+			parentUid = parent.parentUid
+		}
+		return false
+	}
+	const orphans = inputTasks.filter((task) => {
+		if (!isOpen(task) || !task.parentUid || isProject(task)) {
+			return false
+		}
+		const parent = tasksByUid.get(task.parentUid)
+		return !parent || !isOpen(parent)
+	})
+	const orphanUids = new Set(orphans.map((task) => task.uid).filter(Boolean))
+	const untaggedParents = inputTasks.filter((task) => isOpen(task)
+		&& task.uid
+		&& !isProject(task)
+		&& (!task.parentUid || !isUnderProject(task))
+		&& (childrenByParentUid.get(task.uid) || []).length > 0
+		&& !orphanUids.has(task.uid))
+	const trayUids = new Set([...orphans, ...untaggedParents].map((task) => task.uid).filter(Boolean))
+	const treeChildrenByParentUid = new Map()
+	for (const [parentUid, children] of childrenByParentUid) {
+		treeChildrenByParentUid.set(parentUid, children.filter((task) => !trayUids.has(task.uid)))
 	}
 
 	const areaNodes = (areas || []).map((area) => ({
@@ -257,7 +299,7 @@ export function buildTree(areas, tasks, options = {}) {
 	}))
 
 	for (const task of tasks || []) {
-		if (!task || !isProject(task)) {
+		if (!task || trayUids.has(task.uid) || !isProject(task)) {
 			continue
 		}
 
@@ -268,7 +310,7 @@ export function buildTree(areas, tasks, options = {}) {
 
 		const projectNode = {
 			task,
-			children: buildProjectChildren(task.uid, maxDepth, childrenByParentUid),
+			children: buildProjectChildren(task.uid, maxDepth, treeChildrenByParentUid),
 			progress: calculateProgress(task.uid, childrenByParentUid),
 		}
 
@@ -286,7 +328,7 @@ export function buildTree(areas, tasks, options = {}) {
 
 	return {
 		areas: areaNodes,
-		orphans: [],
-		untaggedParents: [],
+		orphans: [...new Set(orphans)].sort(compareTasks),
+		untaggedParents: [...new Set(untaggedParents)].sort(compareTasks),
 	}
 }
