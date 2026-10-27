@@ -127,6 +127,16 @@ describe('tree', () => {
 			expect(result.areas.flatMap((area) => area.projects).map((project) => project.children.map((node) => node.task.uid))).toEqual([['project-child', 'nested-parent']])
 		})
 
+		it('lists only the root of an untagged chain as an untagged parent', () => {
+			const tasks = [
+				{ uid: 'U1' },
+				{ uid: 'U2', parentUid: 'U1' },
+				{ uid: 'U3', parentUid: 'U2' },
+			]
+			const result = buildTree(areas, tasks)
+			expect(result.untaggedParents.map((task) => task.uid)).toEqual(['U1'])
+		})
+
 		it('does not put valid project descendants in either tray list', () => {
 			const tasks = [
 				{ uid: 'project', categories: ['project'] },

@@ -255,22 +255,6 @@ export function buildTree(areas, tasks, options = {}) {
 		}
 	}
 	const isOpen = (task) => !isTaskCompleted(task) && !isTaskCancelled(task)
-	const isUnderProject = (task) => {
-		let parentUid = task.parentUid
-		const seen = new Set()
-		while (parentUid && !seen.has(parentUid)) {
-			seen.add(parentUid)
-			const parent = tasksByUid.get(parentUid)
-			if (!parent) {
-				return false
-			}
-			if (isProject(parent)) {
-				return true
-			}
-			parentUid = parent.parentUid
-		}
-		return false
-	}
 	const orphans = inputTasks.filter((task) => {
 		if (!isOpen(task) || !task.parentUid || isProject(task)) {
 			return false
@@ -282,7 +266,7 @@ export function buildTree(areas, tasks, options = {}) {
 	const untaggedParents = inputTasks.filter((task) => isOpen(task)
 		&& task.uid
 		&& !isProject(task)
-		&& (!task.parentUid || !isUnderProject(task))
+		&& !task.parentUid
 		&& (childrenByParentUid.get(task.uid) || []).length > 0
 		&& !orphanUids.has(task.uid))
 	const trayUids = new Set([...orphans, ...untaggedParents].map((task) => task.uid).filter(Boolean))
