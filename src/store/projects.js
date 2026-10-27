@@ -4,7 +4,11 @@
  * Stub: state and action names only.
  */
 import { defineStore } from 'pinia'
+import { Task } from '../models/Task.js'
+import { buildTree } from '../models/tree.js'
 import { notImplemented } from '../notImplemented.js'
+import { pickAreas } from '../services/areas.js'
+import { fetchTodos, listTaskCalendars } from '../services/dav.js'
 
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
@@ -14,6 +18,10 @@ export const useProjectsStore = defineStore('projects', {
 		orphans: [],
 		/** @type {import('../models/Task.js').Task[]} */
 		untaggedParents: [],
+		/** @type {Record<string, import('../models/Task.js').Task>} */
+		tasksByUid: {},
+		/** @type {Record<string, string|undefined>} */
+		ctags: {},
 		loading: false,
 		/** @type {string|null} */
 		error: null,
@@ -21,7 +29,28 @@ export const useProjectsStore = defineStore('projects', {
 	actions: {
 		/** Read every area list and build the tree (P05). */
 		async load() {
-			return notImplemented('load')
+			this.loading = true
+			this.error = null
+			try {
+				const calendars = await listTaskCalendars()
+				const areas = pickAreas(calendars)
+				const todosByArea = await Promise.all(areas.map((area) => fetchTodos(area.calendar)))
+				const tasks = todosByArea.flat().map((todo) => Task.fromIcs(todo.ics, {
+					url: todo.url,
+					etag: todo.etag,
+					calendarUrl: todo.calendarUrl,
+				}))
+				const tree = buildTree(areas, tasks)
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
+				this.tasksByUid = Object.fromEntries(tasks.filter((task) => task.uid).map((task) => [task.uid, task]))
+				this.ctags = Object.fromEntries(areas.map((area) => [area.calendar.url, area.calendar.ctag]))
+			} catch (error) {
+				this.error = error instanceof Error ? error.message : String(error)
+			} finally {
+				this.loading = false
+			}
 		},
 		/** Re-read only lists whose ctag changed (P10). */
 		async refresh() {
