@@ -1,6 +1,6 @@
 import { getRequestToken } from '@nextcloud/auth'
 import DavClient from '@nextcloud/cdav-library'
-import { generateUrl } from '@nextcloud/router'
+import { generateRemoteUrl } from '@nextcloud/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTodo, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
 
@@ -13,7 +13,7 @@ vi.mock('@nextcloud/cdav-library', () => ({
 }))
 
 vi.mock('@nextcloud/router', () => ({
-	generateUrl: vi.fn(),
+	generateRemoteUrl: vi.fn(),
 }))
 
 const calendarUrl = '/remote.php/dav/calendars/owner/projects/'
@@ -50,7 +50,7 @@ function mockClient(calendars) {
 beforeEach(() => {
 	vi.clearAllMocks()
 	getRequestToken.mockReturnValue('request-token')
-	generateUrl.mockReturnValue('/nextcloud/remote.php/dav/')
+	generateRemoteUrl.mockReturnValue('https://cloud.example.test/nextcloud/remote.php/dav')
 })
 
 describe('listTaskCalendars', () => {
@@ -86,7 +86,7 @@ describe('listTaskCalendars', () => {
 			},
 		])
 		expect(DavClient).toHaveBeenCalledWith({
-			rootUrl: '/nextcloud/remote.php/dav/',
+			rootUrl: 'https://cloud.example.test/nextcloud/remote.php/dav',
 			defaultHeaders: { requesttoken: 'request-token' },
 		})
 		expect(client.connect).toHaveBeenCalledWith({ enableCalDAV: true })

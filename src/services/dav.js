@@ -5,10 +5,9 @@
  */
 import { getRequestToken } from '@nextcloud/auth'
 import DavClient from '@nextcloud/cdav-library'
-import { generateUrl } from '@nextcloud/router'
+import { generateRemoteUrl } from '@nextcloud/router'
 import { notImplemented } from '../notImplemented.js'
 
-const CALDAV_ROOT = '/remote.php/dav/'
 const CALENDAR_SERVER_NAMESPACE = 'http://calendarserver.org/ns/'
 
 /**
@@ -19,7 +18,7 @@ const CALENDAR_SERVER_NAMESPACE = 'http://calendarserver.org/ns/'
  */
 async function getClient() {
 	const client = new DavClient({
-		rootUrl: generateUrl(CALDAV_ROOT),
+		rootUrl: generateRemoteUrl('dav'),
 		defaultHeaders: {
 			requesttoken: getRequestToken(),
 		},
