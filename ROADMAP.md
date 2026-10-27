@@ -10,6 +10,24 @@ Goal: a project manager over Nextcloud Tasks, built in three phases (Ian, 2026-1
 - **Notes** names dependencies ("Needs P03") and anything a builder should know.
 - Each ID maps to files in [CODE_MAP.md](CODE_MAP.md).
 
+## Dev stages
+
+The phases below are the build order. Phase 0 and phase 1 are usable day to day on their own; 1.0 is all three phases (SPEC.md). Each piece is a GitHub issue, sized by the potn-dev rubric, with its order written as `Blocked by #N`.
+
+## Open source we bring in
+
+| Project | Version | Where it fits |
+|---|---|---|
+| `@nextcloud/vue` | ^9.8.2 (Tasks ships 9.8.2) | Every component: `NcContent`, `NcAppContent`, checkboxes, date and priority pickers, notices |
+| `@nextcloud/cdav-library` | ~2.6.2 (Tasks' version; MOVE behaviour checked on it) | `src/services/dav.js` only |
+| `ical.js` | ^2.2.1 | `src/models/Task.js` only |
+| `sortablejs` + `sortablejs-vue3` | ~1.15.6, ^1.3.0 | `src/composables/useDrag.js` and the drag lists (P08, P09, P11, P12) |
+| `pinia` | ^3.0.4 | `src/store/projects.js` |
+| `@nextcloud/vite-config`, `@nextcloud/eslint-config` | ^2.5.4, ^9.0.1 | Build and lint |
+| Nextcloud Tasks 0.18.1 (source, read only) | v0.18.1 | The reference for every behaviour we match (`scripts/fetch-tasks-ref.sh`); no code is copied |
+
+Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-and-linux).
+
 ---
 
 ## Merged
@@ -36,7 +54,7 @@ Goal: a project manager over Nextcloud Tasks, built in three phases (Ian, 2026-1
 
 | ID | Feature | Complexity | Notes |
 |---|---|---|---|
-| P01 | **App skeleton**: `cc_projects`, "Projects" nav entry, page that mounts the Vue app, Vite build | Low | Loads in the test container with an empty panel |
+| P01 | **App skeleton**: `cc_projects`, "Projects" nav entry, page that mounts the Vue app, Vite build | Low | Files and stubs landed 2026-10-26 (CODE_MAP). Left: the lockfiles, `scripts/deploy-test.sh`, and loading it in the test container with an empty panel |
 | P02 | **Area discovery**: list Ian's calendars and keep the 8 areas | Low | Needs P01. Match by display name, never by URI segment (The Channel's is a UUID, Personal's is `personal-1`). Exclude lists shared by other people (today Farm Boy), `*_shared_by_*`, `app-generated--deck--*` |
 | P03 | **Task model**: parse and write VTODOs | Medium | Needs P00(a). Fields: UID, SUMMARY, STATUS, COMPLETED, DUE, PRIORITY, CATEGORIES, RELATED-TO, X-APPLE-SORT-ORDER, etag, calendar. **Must round-trip every property it doesn't understand** (agents write `X-CC-*`). Unit tests on fixtures |
 | P04 | **Tree builder**: areas → projects → tasks | Medium | Needs P02, P03. Project = category `project`. Children by RELATED-TO across lists, up to 3 levels; count what lies deeper for the "+N deeper" note. Orphans and untagged parents are set aside for P15, not shown |

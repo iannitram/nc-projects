@@ -1,6 +1,6 @@
 # Code map
 
-**Planned layout.** No code exists yet. When a file lands, fix its row here in the same PR: what a file actually does wins over this plan. Feature IDs are from [ROADMAP.md](ROADMAP.md).
+**Skeleton in place (2026-10-26).** Every file below exists. The app shell and build files are real; the data-layer modules, the store, the composables and the components are **stubs**: their exported names, signatures and JSDoc are the contract, and their bodies throw `notImplemented` (`src/notImplemented.js`) or render an empty element until their roadmap issue lands. When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
 
 ## Shape in one picture
 
@@ -26,7 +26,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `appinfo/routes.php` | One route: the page |
 | `lib/AppInfo/Application.php` | App bootstrap |
 | `lib/Controller/PageController.php` | Renders `templates/main.php`. Nothing else: no data API |
-| `templates/main.php` | Mount point; loads the built JS and CSS |
+| `templates/main.php` | Mount point `#cc_projects`; loads `js/cc_projects-main.mjs` and `css/cc_projects-style.css` |
 | `img/app.svg`, `img/app-dark.svg` | Nav icon |
 
 ### Data layer (JS)
@@ -37,6 +37,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/services/areas.js` | Which calendars are areas: only lists that hold tasks (VTODO), then the 8 display names, plus the exclusions (lists shared by other people, today Farm Boy; `*_shared_by_*`, `app-generated--deck--*`) | P02 |
 | `src/models/Task.js` | `ical.js` wrapper for one VTODO: typed getters and setters for the fields the app uses; **keeps every other property and parameter untouched on write** | P03 |
 | `src/models/tree.js` | Pure function: tasks → areas → projects → task tree (follows RELATED-TO across lists, max depth 3, with a count of what lies deeper for "+N deeper"; progress counts every descendant). Also returns orphans and untagged parents for the tray | P04, P15 |
+| `src/notImplemented.js` | The stubs' placeholder error; delete once nothing imports it | P01 |
 | `src/models/sortOrder.js` | Pure order math, a copy of Tasks' rule (§Facts): effective order, place a moved task at neighbour ±1, bump later colliding siblings | P08, P09 |
 | `src/store/projects.js` | Pinia store: load, refresh by etag/ctag, optimistic updates with rollback, 412 handling | P05, P10 |
 
@@ -44,7 +45,7 @@ Server (PHP): serves the page only. No data endpoints.
 
 | Path | Job | IDs |
 |---|---|---|
-| `src/main.js` | Creates the app, installs Pinia, mounts on `#content` | P01 |
+| `src/main.js` | Creates the app, installs Pinia, mounts on `#cc_projects` | P01 |
 | `src/App.vue` | `NcContent` / `NcAppContent` shell; renders the areas | P01, P05 |
 | `src/components/AreaSection.vue` | One area: its project cards, the Done strip, "+ New project" (phase 2) | P05, P06, P14 |
 | `src/components/ProjectCard.vue` | Project header (title, badges, progress bar, show-done toggle, "+ Add task") and its task tree | P05, P06, P07 |
@@ -55,24 +56,56 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/components/NeedsFilingTray.vue` | Orphans and untagged parents with fix buttons | P15 |
 | `src/composables/useDrag.js` | `sortablejs-vue3` wiring (Tasks' options: `delay: 500, delayOnTouchOnly: true, touchStartThreshold: 3`): drag handles, long-press on touch, drop → store action | P08, P09, P11, P12 |
 | `src/composables/useRefresh.js` | Refresh on window focus and every ~2 min | P10 |
-| `src/styles/` | Layout, including the phone breakpoint | P11 |
+| `src/styles/projects.css` | Layout, including the phone breakpoint | P05, P11 |
 
 ### Tests and tooling
 
 | Path | Job |
 |---|---|
+| `tests/unit/App.spec.js` | Smoke test: the app mounts and shows its heading (skeleton) |
+| `tests/php/PageControllerTest.php` | Smoke test: the page route returns the `main` template (skeleton) |
+| `tests/tools/php.mjs` | Runs PHP lint and phpunit with a local PHP 8.4+, else a throwaway `nextcloud:33.0.10-apache` container |
 | `tests/unit/Task.spec.js` | Round-trip: parse → change one field → serialize keeps everything else byte-equivalent (incl. `X-CC-*`, bare RELATED-TO) |
 | `tests/unit/tree.spec.js` | Cross-list children, depth 3, orphans, untagged parents, Deck, agent queues and shared lists excluded |
 | `tests/unit/sortOrder.spec.js` | Same results as Tasks' `adjustSortOrder` on the same inputs: insert between, bump, default from CREATED |
 | `tests/fixtures/*.ics` | Sample VTODOs shaped like the real data (copied shapes, no personal content); must cover the fixture table in SPEC.md |
-| `package.json`, `vite.config.js` | Build with `@nextcloud/vite-config`; test with Vitest |
+| `package.json`, `vite.config.mjs`, `vitest.config.mjs`, `eslint.config.mjs` | Build with `@nextcloud/vite-config`; test with Vitest (jsdom); lint with `@nextcloud/eslint-config` |
+| `composer.json` | PHP autoload (`OCA\CcProjects\` to `lib/`), phpunit and `nextcloud/ocp` for tests |
+| `.github/workflows/check.yml` | CI: lint and tests on ubuntu, macos and windows; build on ubuntu |
+| `.gitattributes` | LF line endings in every checkout |
 | `scripts/fetch-tasks-ref.sh` | Shallow-clone Nextcloud Tasks (default v0.18.1) into git-ignored `reference/tasks` for reading |
 | `scripts/dav-get.sh` | Print one stored task's raw iCalendar from the **test** container (CalDAV GET), for the spec's "read the stored task" checks |
 | `test-env/` | The test container: `compose.yaml`, `setup.sh`, `reset.sh`, `seed.py` (fixture lists and tasks) |
 | `scripts/deploy-test.sh` | Build and copy into the **test** container, then `occ app:enable cc_projects` there |
-| `.gitignore` | `node_modules/`, `vendor/`, `js/` build output |
+| `.gitignore` | `node_modules/`, `vendor/`, `js/` and `css/` build output, `reference/` |
 
 Live install (copy into the live `custom_apps/cc_projects` + `occ app:enable cc_projects`) has no script on purpose: it happens by hand, on Ian's yes, every time.
+
+## How the modules interlink
+
+Calls go one way, top to bottom. Only `services/dav.js` talks to the server; the models are pure and import nothing but `ical.js`.
+
+| Module | Calls | Called by |
+|---|---|---|
+| `components/*` | the store's actions; `composables/useDrag.js` | `App.vue`, each other (AreaSection → ProjectCard → TaskTree → TaskRow) |
+| `App.vue` | `store/projects.js` (`load`), `composables/useRefresh.js` | `main.js` |
+| `store/projects.js` | `services/dav.js`, `services/areas.js`, `models/Task.js`, `models/tree.js`, `models/sortOrder.js` | components, `App.vue` |
+| `services/areas.js` | nothing (pure filter over `TaskCalendar`) | the store |
+| `services/dav.js` | `@nextcloud/cdav-library` | the store |
+| `models/tree.js` | `models/sortOrder.js` (sibling order) | the store |
+| `models/Task.js` | `ical.js` | the store, `models/tree.js` (as data) |
+| `models/sortOrder.js` | nothing | `models/tree.js`, the store |
+
+## Mac, PC and Linux
+
+Projects is a browser app on a Nextcloud server, so "platform" means the developer's machine and the user's browser:
+
+- **Browsers:** current Firefox, Chrome, Safari and Edge on Mac, Windows and Linux, plus Safari on iOS and Chrome on Android for the phone layout (P11). Nextcloud's own browser list is the floor.
+- **Server:** any Nextcloud 33–35 host; nothing in the app depends on the host OS.
+- **Building:** Node 24 and PHP 8.4 on any OS. CI runs lint and tests on all three (`.github/workflows/check.yml`).
+- **Line endings:** LF everywhere (`.gitattributes`); the lint config rejects CRLF.
+- **Scripts:** `scripts/*.sh` and `test-env/*.sh` are bash: on Windows run them in Git Bash or WSL. Node scripts build paths with `node:path`, never string joins with `/` or `\`.
+- **Test container:** needs Docker (Docker Desktop on Mac and Windows). `tests/tools/php.mjs` falls back to it when no PHP 8.4 is installed.
 
 ## Rules the code keeps
 
