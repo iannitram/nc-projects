@@ -2,6 +2,8 @@
 
 **Approval:** 2026-10-26, in a session with Claude Code (re-approved after M5, M6, M8, M10, M11 and M18 were matched to the Tasks app). A changed Must or Won't sets this back to "not yet".
 
+Must M21 added 2026-10-26 by the owner: "Yes, a 1.0 Must (Recommended)" (the request: "New feature request for both apps - bug logging button with the same pathway as the launcher bug submission pathway"; details "Launcher set, browser version (Recommended)", "Same File Drop (Recommended)", "One shared module repo (Recommended)").
+
 ## 1.0 in one sentence
 
 I can open **Projects** from Nextcloud's top bar and, in one panel, see every project on my own task lists with its tasks in my drag order, add and reorder tasks and projects, move a task to another project, make quick edits, start new projects, and file away stray tasks, while the Tasks app, phone clients and agents keep working on the same data unchanged.
@@ -118,6 +120,12 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 **M20. Needs filing tray.** WHEN a task links to a missing or completed parent (an orphan), or a task has children but no `project` category (an untagged parent), THE APP SHALL list it in a Needs filing tray with one-click "make project" (adds the category) and "move to project" (re-links it).
 - Done looks like: the fixture orphan and untagged parent are listed; each button fixes its case and the item leaves the tray.
 - Check: open the tray; use each button on a fixture item; check the result in Tasks.
+
+### Across all phases
+
+**M21. Report a bug.** WHEN I choose "Report a bug", THE APP SHALL open the shared report form (craft-bugreport-web): what happened, what I expected, the app's recent errors, an optional screenshot and, only if I tick it that time, the open area's projects and tasks as JSON; it SHALL show me every file and send the report to the bug File Drop only after I press Send.
+- Done looks like: a report sent from the app lands in the File Drop with the desktop launcher's layout, and the morning bug intake reads it unchanged.
+- Check: in the test container with the drop config set, make a report, check the consent screen lists every file, press Send, see the zip in the drop.
 
 ## Won'ts
 

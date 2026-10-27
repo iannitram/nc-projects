@@ -57,6 +57,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/composables/useDrag.js` | `sortablejs-vue3` wiring (Tasks' options: `delay: 500, delayOnTouchOnly: true, touchStartThreshold: 3`): drag handles, long-press on touch, drop → store action | P08, P09, P11, P12 |
 | `src/composables/useRefresh.js` | Refresh on window focus and every ~2 min | P10 |
 | `src/styles/projects.css` | Layout, including the phone breakpoint | P05, P11 |
+| `src/main.js` + `src/App.vue` (Report a bug) | `installErrorBuffer()` at startup; craft-bugreport-web's `ReportButton` in the app navigation, given `{ app, version, commit, ncVersion, dropBase, dropToken, userName }` and `getWorkingFile()` returning the open area's projects and tasks as JSON; drop base and token are an app config value (`occ config:app:set cc_projects bug_drop_base/bug_drop_token`) handed to the page as initial state by `PageController`, never committed | M21 (#39, #40) |
 
 ### Tests and tooling
 
