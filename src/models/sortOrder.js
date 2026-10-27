@@ -7,7 +7,7 @@ export const APPLE_EPOCH_MS = Date.UTC(2001, 0, 1)
 /**
  * The order a task sorts by: X-APPLE-SORT-ORDER, else seconds from APPLE_EPOCH to CREATED, else 0.
  *
- * @param {{sortOrder: (number|null), created: (Date|null)}} task the task
+ * @param {{sortOrder: (number|null), created: (Date|import('ical.js').default.Time|null)}} task the task
  * @return {number}
  */
 export function effectiveSortOrder(task) {
@@ -16,7 +16,15 @@ export function effectiveSortOrder(task) {
 	}
 
 	if (task.created) {
-		return Math.floor((task.created - APPLE_EPOCH_MS) / 1000)
+		let ms
+		if (typeof task.created.toUnixTime === 'function') {
+			ms = task.created.toUnixTime() * 1000
+		} else if (task.created instanceof Date) {
+			ms = task.created.getTime()
+		} else {
+			ms = Number(task.created)
+		}
+		return Math.floor((ms - APPLE_EPOCH_MS) / 1000)
 	}
 
 	return 0
