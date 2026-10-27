@@ -1,9 +1,9 @@
-import { showError } from '@nextcloud/dialogs'
 /**
  * The panel's state (P05, P10 and every write feature). Pinia.
  * Writes are optimistic with rollback; a ConflictError reloads the task (rule 3).
  * Stub: state and action names only.
  */
+import { showError } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
 import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
