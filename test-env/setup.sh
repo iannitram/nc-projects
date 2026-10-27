@@ -9,7 +9,20 @@ PORT="${NC_TEST_PORT:-8089}"
 TASKS_VERSION="0.18.1"
 TASKS_URL="https://github.com/nextcloud/tasks/releases/download/v${TASKS_VERSION}/tasks.tar.gz"
 DC="docker compose -p nc-projects-test -f compose.yaml"
-occ() { $DC exec -T -u www-data nextcloud php occ "$@"; }
+# Run a command; retry when SQLite reports "database is locked" (5 tries, 3 s apart).
+retry_locked() {
+  local out rc n=1
+  while :; do
+    rc=0
+    out="$("$@" 2>&1)" || rc=$?
+    if [ "$rc" -eq 0 ] || ! printf '%s' "$out" | grep -q "database is locked" || [ "$n" -ge 5 ]; then
+      [ -n "$out" ] && printf '%s\n' "$out"
+      return "$rc"
+    fi
+    n=$((n + 1)); sleep 3
+  done
+}
+occ() { retry_locked $DC exec -T -u www-data nextcloud php occ "$@"; }
 
 echo "1/5 Starting the container (port $PORT)"
 $DC up -d
@@ -37,14 +50,34 @@ GOT="$(occ app:list --output=json | python3 -c 'import json,sys; d=json.load(sys
 if [ "$GOT" = "$TASKS_VERSION" ]; then echo "   Tasks $GOT enabled"; else echo "   WARNING: Tasks is '$GOT', not $TASKS_VERSION. Checks that compare with Tasks are not valid until this is fixed."; fi
 
 echo "4/5 Creating test users (owner, other, agent) and the Deck board"
+# user:add with the lock retry. A "database is locked" error can come after the user was
+# written, so a retry that then reports "already exists" counts as success, but only when
+# this same user's add hit the lock first.
+add_user() {
+  local u="$1" out rc locked=0 n=1
+  while :; do
+    rc=0
+    out="$($DC exec -T -u www-data -e OC_PASS="$u-test-only" nextcloud php occ user:add --password-from-env --display-name="Test $u" "$u" 2>&1)" || rc=$?
+    [ "$rc" -eq 0 ] && return 0
+    if printf '%s' "$out" | grep -q "database is locked" && [ "$n" -lt 5 ]; then
+      locked=1; n=$((n + 1)); sleep 3; continue
+    fi
+    if [ "$locked" = 1 ] && printf '%s' "$out" | grep -q "already exists"; then return 0; fi
+    printf '%s\n' "$out"
+    return 1
+  done
+}
 for u in owner other agent; do
-  occ user:info "$u" >/dev/null 2>&1 || $DC exec -T -u www-data -e OC_PASS="$u-test-only" nextcloud php occ user:add --password-from-env --display-name="Test $u" "$u"
+  occ user:info "$u" >/dev/null 2>&1 || add_user "$u"
 done
 DECK=0
 if occ app:list --output=json | grep -q '"deck":' || occ app:install deck >/dev/null 2>&1; then
   occ app:enable deck >/dev/null 2>&1 && DECK=1
 fi
-[ "$DECK" = 1 ] || echo "   Deck not available: the Deck-board fixture will be skipped"
+if [ "$DECK" != 1 ]; then
+  echo "   ERROR: Deck could not be installed or enabled; the Deck-board fixture needs it." >&2
+  exit 1
+fi
 
 echo "5/5 Loading the fixture lists and tasks"
 python3 seed.py --base "http://127.0.0.1:$PORT" --deck "$DECK"
