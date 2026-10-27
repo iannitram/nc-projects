@@ -1,6 +1,6 @@
 # Code map
 
-**Skeleton in place (2026-10-26).** Every file below exists. The app shell and build files are real; the data-layer modules, the store, the composables and the components are **stubs**: their exported names, signatures and JSDoc are the contract, and their bodies throw `notImplemented` (`src/notImplemented.js`) or render an empty element until their roadmap issue lands. When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
+**Skeleton in place (2026-10-26), data layer merged the same night.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`) and the store's `load` are **present**; the rest of the store, `useRefresh.js`, `useDrag.js`'s drop wiring and the components are **stubs**: their exported names, signatures and JSDoc are the contract, and their bodies throw `notImplemented` (`src/notImplemented.js`) or render an empty element until their roadmap issue lands (the panel view, #13, is in review as PR #43). When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
 
 ## Shape in one picture
 
@@ -33,13 +33,13 @@ Server (PHP): serves the page only. No data endpoints.
 
 | Path | Job | IDs |
 |---|---|---|
-| `src/services/dav.js` | `@nextcloud/cdav-library` client: discover calendars, REPORT VTODOs, PUT with If-Match, MOVE between calendars (with If-Match; re-read after, since the etag is stale) | P02, P07, P10, P12 |
-| `src/services/areas.js` | Which calendars are areas: only lists that hold tasks (VTODO), then the 8 display names, plus the exclusions (lists shared by other people, today Farm Boy; `*_shared_by_*`, `app-generated--deck--*`) | P02 |
+| `src/services/dav.js` | **Present** (`listTaskCalendars`, `fetchTodos`, `fetchTodo`, `putTodo`, `createTodo`, `ConflictError`); **stub**: `moveTodo` (P12). `@nextcloud/cdav-library` client: discover calendars, REPORT VTODOs, PUT with If-Match, MOVE between calendars (with If-Match; re-read after, since the etag is stale) | P02, P07, P10, P12 |
+| `src/services/areas.js` | **Present** (`AREA_NAMES`, `isExcluded`, `pickAreas`). Which calendars are areas: only lists that hold tasks (VTODO), then the 8 display names, plus the exclusions (lists shared by other people, today Farm Boy; `*_shared_by_*`, `app-generated--deck--*`) | P02 |
 | `src/models/Task.js` | `ical.js` wrapper for one VTODO: typed getters and setters for the fields the app uses; **keeps every other property and parameter untouched on write** | present |
-| `src/models/tree.js` | Pure function: tasks → areas → projects → task tree (follows RELATED-TO across lists, max depth 3, with a count of what lies deeper for "+N deeper"; progress counts every descendant). Also returns orphans and untagged parents for the tray | P04, P15 |
-| `src/notImplemented.js` | The stubs' placeholder error; delete once nothing imports it | P01 |
-| `src/models/sortOrder.js` | Pure order math, a copy of Tasks' rule (§Facts): effective order, place a moved task at neighbour ±1, bump later colliding siblings | P08, P09 |
-| `src/store/projects.js` | Pinia store: load, refresh by etag/ctag, optimistic updates with rollback, 412 handling | P05, P10 |
+| `src/models/tree.js` | **Present** (`buildTree`). Pure function: tasks → areas → projects → task tree (follows RELATED-TO across lists, max depth 3, with a count of what lies deeper for "+N deeper"; progress counts every descendant). Also returns orphans and untagged parents for the tray | P04, P15 |
+| `src/notImplemented.js` | The stubs' placeholder error; delete once nothing imports it (today `dav.js`, `store/projects.js`, `useRefresh.js`) | P01 |
+| `src/models/sortOrder.js` | **Present** (`effectiveSortOrder`, `placeMoved`). Pure order math, a copy of Tasks' rule (§Facts): effective order, place a moved task at neighbour ±1, bump later colliding siblings | P08, P09 |
+| `src/store/projects.js` | `load` **present**; `refresh`, `addTask`, `reorder`, `moveToProject`, `setCompleted`, `updateTask`, `createProject`, `makeProject` **stubs**. Pinia store: load, refresh by etag/ctag, optimistic updates with rollback, 412 handling | P05, P10 |
 
 ### UI (Vue 3 + `@nextcloud/vue`)
 
@@ -54,11 +54,11 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/components/AddTaskInput.vue` | Inline new-task field under a project | P07 |
 | `src/components/DoneStrip.vue` | Collapsed list of completed projects in an area | P06 |
 | `src/components/NeedsFilingTray.vue` | Orphans and untagged parents with fix buttons | P15 |
-| `src/composables/useDrag.js` | `sortablejs-vue3` wiring (Tasks' options: `delay: 500, delayOnTouchOnly: true, touchStartThreshold: 3`): drag handles, long-press on touch, drop → store action | P08, P09, P11, P12 |
-| `src/composables/useRefresh.js` | Refresh on window focus and every ~2 min | P10 |
+| `src/composables/useDrag.js` | **Stub** (`DRAG_OPTIONS` present; the drop wiring is not). `sortablejs-vue3` wiring (Tasks' options: `delay: 500, delayOnTouchOnly: true, touchStartThreshold: 3`): drag handles, long-press on touch, drop → store action | P08, P09, P11, P12 |
+| `src/composables/useRefresh.js` | **Stub.** Refresh on window focus and every ~2 min | P10 |
 | `src/styles/projects.css` | Layout, including the phone breakpoint | P05, P11 |
-| `src/main.js` + `src/App.vue` (Report a bug) | `installErrorBuffer()` at startup; craft-bugreport-web's `ReportButton` in the app navigation, given `{ app, version, commit, ncVersion, dropBase, dropToken, userName }` and `getWorkingFile()` returning the open area's projects and tasks as JSON; drop base and token are an app config value (`occ config:app:set cc_projects bug_drop_base/bug_drop_token`) handed to the page as initial state by `PageController`, never committed | M21 (#39, #40) |
-| `appinfo/info.xml` + `.github/workflows/release.yml` (updates from the admin panel) | The release fields the merged feed reads (id, a.b.c version, Nextcloud range, PHP minimum; guarded by `tests/unit/release.infoxml.spec.js`) and the tag workflow that calls craft-nc-appstore's `build-app.yml@v1`; signing and publishing happen on the release-key machine (R35), never in CI | M22 (#41, #42, #44) |
+| `src/main.js` + `src/App.vue` (Report a bug; planned) | `installErrorBuffer()` at startup; craft-bugreport-web's `ReportButton` in the app navigation, given `{ app, version, commit, ncVersion, dropBase, dropToken, userName }` and `getWorkingFile()` returning the open area's projects and tasks as JSON; drop base and token are an app config value (`occ config:app:set cc_projects bug_drop_base/bug_drop_token`) handed to the page as initial state by `PageController`, never committed | M21 (#39, #40) |
+| `appinfo/info.xml` + `.github/workflows/release.yml` (updates from the admin panel; planned) | The release fields the merged feed reads (id, a.b.c version, Nextcloud range, PHP minimum; guarded by `tests/unit/release.infoxml.spec.js`, planned in #41) and the tag workflow that calls craft-nc-appstore's `build-app.yml@v1`; signing and publishing happen on the release-key machine (R35), never in CI | M22 (#41, #42, #44) |
 
 ### Tests and tooling
 
@@ -67,10 +67,14 @@ Server (PHP): serves the page only. No data endpoints.
 | `tests/unit/App.spec.js` | Smoke test: the app mounts and shows its heading (skeleton) |
 | `tests/php/PageControllerTest.php` | Smoke test: the page route returns the `main` template (skeleton) |
 | `tests/tools/php.mjs` | Runs PHP lint and phpunit with a local PHP 8.4+, else a throwaway `nextcloud:33.0.10-apache` container |
+| `tests/unit/areas.spec.js` | `isExcluded` and `pickAreas`: the eight areas by display name, the exclusions |
+| `tests/unit/dav.spec.js` | `dav.js` reads and writes against a fake `cdav-library`: `putTodo`, `createTodo`, `ConflictError` on 412 |
+| `tests/unit/projects.spec.js` | The store's `load`: areas read, tree built |
 | `tests/unit/Task.spec.js` | Round-trip: parse → change one field → serialize keeps everything else byte-equivalent (incl. `X-CC-*`, bare RELATED-TO) |
 | `tests/unit/tree.spec.js` | Cross-list children, depth 3, orphans, untagged parents, Deck, agent queues and shared lists excluded |
 | `tests/unit/sortOrder.spec.js` | Same results as Tasks' `adjustSortOrder` on the same inputs: insert between, bump, default from CREATED |
 | `tests/fixtures/*.ics` | Sample VTODOs shaped like the real data (copied shapes, no personal content); must cover the fixture table in SPEC.md |
+| `package-lock.json`, `composer.lock` | Committed lockfiles; CI installs with `npm ci` |
 | `package.json`, `vite.config.mjs`, `vitest.config.mjs`, `eslint.config.mjs` | Build with `@nextcloud/vite-config`; test with Vitest (jsdom); lint with `@nextcloud/eslint-config` |
 | `composer.json` | PHP autoload (`OCA\CcProjects\` to `lib/`), phpunit and `nextcloud/ocp` for tests |
 | `.github/workflows/check.yml` | CI: lint and tests on ubuntu, macos and windows; build on ubuntu |
@@ -78,7 +82,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `scripts/fetch-tasks-ref.sh` | Shallow-clone Nextcloud Tasks (default v0.18.1) into git-ignored `reference/tasks` for reading |
 | `scripts/dav-get.sh` | Print one stored task's raw iCalendar from the **test** container (CalDAV GET), for the spec's "read the stored task" checks |
 | `test-env/` | The test container: `compose.yaml`, `setup.sh`, `reset.sh`, `seed.py` (fixture lists and tasks) |
-| `scripts/deploy-test.sh` | Build and copy into the **test** container, then `occ app:enable cc_projects` there |
+| `scripts/deploy-test.sh` (planned, #4) | Build and copy into the **test** container, then `occ app:enable cc_projects` there |
 | `.gitignore` | `node_modules/`, `vendor/`, `js/` and `css/` build output, `reference/` |
 
 Live install (copy into the live `custom_apps/cc_projects` + `occ app:enable cc_projects`) has no script on purpose: it happens by hand, on Ian's yes, every time.
