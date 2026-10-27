@@ -5,7 +5,7 @@
 ## Shape in one picture
 
 ```
-Browser (Ian's session)
+Browser (the owner's session)
   App.vue
    └─ AreaSection ×8 ─ ProjectCard ─ TaskTree ─ TaskRow
           ▲                 ▲  (drag: useDrag → sortOrder.js)
@@ -85,7 +85,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `scripts/deploy-test.sh` (planned, #4) | Build and copy into the **test** container, then `occ app:enable cc_projects` there |
 | `.gitignore` | `node_modules/`, `vendor/`, `js/` and `css/` build output, `reference/` |
 
-Live install (copy into the live `custom_apps/cc_projects` + `occ app:enable cc_projects`) has no script on purpose: it happens by hand, on Ian's yes, every time.
+Live install (copy into the live `custom_apps/cc_projects` + `occ app:enable cc_projects`) has no script on purpose: it happens by hand, on the owner's yes, every time.
 
 ## How the modules interlink
 
@@ -132,7 +132,7 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 | How much data the panel shows | 61 project roots exist; 22 are on the owner's own lists (what the panel shows), 39 on agent queues the owner's account cannot see | Count while speccing, 2026-10-23 |
 | Deck lists in CalDAV | Deck publishes its boards as `app-generated--deck--*` task lists (47 boards, 344 open cards when counted), so area discovery must filter them | Count while speccing, 2026-10-23 |
 | `cdav-library` MOVE support | Yes. `VObject.move(calendar, overwrite=false, headers={})` sends MOVE with `Overwrite: F`; `headers` carries `If-Match`. Keeps the file name; refuses same list, other collection type, read-only target. Updates `url` but not `etag`, so re-read after | `@nextcloud/cdav-library` 2.6.2 `dist/index.mjs` (DavObject.move), checked 2026-10-26 |
-| Test container recipe | `test-env/` (see its README): compose project `nc-projects-test`, Nextcloud 33.0.10 + Tasks 0.18.1, SQLite, `127.0.0.1:8089`; `setup.sh` installs, makes users `owner`/`other`/`agent`, seeds the fixture lists with `seed.py`. Verified 2026-10-26 in a cloud sandbox (Nextcloud, users, lists, shares, 78 tasks; Tasks and Deck install not reachable there): run once on Hyperion to confirm the Tasks and Deck steps | `test-env/` |
+| Test container recipe | `test-env/` (see its README): compose project `nc-projects-test`, Nextcloud 33.0.10 + Tasks 0.18.1, SQLite, `127.0.0.1:8089`; `setup.sh` installs, makes users `owner`/`other`/`agent`, seeds the fixture lists with `seed.py`. Verified 2026-10-26 in a cloud sandbox (Nextcloud, users, lists, shares, 78 tasks; Tasks and Deck install not reachable there): run once on a real Docker host to confirm the Tasks and Deck steps | `test-env/` |
 
 ### How Tasks behaves (read from v0.18.1 source, 2026-10-26)
 
@@ -148,4 +148,4 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 - **Show completed subtasks** is per task (`X-OC-HIDECOMPLETEDSUBTASKS`); Projects' "show done" does not write it (ADR 0019).
 - **Shell to copy:** Vite via `@nextcloud/vite-config` `createAppConfig({ main: 'src/main.js' })`, Vue 3, vue-router history mode with a catch-all page route, `@nextcloud/vue` 9.8.2, `@nextcloud/eslint-config/vue3`, Vitest + happy-dom, Node 24; PageController passes initial state and renders a template that loads `<app>-main.js`.
 
-Known on 2026-10-23 (installed Tasks 0.18.1 on Hyperion): it ships `@nextcloud/vue` 9.8.2 (Vue 3), `@nextcloud/cdav-library` 2.6.2, `ical.js` 2.2.1, `sortablejs` 1.15.6 (through `sortablejs-vue3`), `vuex` 4.1.0, and supports Nextcloud 31–35. The live server is 33.0.10. We use Pinia rather than Vuex: it is the current Vue 3 default and the store is small.
+Known on 2026-10-23 (installed Tasks 0.18.1 on the live server): it ships `@nextcloud/vue` 9.8.2 (Vue 3), `@nextcloud/cdav-library` 2.6.2, `ical.js` 2.2.1, `sortablejs` 1.15.6 (through `sortablejs-vue3`), `vuex` 4.1.0, and supports Nextcloud 31–35. The live server is 33.0.10. We use Pinia rather than Vuex: it is the current Vue 3 default and the store is small.
