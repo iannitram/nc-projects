@@ -6,12 +6,12 @@ A throwaway Nextcloud for building and checking Projects. Every Must's check in 
 - **Separate from live:** compose project `nc-projects-test`, its own volume, bound to `127.0.0.1:8089` only. It never touches the live Nextcloud's compose project or volumes.
 - **Made-up data only:** three accounts (`owner`, `other`, `agent`; password `<name>-test-only`) and the fixture lists from the spec's fixture table.
 
-## Run it (Hyperion)
+## Run it
 
-Each step is one command through the dev gate, from the repo root:
+On any machine with Docker, from the repo root:
 
 ```
-python3 "B:/dev/potn-dev/tools/dev-gate.py" run --who nc-projects --cwd B:/dev/nc-projects -- bash test-env/setup.sh
+bash test-env/setup.sh
 ```
 
 Then open http://127.0.0.1:8089 and log in as `owner` / `owner-test-only`.

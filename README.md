@@ -4,7 +4,7 @@ A Nextcloud app that turns Nextcloud Tasks into a project manager. A **Projects*
 
 It replaces today's workaround (parent VTODOs tagged `project`, read only through scripts) with a real view. It stores nothing new: everything it shows and writes is ordinary CalDAV task data, so the Tasks app, phone clients and Ian's agents keep working unchanged.
 
-Spec settled with Ian in a grilling session, 2026-10-23, and finished in the front office, 2026-10-26. The spec is [SPEC.md](SPEC.md), its terms are in [GLOSSARY.md](GLOSSARY.md), and every decision with its reason is in [docs/adr/](docs/adr/README.md). Status lives in the vault (`Workspaces/NC Projects/PROJECT.md`).
+Spec settled with Ian in a grilling session, 2026-10-23, and finished in the front office, 2026-10-26. The spec is [SPEC.md](SPEC.md), its terms are in [GLOSSARY.md](GLOSSARY.md), and every decision with its reason is in [docs/adr/](docs/adr/README.md). Stage and status: [PIPELINE.md](PIPELINE.md); history: [CHANGELOG.md](CHANGELOG.md).
 
 ## How it reads your data
 

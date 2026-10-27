@@ -1,6 +1,6 @@
 # 0017. Spec lives in the repo; checks run in the test container
 
-- Status: accepted
+- Status: accepted, amended 2026-10-26 (status moved into this repo)
 - Date: 2026-10-26
 - Grilling decisions: new
 
@@ -12,3 +12,6 @@ The spec, glossary and decision records live in this repo; the vault's project p
 
 ## Consequences
 The repo's notes for coding sessions point here for decisions. No check ever touches live data.
+
+## Amendment, 2026-10-26
+Status now lives in this repo too, in `PIPELINE.md` and `CHANGELOG.md`, under pipeline v2 (R01). There is no outside status page any more.
