@@ -2,7 +2,7 @@ import { getRequestToken } from '@nextcloud/auth'
 import DavClient from '@nextcloud/cdav-library'
 import { generateUrl } from '@nextcloud/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fetchTodo, fetchTodos, listTaskCalendars } from '../../src/services/dav.js'
+import { createTodo, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
 
 vi.mock('@nextcloud/auth', () => ({
 	getRequestToken: vi.fn(),
@@ -121,5 +121,65 @@ describe('todo reads', () => {
 			calendarUrl,
 		})
 		expect(calendar.find).toHaveBeenCalledWith('first.ics')
+	})
+})
+
+describe('todo writes', () => {
+	it('replaces the full iCalendar with If-Match and returns its new etag', async () => {
+		const calendar = makeCalendar()
+		const todo = {
+			url: todoUrl,
+			etag: '"old"',
+			data: 'OLD',
+			update: vi.fn(async function() {
+				this.etag = '"new"'
+			}),
+		}
+		calendar.find.mockResolvedValue(todo)
+		mockClient([calendar])
+
+		await expect(putTodo(todoUrl, 'FULL ICALENDAR', '"old"')).resolves.toEqual({ etag: '"new"' })
+		expect(calendar.find).toHaveBeenCalledWith('first.ics')
+		expect(todo.data).toBe('FULL ICALENDAR')
+		expect(todo.update).toHaveBeenCalledOnce()
+	})
+
+	it('maps HTTP 412 to ConflictError with the task URL', async () => {
+		const calendar = makeCalendar()
+		const todo = { etag: '"old"', data: 'OLD', update: vi.fn().mockRejectedValue({ status: 412 }) }
+		calendar.find.mockResolvedValue(todo)
+		mockClient([calendar])
+
+		await expect(putTodo(todoUrl, 'FULL ICALENDAR', '"old"')).rejects.toMatchObject({
+			name: 'ConflictError',
+			url: todoUrl,
+		})
+	})
+
+	it('creates an iCalendar object on the requested list', async () => {
+		vi.spyOn(crypto, 'randomUUID').mockReturnValue('random')
+		const calendar = makeCalendar({
+			createObject: vi.fn().mockResolvedValue({ url: `${calendarUrl}random.ics`, etag: '"created"', data: 'FULL ICALENDAR' }),
+		})
+		mockClient([calendar])
+
+		await expect(createTodo({ url: calendarUrl }, 'FULL ICALENDAR')).resolves.toEqual({
+			url: `${calendarUrl}random.ics`,
+			etag: '"created"',
+			ics: 'FULL ICALENDAR',
+			calendarUrl,
+		})
+		expect(calendar.createObject).toHaveBeenCalledWith('random.ics', { 'Content-Type': 'text/calendar; charset=utf-8' }, 'FULL ICALENDAR')
+	})
+
+	it('maps HTTP 412 during creation to ConflictError with the created URL', async () => {
+		vi.spyOn(crypto, 'randomUUID').mockReturnValue('new-uuid')
+		const calendar = makeCalendar({ createObject: vi.fn().mockRejectedValue({ status: 412 }) })
+		mockClient([calendar])
+
+		await expect(createTodo({ url: calendarUrl }, 'FULL ICALENDAR')).rejects.toMatchObject({
+			name: 'ConflictError',
+			url: `${calendarUrl}new-uuid.ics`,
+		})
 	})
 })
