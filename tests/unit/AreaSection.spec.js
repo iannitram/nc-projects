@@ -1,8 +1,13 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
 import AreaSection from '../../src/components/AreaSection.vue'
 
 describe('AreaSection', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+	})
+
 	it('renders the area title and each project in area.projects in order', () => {
 		const area = {
 			name: 'Personal',

@@ -3,12 +3,13 @@
  * Writes are optimistic with rollback; a ConflictError reloads the task (rule 3).
  * Stub: state and action names only.
  */
+import { showError } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
 import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
 import { notImplemented } from '../notImplemented.js'
 import { pickAreas } from '../services/areas.js'
-import { fetchTodos, listTaskCalendars } from '../services/dav.js'
+import { createTodo, fetchTodos, listTaskCalendars } from '../services/dav.js'
 
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
@@ -99,7 +100,29 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {string} summary the project's title
 		 */
 		async createProject(areaName, summary) {
-			return notImplemented('createProject', areaName, summary)
+			try {
+				const area = this.areas.find((item) => item.name === areaName)
+				if (!area) {
+					throw new Error(`Area not found: ${areaName}`)
+				}
+				const calendar = await listTaskCalendars()
+				const areaCalendar = calendar.find((item) => item.url === area.calendarUrl || item.displayName === areaName)
+				if (!areaCalendar) {
+					throw new Error(`Calendar not found for area: ${areaName}`)
+				}
+				const task = Task.create({ summary, calendarUrl: areaCalendar.url, categories: ['project'] })
+				const stored = await createTodo(areaCalendar, task.toIcs())
+				const created = Task.fromIcs(stored.ics, { url: stored.url, etag: stored.etag, calendarUrl: stored.calendarUrl })
+				this.tasksByUid[created.uid] = created
+				const areas = this.areas.map((item) => ({ name: item.name, calendar: { url: item.calendarUrl } }))
+				const tree = buildTree(areas, Object.values(this.tasksByUid))
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
+			} catch (error) {
+				showError('Could not create the project')
+				throw error
+			}
 		},
 		/**
 		 * @param {string} uid a parent task with children but no `project` tag
