@@ -1,36 +1,11 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import TaskRow from './TaskRow.vue'
 
-const props = defineProps({
+defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').TaskNode[]>} */
 	nodes: { type: Array, required: true },
-	showDone: { type: Boolean, default: true },
 	depth: { type: Number, default: 1 },
-})
-
-/**
- *
- * @param {import('../models/Task.js').Task | null | undefined} task
- */
-function isTaskCompleted(task) {
-	if (!task) {
-		return false
-	}
-	if (task.completed === true) {
-		return true
-	}
-	if (typeof task.status === 'string' && task.status.toUpperCase() === 'COMPLETED') {
-		return true
-	}
-	return Boolean(task.completed)
-}
-
-const visibleNodes = computed(() => {
-	if (props.showDone) {
-		return props.nodes || []
-	}
-	return (props.nodes || []).filter((node) => !isTaskCompleted(node.task))
 })
 
 const collapsedKeys = ref(new Set())
@@ -84,17 +59,14 @@ function hasVisibleChildren(node) {
 	if (!node.children || node.children.length === 0) {
 		return false
 	}
-	if (props.showDone) {
-		return true
-	}
-	return node.children.some((child) => !isTaskCompleted(child.task))
+	return true
 }
 </script>
 
 <template>
 	<ul class="cc-task-tree" :class="`cc-task-tree--level-${depth}`">
 		<li
-			v-for="node in visibleNodes"
+			v-for="node in nodes"
 			:key="getNodeKey(node) || node"
 			class="cc-task-tree__item">
 			<div class="cc-task-tree__row-wrapper">
@@ -115,7 +87,6 @@ function hasVisibleChildren(node) {
 				class="cc-task-tree__children">
 				<TaskTree
 					:nodes="node.children"
-					:showDone="showDone"
 					:depth="depth + 1" />
 			</div>
 		</li>

@@ -47,10 +47,10 @@ Server (PHP): serves the page only. No data endpoints.
 |---|---|---|
 | `src/main.js` | Creates the app, installs Pinia, mounts on `#cc_projects` | P01 |
 | `src/App.vue` | `NcContent` / `NcAppContent` shell; renders the areas | P01, P05 |
-| `src/components/AreaSection.vue` | One area: its project cards, the Done strip, "+ New project" (phase 2) | P05, P06, P14 |
-| `src/components/ProjectCard.vue` | Project header (title, badges, progress bar, show-done toggle, "+ Add task") and its task tree | P05, P06, P07 |
-| `src/components/TaskTree.vue` | Collapsible nested list of TaskRows, three levels, then a "+N deeper" note; drop zone for reorder and re-parent | P05, P08, P12 |
-| `src/components/TaskRow.vue` | One task: checkbox, title, due, priority; inline edits (phase 2); "open in Tasks" link, also used by "+N deeper" | P05, P13 |
+| `src/components/AreaSection.vue` | Present: one area with its project cards, rendered in order | P05 |
+| `src/components/ProjectCard.vue` | Present: project title and task tree | P05 |
+| `src/components/TaskTree.vue` | Present: collapsible nested task list, three levels, then a "+N deeper" Tasks link | P05 |
+| `src/components/TaskRow.vue` | Present: task completion checkbox and title; "+N deeper" Tasks link when descendants exceed the rendered depth | P05 |
 | `src/components/AddTaskInput.vue` | Inline new-task field under a project | P07 |
 | `src/components/DoneStrip.vue` | Collapsed list of completed projects in an area | P06 |
 | `src/components/NeedsFilingTray.vue` | Orphans and untagged parents with fix buttons | P15 |

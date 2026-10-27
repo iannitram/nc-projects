@@ -68,25 +68,6 @@ const isCompleted = computed(() => {
 	return Boolean(task.completed)
 })
 
-const formattedDue = computed(() => {
-	const due = props.node?.task?.due
-	if (!due) {
-		return ''
-	}
-	if (typeof due === 'string') {
-		return due
-	}
-	if (typeof due.toString === 'function') {
-		return due.toString()
-	}
-	return String(due)
-})
-
-const priority = computed(() => {
-	const p = props.node?.task?.priority
-	return p !== null && p !== undefined ? Number(p) : null
-})
-
 const tasksDeepLink = computed(() => getTasksDeepLink(props.node?.task))
 </script>
 
@@ -103,22 +84,6 @@ const tasksDeepLink = computed(() => getTasksDeepLink(props.node?.task))
 		<span class="cc-task-row__title">
 			{{ node.task?.summary }}
 		</span>
-		<span
-			v-if="formattedDue"
-			class="cc-task-row__due">
-			{{ formattedDue }}
-		</span>
-		<span
-			v-if="priority"
-			class="cc-task-row__priority">
-			P{{ priority }}
-		</span>
-		<a
-			:href="tasksDeepLink"
-			class="cc-task-row__open-in-tasks"
-			title="Open in Tasks">
-			Open in Tasks
-		</a>
 		<a
 			v-if="node.deeper && node.deeper > 0"
 			:href="tasksDeepLink"
@@ -147,32 +112,6 @@ const tasksDeepLink = computed(() => getTasksDeepLink(props.node?.task))
 .cc-task-row__title {
 	flex: 1;
 	font-size: 0.95rem;
-}
-
-.cc-task-row__due {
-	font-size: 0.8rem;
-	color: var(--color-text-maxcontrast, #777);
-	padding: 2px 6px;
-	background: var(--color-background-hover, #f0f0f0);
-	border-radius: var(--border-radius-pill, 10px);
-}
-
-.cc-task-row__priority {
-	font-size: 0.8rem;
-	font-weight: 600;
-	color: var(--color-primary, #0082c9);
-}
-
-.cc-task-row__open-in-tasks {
-	font-size: 0.8rem;
-	color: var(--color-primary, #0082c9);
-	text-decoration: none;
-	opacity: 0.7;
-}
-
-.cc-task-row__open-in-tasks:hover {
-	opacity: 1;
-	text-decoration: underline;
 }
 
 .cc-task-deeper {

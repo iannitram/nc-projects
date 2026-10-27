@@ -8,14 +8,12 @@ vi.mock('@nextcloud/router', async (importOriginal) => ({
 }))
 
 describe('TaskRow', () => {
-	it('renders summary, due date, priority, and open in tasks link', () => {
+	it('renders the task summary', () => {
 		const node = {
 			task: {
 				uid: 't1',
 				summary: 'Fix the engine',
 				completed: false,
-				due: '2030-03-04',
-				priority: 1,
 				url: '/remote.php/dav/calendars/owner/personal-1/t1.ics',
 				calendarUrl: '/remote.php/dav/calendars/owner/personal-1/',
 			},
@@ -28,12 +26,9 @@ describe('TaskRow', () => {
 		})
 
 		expect(wrapper.find('.cc-task-row__title').text()).toBe('Fix the engine')
-		expect(wrapper.find('.cc-task-row__due').text()).toBe('2030-03-04')
-		expect(wrapper.find('.cc-task-row__priority').text()).toBe('P1')
-
-		const openLink = wrapper.find('.cc-task-row__open-in-tasks')
-		expect(openLink.exists()).toBe(true)
-		expect(openLink.attributes('href')).toBe('/apps/tasks/calendars/personal-1/tasks/t1.ics')
+		expect(wrapper.find('.cc-task-row__due').exists()).toBe(false)
+		expect(wrapper.find('.cc-task-row__priority').exists()).toBe(false)
+		expect(wrapper.find('.cc-task-row__open-in-tasks').exists()).toBe(false)
 	})
 
 	it('shows +N deeper link when node has deeper descendants', () => {
