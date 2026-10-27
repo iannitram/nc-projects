@@ -85,6 +85,70 @@ describe('tree', () => {
 		})
 	})
 
+	describe('filing tray', () => {
+		it('returns sorted open orphans for missing or closed parents without duplicates', () => {
+			const tasks = [
+				{ uid: 'missing-late', parentUid: 'gone', sortOrder: 20 },
+				{ uid: 'done-parent', completed: true },
+				{ uid: 'cancelled-parent', status: 'CANCELLED' },
+				{ uid: 'done-orphan', parentUid: 'done-parent', sortOrder: 10 },
+				{ uid: 'cancelled-orphan', parentUid: 'cancelled-parent', sortOrder: 30 },
+				{ uid: 'missing-first', parentUid: 'also-gone', sortOrder: 5 },
+				{ uid: 'closed-child', parentUid: 'gone', completed: true, sortOrder: 1 },
+				{ uid: 'project-orphan', parentUid: 'gone', categories: ['project'] },
+			]
+
+			const result = buildTree(areas, [...tasks, tasks[0]])
+			expect(result.orphans.map((task) => task.uid)).toEqual([
+				'missing-first',
+				'done-orphan',
+				'missing-late',
+				'cancelled-orphan',
+			])
+			expect(result.untaggedParents).toEqual([])
+		})
+
+		it('returns open untagged root parents with children, with orphan precedence and sorted order', () => {
+			const tasks = [
+				{ uid: 'valid-project', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'project-child', parentUid: 'valid-project' },
+				{ uid: 'untagged-late', sortOrder: 20 },
+				{ uid: 'untagged-child-1', parentUid: 'untagged-late' },
+				{ uid: 'untagged-first', sortOrder: 10 },
+				{ uid: 'untagged-child-2', parentUid: 'untagged-first' },
+				{ uid: 'orphan-parent', parentUid: 'missing', sortOrder: 5 },
+				{ uid: 'orphan-parent-child', parentUid: 'orphan-parent' },
+				{ uid: 'nested-parent', parentUid: 'valid-project', categories: ['work'] },
+			]
+
+			const result = buildTree(areas, tasks)
+			expect(result.untaggedParents.map((task) => task.uid)).toEqual(['untagged-first', 'untagged-late'])
+			expect(result.orphans.map((task) => task.uid)).toEqual(['orphan-parent'])
+			expect(result.areas.flatMap((area) => area.projects).map((project) => project.children.map((node) => node.task.uid))).toEqual([['project-child', 'nested-parent']])
+		})
+
+		it('lists only the root of an untagged chain as an untagged parent', () => {
+			const tasks = [
+				{ uid: 'U1' },
+				{ uid: 'U2', parentUid: 'U1' },
+				{ uid: 'U3', parentUid: 'U2' },
+			]
+			const result = buildTree(areas, tasks)
+			expect(result.untaggedParents.map((task) => task.uid)).toEqual(['U1'])
+		})
+
+		it('does not put valid project descendants in either tray list', () => {
+			const tasks = [
+				{ uid: 'project', categories: ['project'] },
+				{ uid: 'child', parentUid: 'project' },
+				{ uid: 'grandchild', parentUid: 'child' },
+			]
+			const result = buildTree(areas, tasks)
+			expect(result.orphans).toEqual([])
+			expect(result.untaggedParents).toEqual([])
+		})
+	})
+
 	describe('cross-list children', () => {
 		it('places a child on another area list under its parent project (ADR 0007)', () => {
 			const tasks = [
