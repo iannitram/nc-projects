@@ -2,6 +2,11 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import AreaSection from '../../src/components/AreaSection.vue'
 
+const AddTaskInputStub = {
+	props: ['projectUid'],
+	template: '<div class="cc-add-task-input" />',
+}
+
 describe('AreaSection', () => {
 	it('renders the area title and each project in area.projects in order', () => {
 		const area = {
@@ -24,6 +29,7 @@ describe('AreaSection', () => {
 
 		const wrapper = mount(AreaSection, {
 			props: { area },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
 		})
 
 		expect(wrapper.find('h3').text()).toBe('Personal')

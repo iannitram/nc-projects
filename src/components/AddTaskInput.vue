@@ -1,6 +1,6 @@
 <script setup>
 import { NcTextField } from '@nextcloud/vue'
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -11,20 +11,23 @@ const store = useProjectsStore()
 const input = ref('')
 const loading = ref(false)
 
-/**
- * Handle form submission
- */
-function onSubmit() {
-	if (!input.value.trim()) {
+let submitting = false
+
+async function onSubmit() {
+	const summary = input.value.trim()
+	if (!summary || submitting) {
 		return
 	}
 
+	submitting = true
 	loading.value = true
-	store.addTask(props.projectUid, input.value.trim())
-		.finally(() => {
-			loading.value = false
-			input.value = ''
-		})
+	try {
+		await store.addTask(props.projectUid, summary)
+		input.value = ''
+	} finally {
+		submitting = false
+		loading.value = false
+	}
 }
 
 /**
@@ -39,6 +42,10 @@ function onKeydown(e) {
 		onSubmit()
 	}
 }
+
+onBeforeUnmount(() => {
+	submitting = false
+})
 </script>
 
 <template>

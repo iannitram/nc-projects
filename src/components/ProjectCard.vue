@@ -18,9 +18,9 @@ defineProps({
 			</h4>
 		</header>
 		<div class="cc-project-card__content">
-			<AddTaskInput :projectUid="project.task.uid" />
 			<TaskTree
 				:nodes="project.children || []" />
+			<AddTaskInput :projectUid="project.task.uid" />
 		</div>
 	</div>
 </template>

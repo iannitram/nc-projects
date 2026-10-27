@@ -2,6 +2,11 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import ProjectCard from '../../src/components/ProjectCard.vue'
 
+const AddTaskInputStub = {
+	props: ['projectUid'],
+	template: '<div class="cc-add-task-input" />',
+}
+
 describe('ProjectCard', () => {
 	it('renders project summary and task tree', () => {
 		const project = {
@@ -18,6 +23,7 @@ describe('ProjectCard', () => {
 
 		const wrapper = mount(ProjectCard, {
 			props: { project },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
 		})
 
 		expect(wrapper.find('.cc-project-card__title').text()).toBe('My Project')
