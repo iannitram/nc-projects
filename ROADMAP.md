@@ -1,6 +1,6 @@
 # Roadmap
 
-Goal: a project manager over Nextcloud Tasks, built in three phases (Ian, 2026-10-23). **1.0 is all three phases** (Ian, 2026-10-26; [SPEC.md](SPEC.md), ADR 0014). Phase 1 is the core ask and should be usable day to day on its own, so it can be dogfooded before 1.0.
+Goal: a project manager over Nextcloud Tasks, built in three phases (the owner, 2026-10-23). **1.0 is all three phases** (the owner, 2026-10-26; [SPEC.md](SPEC.md), ADR 0014). Phase 1 is the core ask and should be usable day to day on its own, so it can be dogfooded before 1.0.
 
 **How this file works**
 - Every feature has a fixed **ID** (P01, P02, …). IDs never change, so Notes can name dependencies even after rows move.
@@ -12,7 +12,7 @@ Goal: a project manager over Nextcloud Tasks, built in three phases (Ian, 2026-1
 
 ## Dev stages
 
-The phases below are the build order. Phase 0 and phase 1 are usable day to day on their own; 1.0 is all three phases (SPEC.md). Each piece is a GitHub issue, sized by the potn-dev rubric, with its order written as `Blocked by #N`.
+The phases below are the build order. Phase 0 and phase 1 are usable day to day on their own; 1.0 is all three phases (SPEC.md). Each piece is a GitHub issue, sized by the pipeline repo's rubric, with its order written as `Blocked by #N`.
 
 ## Open source we bring in
 
@@ -86,13 +86,13 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 
 | Item | Why |
 |---|---|
-| Agent queues / a "Crew" area | Ian: only his own lists. Agent work that needs him already lands on System |
-| Lists shared by other people (Farm Boy) | Not Ian's own |
+| Agent queues / a "Crew" area | The owner's own lists only. Agent work that needs the owner already lands on System |
+| Lists shared by other people (Farm Boy) | Not the owner's own |
 | Deck boards | Deck is retired as a project layer; its boards only show up in CalDAV as leftovers |
-| Other users (Lani) | Ian first; revisit if wanted |
+| Other users | The owner first; revisit if wanted |
 | Its own REST API for agents | Agents keep using CalDAV through `nc_helpers` |
 | A full task editor | Quick edits only; the Tasks app does the rest |
-| Auto-completing a project at 100% | Ian closes projects himself |
+| Auto-completing a project at 100% | The owner closes projects by hand |
 | Adding subtasks under a task (not a project) | Not asked; use the Tasks app |
 | Search and filters | Not asked for 1.0 |
 | A PHP data backend | Browser CalDAV, like the Tasks app |
