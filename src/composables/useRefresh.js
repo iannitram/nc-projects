@@ -8,7 +8,7 @@ export const REFRESH_INTERVAL_MS = 2 * 60 * 1000
 /**
  * Call `refresh` when the window regains focus and every interval; stop on unmount.
  *
- * @param {Function} refresh the store's refresh action
+ * @param {() => Promise<void>} refresh the store's refresh action
  * @param {number} [intervalMs] the interval
  */
 export function useRefresh(refresh, intervalMs = REFRESH_INTERVAL_MS) {
