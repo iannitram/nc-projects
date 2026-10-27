@@ -1,9 +1,6 @@
 /**
  * Order math, a copy of Tasks 0.18.1's rule (P08, P09; CODE_MAP §Facts and rule 6). Pure.
- * Stub: signatures only.
  */
-import { notImplemented } from '../notImplemented.js'
-
 /** 2001-01-01T00:00:00Z in ms: the zero point of Apple's sort order. */
 export const APPLE_EPOCH_MS = Date.UTC(2001, 0, 1)
 
@@ -14,7 +11,15 @@ export const APPLE_EPOCH_MS = Date.UTC(2001, 0, 1)
  * @return {number}
  */
 export function effectiveSortOrder(task) {
-	return notImplemented('effectiveSortOrder', task)
+	if (typeof task.sortOrder === 'number') {
+		return task.sortOrder
+	}
+
+	if (task.created) {
+		return Math.floor((task.created - APPLE_EPOCH_MS) / 1000)
+	}
+
+	return 0
 }
 
 /**
@@ -26,5 +31,60 @@ export function effectiveSortOrder(task) {
  * @return {{uid: string, sortOrder: number}[]} only the tasks to write: the moved one, then any bumped
  */
 export function placeMoved(siblings, movedUid, newIndex) {
-	return notImplemented('placeMoved', siblings, movedUid, newIndex)
+	// Find the moved task and remove it from the siblings array
+	const movedTaskIndex = siblings.findIndex((sibling) => sibling.uid === movedUid)
+	if (movedTaskIndex === -1) {
+		return []
+	}
+
+	// Create a copy of the siblings array to avoid modifying original
+	const newSiblings = siblings.map((sibling) => ({ ...sibling }))
+	const movedTask = newSiblings.splice(movedTaskIndex, 1)[0]
+
+	// Insert the moved task at its new index
+	newSiblings.splice(newIndex, 0, movedTask)
+
+	// Find neighbors in effective order
+	let prev, next
+	if (newIndex > 0) {
+		prev = newSiblings[newIndex - 1]
+	}
+	if (newIndex < newSiblings.length - 1) {
+		next = newSiblings[newIndex + 1]
+	}
+
+	// Calculate the moved task's new sort order value based on its neighbors
+	let movedValue
+
+	if (next && (!prev || effectiveSortOrder(next) - 1 > effectiveSortOrder(prev))) {
+		movedValue = effectiveSortOrder(next) - 1
+	} else if (prev) {
+		movedValue = effectiveSortOrder(prev) + 1
+	} else {
+		// If there are no neighbors, keep the moved task's effective value
+		movedValue = effectiveSortOrder(movedTask)
+	}
+
+	// Floor at 0 if needed
+	movedValue = Math.max(0, movedValue)
+
+	// Store the calculated value on the copied task, never on the caller's object
+	movedTask.sortOrder = movedValue
+
+	// Walk the siblings after the moved task and bump any that are colliding
+	const result = [{ uid: movedUid, sortOrder: movedValue }]
+	let currentValue = movedValue
+
+	for (let i = newIndex + 1; i < newSiblings.length; i++) {
+		const sibling = newSiblings[i]
+		if (effectiveSortOrder(sibling) <= currentValue) {
+			currentValue++
+			sibling.sortOrder = currentValue
+			result.push({ uid: sibling.uid, sortOrder: currentValue })
+		} else {
+			break
+		}
+	}
+
+	return result
 }
