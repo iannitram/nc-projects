@@ -66,11 +66,13 @@ async function loadStore(todos) {
 	return store
 }
 
-const todos = () => [
-	stored('P', { created: '20200101T000000Z', categories: 'project' }),
-	stored('t1', { created: '20200102T000000Z', parent: 'P' }),
-	stored('t2', { created: '20200103T000000Z', parent: 'P' }),
-]
+function todos() {
+	return [
+		stored('P', { created: '20200101T000000Z', categories: 'project' }),
+		stored('t1', { created: '20200102T000000Z', parent: 'P' }),
+		stored('t2', { created: '20200103T000000Z', parent: 'P' }),
+	]
+}
 
 describe('projects store addTask', () => {
 	beforeEach(() => {
