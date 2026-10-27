@@ -140,4 +140,9 @@ describe('Task', () => {
 		}
 		expect(vtodo.hasProperty('x-apple-sort-order')).toBe(false)
 	})
+
+	it('imports no node: module in the browser model', async () => {
+		const source = await readFile(resolve(import.meta.dirname, '../../src/models/Task.js'), 'utf8')
+		expect(source).not.toMatch(/(?:from|import)\s*\(?\s*['"]node:/)
+	})
 })

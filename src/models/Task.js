@@ -4,7 +4,6 @@
  * Stub: signatures only.
  */
 import ICAL from 'ical.js'
-import { randomUUID } from 'node:crypto'
 
 export class Task {
 	constructor(component, vtodo, ics, where) {
@@ -52,7 +51,7 @@ export class Task {
 		component.addPropertyWithValue('prodid', '-//cc_projects//Projects//EN')
 		component.addPropertyWithValue('version', '2.0')
 		const vtodo = component.addSubcomponent(new ICAL.Component('vtodo'))
-		vtodo.addPropertyWithValue('uid', randomUUID())
+		vtodo.addPropertyWithValue('uid', crypto.randomUUID())
 		vtodo.addPropertyWithValue('created', utcTime(now))
 		vtodo.addPropertyWithValue('dtstamp', utcTime(now))
 		vtodo.addPropertyWithValue('last-modified', utcTime(now))
