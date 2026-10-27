@@ -1,4 +1,5 @@
 <script setup>
+import AddTaskInput from './AddTaskInput.vue'
 import TaskTree from './TaskTree.vue'
 
 defineProps({
@@ -19,6 +20,7 @@ defineProps({
 		<div class="cc-project-card__content">
 			<TaskTree
 				:nodes="project.children || []" />
+			<AddTaskInput :projectUid="project.task.uid" />
 		</div>
 	</div>
 </template>

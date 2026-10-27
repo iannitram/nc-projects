@@ -4,6 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AreaSection from '../../src/components/AreaSection.vue'
 import { useProjectsStore } from '../../src/store/projects.js'
 
+const AddTaskInputStub = {
+	props: ['projectUid'],
+	template: '<div class="cc-add-task-input" />',
+}
+
 describe('AreaSection', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
@@ -30,6 +35,7 @@ describe('AreaSection', () => {
 
 		const wrapper = mount(AreaSection, {
 			props: { area },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
 		})
 
 		expect(wrapper.find('h3').text()).toBe('Personal')

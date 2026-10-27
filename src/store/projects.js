@@ -60,9 +60,51 @@ export const useProjectsStore = defineStore('projects', {
 		/**
 		 * @param {string} projectUid the project
 		 * @param {string} summary the new task's title
+		 * @return {Promise<string>} The uid of the created task
 		 */
 		async addTask(projectUid, summary) {
-			return notImplemented('addTask', projectUid, summary)
+			const project = this.tasksByUid[projectUid]
+			if (!project) {
+				showError('Could not add the task: project not found')
+				return null
+			}
+
+			const task = Task.create({
+				summary,
+				calendarUrl: project.calendarUrl,
+				parentUid: projectUid,
+			})
+
+			try {
+				const created = await createTodo(this.calendarOf(project), task.toIcs())
+				task.where = {
+					...task.where,
+					url: created.url,
+					etag: created.etag,
+					calendarUrl: created.calendarUrl,
+				}
+				this.tasksByUid[task.uid] = task
+
+				const allTasks = Object.values(this.tasksByUid)
+				const tree = buildTree(this.areas.map((area) => ({
+					name: area.name,
+					calendar: { url: area.calendarUrl },
+				})), allTasks)
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
+				return task.uid
+			} catch {
+				showError('Could not add the task')
+				return null
+			}
+		},
+		/**
+		 * @param {import('../models/Task.js').Task} task
+		 */
+		calendarOf(task) {
+			const area = this.areas.find((candidate) => candidate.calendarUrl === task.calendarUrl)
+			return area?.calendar || { url: task.calendarUrl }
 		},
 		/**
 		 * @param {string|null} parentUid the parent (a project, or null for projects in an area)
