@@ -16,7 +16,7 @@ describe('AddTaskInput', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
 		store = useProjectsStore()
-		store.addTask = vi.fn().mockResolvedValue(undefined)
+		store.addTask = vi.fn().mockResolvedValue('new-uid')
 	})
 
 	function mountInput() {
@@ -40,6 +40,18 @@ describe('AddTaskInput', () => {
 
 		expect(store.addTask).toHaveBeenCalledWith('p1', 'buy milk')
 		expect(input.element.value).toBe('')
+	})
+
+	it('keeps the typed title when the add fails', async () => {
+		store.addTask.mockResolvedValue(null)
+		const wrapper = mountInput()
+		const input = wrapper.find('input')
+		await input.setValue('  buy milk  ')
+		await input.trigger('keydown', { key: 'Enter' })
+		await flushPromises()
+
+		expect(store.addTask).toHaveBeenCalledWith('p1', 'buy milk')
+		expect(input.element.value).toBe('  buy milk  ')
 	})
 
 	it('does not add on blank Enter', async () => {

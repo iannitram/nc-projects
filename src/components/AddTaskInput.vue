@@ -22,8 +22,10 @@ async function onSubmit() {
 	submitting = true
 	loading.value = true
 	try {
-		await store.addTask(props.projectUid, summary)
-		input.value = ''
+		const uid = await store.addTask(props.projectUid, summary)
+		if (uid) {
+			input.value = ''
+		}
 	} finally {
 		submitting = false
 		loading.value = false

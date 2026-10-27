@@ -65,7 +65,8 @@ export const useProjectsStore = defineStore('projects', {
 		async addTask(projectUid, summary) {
 			const project = this.tasksByUid[projectUid]
 			if (!project) {
-				return
+				showError('Could not add the task: project not found')
+				return null
 			}
 
 			const task = Task.create({
@@ -95,6 +96,7 @@ export const useProjectsStore = defineStore('projects', {
 				return task.uid
 			} catch {
 				showError('Could not add the task')
+				return null
 			}
 		},
 		/**
