@@ -76,5 +76,33 @@ describe('sortOrder', () => {
 			const result = placeMoved(siblings, 'a', 0)
 			expect(result).toEqual([{ uid: 'a', sortOrder: 5 }])
 		})
+
+		it('should leave the input array and task objects unchanged', () => {
+			const siblings = [
+				{ uid: 'a', sortOrder: 10 },
+				{ uid: 'b', sortOrder: 11 },
+				{ uid: 'c', sortOrder: 12 },
+			]
+			const originalArray = [...siblings]
+			const originalTasks = siblings.map((task) => ({ ...task }))
+
+			placeMoved(siblings, 'c', 1)
+
+			expect(siblings).toEqual(originalTasks)
+			expect(siblings).toEqual(originalArray)
+			siblings.forEach((task, index) => expect(task).toBe(originalArray[index]))
+		})
+
+		it('should use created dates for neighbours and bumped siblings without sortOrder', () => {
+			const siblings = [
+				{ uid: 'a', sortOrder: 10 },
+				{ uid: 'b', sortOrder: null, created: new Date('2001-01-01T00:00:11Z') },
+				{ uid: 'c', sortOrder: 12 },
+			]
+			expect(placeMoved(siblings, 'c', 1)).toEqual([
+				{ uid: 'c', sortOrder: 11 },
+				{ uid: 'b', sortOrder: 12 },
+			])
+		})
 	})
 })

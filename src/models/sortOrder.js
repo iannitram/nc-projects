@@ -38,7 +38,7 @@ export function placeMoved(siblings, movedUid, newIndex) {
 	}
 
 	// Create a copy of the siblings array to avoid modifying original
-	const newSiblings = [...siblings]
+	const newSiblings = siblings.map((sibling) => ({ ...sibling }))
 	const movedTask = newSiblings.splice(movedTaskIndex, 1)[0]
 
 	// Insert the moved task at its new index
@@ -56,8 +56,8 @@ export function placeMoved(siblings, movedUid, newIndex) {
 	// Calculate the moved task's new sort order value based on its neighbors
 	let movedValue
 
-	if (next && (!prev || next.sortOrder - 1 > effectiveSortOrder(prev))) {
-		movedValue = next.sortOrder - 1
+	if (next && (!prev || effectiveSortOrder(next) - 1 > effectiveSortOrder(prev))) {
+		movedValue = effectiveSortOrder(next) - 1
 	} else if (prev) {
 		movedValue = effectiveSortOrder(prev) + 1
 	} else {
@@ -68,7 +68,7 @@ export function placeMoved(siblings, movedUid, newIndex) {
 	// Floor at 0 if needed
 	movedValue = Math.max(0, movedValue)
 
-	// Set the calculated value for the moved task
+	// Store the calculated value on the copied task, never on the caller's object
 	movedTask.sortOrder = movedValue
 
 	// Walk the siblings after the moved task and bump any that are colliding
@@ -77,7 +77,7 @@ export function placeMoved(siblings, movedUid, newIndex) {
 
 	for (let i = newIndex + 1; i < newSiblings.length; i++) {
 		const sibling = newSiblings[i]
-		if (sibling.sortOrder <= currentValue) {
+		if (effectiveSortOrder(sibling) <= currentValue) {
 			currentValue++
 			sibling.sortOrder = currentValue
 			result.push({ uid: sibling.uid, sortOrder: currentValue })
