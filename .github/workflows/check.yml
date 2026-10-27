@@ -25,16 +25,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
 
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           tools: composer
 
-      # No package-lock.json was committed with the skeleton (it was written on a machine that
-      # does not install). Use `npm ci` once a lockfile is in the repo; until then, `npm install`.
       - name: Install JavaScript dependencies
-        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
+        run: npm ci
 
       - name: Lint JavaScript and Vue
         run: npm run lint
@@ -59,9 +58,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
 
       - name: Install JavaScript dependencies
-        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
+        run: npm ci
 
       - name: Build
         run: npm run build
