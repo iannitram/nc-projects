@@ -1,0 +1,67 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Lint and tests on all three desktop platforms (R04). The app runs in a browser and the
+  # server side is any Nextcloud host, so this checks the toolchain and the code on each OS.
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer
+
+      # No package-lock.json was committed with the skeleton (it was written on a machine that
+      # does not install). Use `npm ci` once a lockfile is in the repo; until then, `npm install`.
+      - name: Install JavaScript dependencies
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
+
+      - name: Lint JavaScript and Vue
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Lint PHP
+        run: npm run lint:php
+
+      - name: PHP tests
+        run: npm run test:php
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install JavaScript dependencies
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
+
+      - name: Build
+        run: npm run build

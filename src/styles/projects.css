@@ -1,0 +1,4 @@
+/* Panel layout (P05) and the phone breakpoint, 390 px wide (P11). Nextcloud theme variables only. */
+.cc-projects {
+	padding: calc(var(--default-grid-baseline, 4px) * 4);
+}

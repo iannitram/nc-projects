@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>cc_projects</id>
+    <name>Projects</name>
+    <summary>Projects and their tasks, over Nextcloud Tasks</summary>
+    <description>One panel of focus areas, projects and their tasks, in your drag order. Stores nothing new: it reads and writes ordinary CalDAV tasks, so the Tasks app keeps working unchanged.</description>
+    <version>0.1.0</version>
+    <licence>agpl</licence>
+    <author>iannitram</author>
+    <namespace>CcProjects</namespace>
+    <category>organization</category>
+    <dependencies>
+        <nextcloud min-version="33" max-version="35"/>
+    </dependencies>
+    <navigations>
+        <navigation>
+            <name>Projects</name>
+            <route>cc_projects.page.index</route>
+            <order>10</order>
+        </navigation>
+    </navigations>
+</info>

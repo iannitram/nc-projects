@@ -1,0 +1,24 @@
+{
+	"name": "cc-projects/cc-projects",
+	"description": "Projects: a project manager over Nextcloud Tasks",
+	"license": "AGPL-3.0-or-later",
+	"type": "project",
+	"require": {
+		"php": ">=8.2"
+	},
+	"require-dev": {
+		"nextcloud/ocp": "^33.0",
+		"phpunit/phpunit": "^11.5"
+	},
+	"autoload": {
+		"psr-4": {
+			"OCA\\CcProjects\\": "lib/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"OCA\\CcProjects\\Tests\\": "tests/php/",
+			"OCP\\": "vendor/nextcloud/ocp/OCP/"
+		}
+	}
+}
