@@ -1,8 +1,6 @@
 /**
  * Which task lists are areas (P02; CODE_MAP rules 4 and 5; ADR 0005). Pure.
- * Stub: signatures only.
  */
-import { notImplemented } from '../notImplemented.js'
 
 /** The eight areas, by display name, in panel order. */
 export const AREA_NAMES = Object.freeze(['Personal', 'The Channel', 'Van', 'Barnum', 'Cheltenham', 'DCIS', 'DPS', 'System'])
@@ -15,7 +13,7 @@ export const AREA_NAMES = Object.freeze(['Personal', 'The Channel', 'Van', 'Barn
  * @return {boolean}
  */
 export function isExcluded(calendar) {
-	return notImplemented('isExcluded', calendar)
+	return !calendar.ownedByMe || calendar.url.includes('_shared_by_') || calendar.url.includes('app-generated--deck--')
 }
 
 /**
@@ -25,5 +23,27 @@ export function isExcluded(calendar) {
  * @return {{name: string, calendar: import('./dav.js').TaskCalendar}[]}
  */
 export function pickAreas(calendars) {
-	return notImplemented('pickAreas', calendars)
+	// First filter out excluded calendars
+	const validCalendars = calendars.filter((calendar) => !isExcluded(calendar))
+
+	// Then find the first occurrence of each area name in order
+	const result = []
+	const seenNames = new Set()
+
+	for (const calendar of validCalendars) {
+		if (seenNames.has(calendar.displayName)) {
+			continue
+		}
+
+		const indexInAreaNames = AREA_NAMES.indexOf(calendar.displayName)
+		if (indexInAreaNames !== -1) {
+			result.push({ name: calendar.displayName, calendar })
+			seenNames.add(calendar.displayName)
+		}
+	}
+
+	// Sort by the order in AREA_NAMES
+	return result.sort((a, b) => {
+		return AREA_NAMES.indexOf(a.name) - AREA_NAMES.indexOf(b.name)
+	})
 }
