@@ -153,7 +153,20 @@ export async function fetchTodo(url) {
  * @throws {ConflictError} on HTTP 412
  */
 export async function putTodo(url, ics, etag) {
-	return notImplemented('putTodo', url, ics, etag)
+	const client = await getClient()
+	const calendar = await findCalendarForTodo(client, url)
+	const todo = await calendar.find(url.slice(calendar.url.length))
+	todo.data = ics
+	todo.etag = etag
+	try {
+		await todo.update()
+	} catch (error) {
+		if (error.status === 412) {
+			throw new ConflictError(url)
+		}
+		throw error
+	}
+	return { etag: todo.etag }
 }
 
 /**
@@ -164,7 +177,19 @@ export async function putTodo(url, ics, etag) {
  * @return {Promise<StoredTodo>}
  */
 export async function createTodo(calendar, ics) {
-	return notImplemented('createTodo', calendar, ics)
+	const client = await getClient()
+	const foundCalendar = await findCalendarForTodo(client, calendar.url)
+	const fileName = `${crypto.randomUUID()}.ics`
+	let todo
+	try {
+		todo = await foundCalendar.createObject(fileName, { 'Content-Type': 'text/calendar; charset=utf-8' }, ics)
+	} catch (error) {
+		if (error.status === 412) {
+			throw new ConflictError(`${foundCalendar.url}${fileName}`)
+		}
+		throw error
+	}
+	return storedTodo(todo, foundCalendar.url)
 }
 
 /**
