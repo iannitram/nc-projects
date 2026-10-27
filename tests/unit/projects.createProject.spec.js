@@ -66,10 +66,12 @@ async function loadStore(todos) {
 	return store
 }
 
-const todos = () => [
-	stored('A', { created: '20200101T000000Z', categories: 'project' }),
-	stored('B', { created: '20210101T000000Z', categories: 'project' }),
-]
+function todos() {
+	return [
+		stored('A', { created: '20200101T000000Z', categories: 'project' }),
+		stored('B', { created: '20210101T000000Z', categories: 'project' }),
+	]
+}
 
 describe('projects store createProject', () => {
 	beforeEach(() => {
