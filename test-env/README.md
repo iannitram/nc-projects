@@ -3,7 +3,7 @@
 A throwaway Nextcloud for building and checking Projects. Every Must's check in [SPEC.md](../SPEC.md) runs here, never on the live server.
 
 - **Same versions as live:** Nextcloud 33.0.10 and Tasks 0.18.1.
-- **Separate from live:** compose project `nc-projects-test`, its own volume, bound to `127.0.0.1:8089` only. It never touches the live Nextcloud's compose project or volumes.
+- **Separate from live:** compose project `nc-projects-test`, its own volume, bound to `127.0.0.1` only, on the port in `NC_TEST_PORT` (default 8089). It never touches the live Nextcloud's compose project or volumes.
 - **Made-up data only:** three accounts (`owner`, `other`, `agent`; password `<name>-test-only`) and the fixture lists from the spec's fixture table.
 
 ## Run it
@@ -14,12 +14,14 @@ On any machine with Docker, from the repo root:
 bash test-env/setup.sh
 ```
 
-Then open http://127.0.0.1:8089 and log in as `owner` / `owner-test-only`.
+Then open http://127.0.0.1:8089 (or your `NC_TEST_PORT`) and log in as `owner` / `owner-test-only`.
 
 - Start clean: the same command with `bash test-env/reset.sh`. It removes only `nc-projects-test` and its volume.
 - Stop it: `docker compose -p nc-projects-test -f test-env/compose.yaml stop`.
-- Another port: set `NC_TEST_PORT`. Another registry, if Docker Hub rate-limits: `NC_IMAGE=mirror.gcr.io/library/nextcloud:33.0.10-apache`.
+- Another port (if 8089 is taken): set `NC_TEST_PORT`. Another registry, if Docker Hub rate-limits: `NC_IMAGE=mirror.gcr.io/library/nextcloud:33.0.10-apache`.
 - Tasks from a local folder instead of the release download: `TASKS_APP_DIR=<folder holding appinfo/>`.
+
+**Tested:** Passed 2026-10-26 on a Windows 11 Docker host (Docker 29.9.2) with NC_TEST_PORT=8099: Nextcloud 33.0.10, Tasks 0.18.1 (pinned release), Deck 1.17.8 (app store), users and fixture lists seeded; first run hit a SQLite 'database is locked' on user:add, now retried.
 
 `setup.sh` warns loudly if Tasks isn't exactly 0.18.1. Checks that compare with Tasks aren't valid until that's fixed.
 
@@ -31,7 +33,7 @@ Then open http://127.0.0.1:8089 and log in as `owner` / `owner-test-only`.
 | "Personal", the account's default calendar | `personal` | **Events only.** A trap: area discovery must keep only lists that hold tasks (VTODO), as Tasks does |
 | "Shared by another person" | `shared-list_shared_by_other` | Must be ignored (shared by another account) |
 | "Agent queue" | `queue_shared_by_agent` | Must be ignored (agent queue) |
-| "Test board" from Deck | `app-generated--deck--board-<id>` | Must be ignored. Only made when Deck installs |
+| "Test board" from Deck | `app-generated--deck--board-<id>` | Must be ignored. `setup.sh` fails if Deck cannot be installed |
 
 The 78 fixture tasks follow the spec's fixture table, with fixed UIDs (`area-0`, `cross-proj`, `chain-l4`, `mix-old`, `agentf-task`, `orphan`, …) and file names `f-<uid>.ics`. The source of truth is `fixtures()` in `seed.py`.
 

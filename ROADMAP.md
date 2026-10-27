@@ -50,7 +50,7 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 
 | ID | Item | Complexity | Notes |
 |---|---|---|---|
-| P00 | **Pre-flight checks** | Low | (a) ~~Read how Tasks 0.18.1 computes and writes `X-APPLE-SORT-ORDER`~~: answered 2026-10-26 from the Tasks source. (b) ~~Find the Tasks deep-link URL format~~: answered 2026-10-26. (c) ~~Confirm `cdav-library` exposes MOVE for P12~~: yes, answered 2026-10-26 (CODE_MAP §Facts). (d) Stand up the test Nextcloud container (33.x, Tasks 0.18.1) seeded with fixture lists: recipe in `test-env/`, verified in a cloud sandbox 2026-10-26 except the Tasks and Deck installs; run it once on a Docker host to close (d). Record answers in CODE_MAP §Facts (d) is #3, claimed by a satellite. |
+| P00 | **Pre-flight checks** | Low | (a) ~~Read how Tasks 0.18.1 computes and writes `X-APPLE-SORT-ORDER`~~: answered 2026-10-26 from the Tasks source. (b) ~~Find the Tasks deep-link URL format~~: answered 2026-10-26. (c) ~~Confirm `cdav-library` exposes MOVE for P12~~: yes, answered 2026-10-26 (CODE_MAP §Facts). ~~(d) Stand up the test Nextcloud container (33.x, Tasks 0.18.1) seeded with fixture lists: recipe in `test-env/`. Record answers in CODE_MAP §Facts~~ (done 2026-10-26, #3) |
 
 ### Phase 1: view, add, reorder
 
