@@ -52,7 +52,7 @@ onBeforeUnmount(() => {
 	<NcTextField
 		v-model="input"
 		class="cc-add-task-input"
-		:placeholder="t('projects', '+ Add task')"
+		placeholder="+ Add task"
 		:disabled="loading"
 		@keydown="onKeydown" />
 </template>

@@ -7,16 +7,9 @@ import { showError } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
 import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
+import { notImplemented } from '../notImplemented.js'
 import { pickAreas } from '../services/areas.js'
 import { createTodo, fetchTodos, listTaskCalendars } from '../services/dav.js'
-
-/**
- * @param {string} methodName The name of the method that is not implemented
- * @param {...any} args Arguments passed to the method
- */
-function notImplemented(methodName, ...args) {
-	throw new Error(`Not implemented: ${methodName}(${args.map((a) => JSON.stringify(a)).join(', ')})`)
-}
 
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
