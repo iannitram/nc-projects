@@ -12,7 +12,7 @@ Goal: a project manager over Nextcloud Tasks, built in three phases (Ian, 2026-1
 
 ## Dev stages
 
-The phases below are the build order. Phase 0 and phase 1 are usable day to day on their own; 1.0 is all three phases (SPEC.md). Each piece is a GitHub issue, sized by the potn-dev rubric, with its order written as `Blocked by #N`.
+The phases below are the build order. Phase 0 and phase 1 are usable day to day on their own; 1.0 is all three phases (SPEC.md). Each piece is a GitHub issue, sized by the pipeline repo's rubric, with its order written as `Blocked by #N`.
 
 ## Open source we bring in
 
