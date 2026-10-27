@@ -18,10 +18,12 @@ async function createProject(area) {
 	if (!summary || creating.value) {
 		return
 	}
-	newProject.value = ''
 	creating.value = true
 	try {
 		await store.createProject(area.name, summary)
+		newProject.value = ''
+	} catch {
+		// The store already showed the error toast; keep the typed title.
 	} finally {
 		creating.value = false
 	}
