@@ -3,7 +3,72 @@
  * The only module that talks to the server. Every write sends If-Match (CODE_MAP rule 3).
  * Stub: signatures only.
  */
+import { getRequestToken } from '@nextcloud/auth'
+import DavClient from '@nextcloud/cdav-library'
+import { generateUrl } from '@nextcloud/router'
 import { notImplemented } from '../notImplemented.js'
+
+const CALDAV_ROOT = '/remote.php/dav/'
+const CALENDAR_SERVER_NAMESPACE = 'http://calendarserver.org/ns/'
+
+/**
+ * Connect a CalDAV client for this request. The request token is read when the
+ * client is made so a token refreshed by Nextcloud is used on the next read.
+ *
+ * @return {Promise<DavClient>}
+ */
+async function getClient() {
+	const client = new DavClient({
+		rootUrl: generateUrl(CALDAV_ROOT),
+		defaultHeaders: {
+			requesttoken: getRequestToken(),
+		},
+	})
+	await client.connect({ enableCalDAV: true })
+	return client
+}
+
+/**
+ * Discover the CalDAV calendars available to the current user.
+ *
+ * @param {DavClient} client a connected client
+ * @return {Promise<object[]>}
+ */
+async function findCalendars(client) {
+	const grouped = await Promise.all(client.calendarHomes.map((home) => home.findAllCalDAVCollectionsGrouped()))
+	return grouped.flatMap((collections) => collections.calendars)
+}
+
+/**
+ * Find the calendar that contains a task URL.
+ *
+ * @param {DavClient} client a connected client
+ * @param {string} url the task URL
+ * @return {Promise<object>}
+ */
+async function findCalendarForTodo(client, url) {
+	const calendar = (await findCalendars(client)).find((candidate) => url.startsWith(candidate.url))
+	if (!calendar) {
+		throw new Error(`No calendar found for ${url}`)
+	}
+	return calendar
+}
+
+/**
+ * Convert a library VObject into the data layer's stable shape.
+ *
+ * @param {object} todo a cdav-library VObject
+ * @param {string} calendarUrl the containing calendar URL
+ * @return {StoredTodo}
+ */
+function storedTodo(todo, calendarUrl) {
+	return {
+		url: todo.url,
+		etag: todo.etag,
+		ics: todo.data,
+		calendarUrl,
+	}
+}
 
 /** Thrown when a write gets HTTP 412: someone else changed the task. Reload; never retry blind. */
 export class ConflictError extends Error {
@@ -40,7 +105,16 @@ export class ConflictError extends Error {
  * @return {Promise<TaskCalendar[]>}
  */
 export async function listTaskCalendars() {
-	return notImplemented('listTaskCalendars')
+	const client = await getClient()
+	return (await findCalendars(client))
+		.filter((calendar) => calendar.components.includes('VTODO'))
+		.map((calendar) => ({
+			url: calendar.url,
+			displayName: calendar.displayname,
+			ownedByMe: calendar.owner === client.currentUserPrincipal.url,
+			writable: calendar.isWriteable(),
+			ctag: calendar.ctag ?? calendar._props[`{${CALENDAR_SERVER_NAMESPACE}}getctag`],
+		}))
 }
 
 /**
@@ -50,7 +124,10 @@ export async function listTaskCalendars() {
  * @return {Promise<StoredTodo[]>}
  */
 export async function fetchTodos(calendar) {
-	return notImplemented('fetchTodos', calendar)
+	const client = await getClient()
+	const foundCalendar = await findCalendarForTodo(client, calendar.url)
+	const todos = await foundCalendar.findByType('VTODO')
+	return todos.map((todo) => storedTodo(todo, foundCalendar.url))
 }
 
 /**
@@ -60,7 +137,10 @@ export async function fetchTodos(calendar) {
  * @return {Promise<StoredTodo>}
  */
 export async function fetchTodo(url) {
-	return notImplemented('fetchTodo', url)
+	const client = await getClient()
+	const calendar = await findCalendarForTodo(client, url)
+	const todo = await calendar.find(url.slice(calendar.url.length))
+	return storedTodo(todo, calendar.url)
 }
 
 /**
