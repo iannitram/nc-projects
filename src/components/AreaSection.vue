@@ -1,10 +1,38 @@
 <script setup>
+import { NcTextField } from '@nextcloud/vue'
+import { ref } from 'vue'
 import ProjectCard from './ProjectCard.vue'
+import { useProjectsStore } from '../store/projects.js'
 
 defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').AreaNode>} */
 	area: { type: Object, required: true },
 })
+
+const store = useProjectsStore()
+const newProject = ref('')
+const creating = ref(false)
+
+async function createProject(area) {
+	const summary = newProject.value.trim()
+	if (!summary || creating.value) {
+		return
+	}
+	creating.value = true
+	try {
+		await store.createProject(area.name, summary)
+		newProject.value = ''
+	} catch {
+		// The store already showed the error toast; keep the typed title.
+	} finally {
+		creating.value = false
+	}
+}
+
+function clearProject() {
+	newProject.value = ''
+}
+
 </script>
 
 <template>
@@ -18,6 +46,12 @@ defineProps({
 				:key="project.task?.uid || project.task?.summary"
 				:project="project" />
 		</div>
+		<NcTextField
+			v-model="newProject"
+			placeholder="+ New project"
+			:disabled="creating"
+			@keydown.enter.prevent="createProject(area)"
+			@keydown.esc="clearProject" />
 	</section>
 </template>
 
