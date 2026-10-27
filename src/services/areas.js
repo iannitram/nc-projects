@@ -13,7 +13,7 @@ export const AREA_NAMES = Object.freeze(['Personal', 'The Channel', 'Van', 'Barn
  * @return {boolean}
  */
 export function isExcluded(calendar) {
-	return !calendar.ownedByMe || calendar.url.includes('_shared_by_') || calendar.url.includes('app-generated--deck--')
+	return calendar.ownedByMe === false || calendar.url.includes('_shared_by_') || calendar.url.includes('app-generated--deck--')
 }
 
 /**

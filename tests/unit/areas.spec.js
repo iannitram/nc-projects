@@ -14,6 +14,11 @@ describe('isExcluded', () => {
 		expect(isExcluded({ url: '/remote.php/dav/calendars/owner/app-generated--deck--board-7/' })).toBe(true)
 	})
 
+	it('keeps a calendar whose ownedByMe is undefined (the brief\'s The Channel example)', () => {
+		expect(isExcluded({ displayName: 'The Channel', url: '/remote.php/dav/calendars/owner/3f2a9c10-uuid/' })).toBe(false)
+		expect(pickAreas([{ displayName: 'The Channel', url: '/remote.php/dav/calendars/owner/3f2a9c10-uuid/' }]).map((a) => a.name)).toEqual(['The Channel'])
+	})
+
 	it('should return false for valid calendars', () => {
 		expect(isExcluded({ ownedByMe: true, url: '/remote.php/dav/calendars/owner/personal-1/' })).toBe(false)
 	})
