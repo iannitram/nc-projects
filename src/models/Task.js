@@ -3,9 +3,18 @@
  * Keeps every property and parameter it does not edit, byte for byte where possible.
  * Stub: signatures only.
  */
+import ICAL from 'ical.js'
 import { notImplemented } from '../notImplemented.js'
 
 export class Task {
+	constructor(component, vtodo, ics, where) {
+		this.component = component
+		this.vtodo = vtodo
+		this.ics = ics
+		this.changed = false
+		this.where = where
+	}
+
 	/**
 	 * @param {string} ics raw iCalendar text
 	 * @param {object} where where it is stored
@@ -15,7 +24,16 @@ export class Task {
 	 * @return {Task}
 	 */
 	static fromIcs(ics, where) {
-		return notImplemented('Task.fromIcs', ics, where)
+		const component = ICAL.Component.fromString(ics)
+		const vtodo = component.name === 'vtodo'
+			? component
+			: component.getFirstSubcomponent('vtodo')
+
+		if (!vtodo) {
+			throw new TypeError('Task.fromIcs requires a VTODO')
+		}
+
+		return new Task(component, vtodo, ics, where)
 	}
 
 	/**
@@ -38,12 +56,51 @@ export class Task {
 	 * @return {string}
 	 */
 	toIcs() {
-		return notImplemented('Task.toIcs')
+		return this.changed ? this.component.toString() : this.ics
+	}
+
+	get uid() { return this.propertyValue('uid') }
+	get summary() { return this.propertyValue('summary') }
+	get status() { return this.propertyValue('status') }
+	get completed() { return this.vtodo.hasProperty('completed') }
+
+	get closed() { return this.completed || this.status === 'CANCELLED' }
+	get due() { return this.propertyValue('due') }
+
+	get priority() {
+		const value = this.propertyValue('priority')
+		return value === null ? null : Number(value)
+	}
+
+	get categories() {
+		return this.vtodo.getAllProperties('categories').flatMap((property) => property.getValues())
+	}
+
+	get isProject() { return this.categories.includes('project') }
+	get parentUid() {
+		const property = this.parentProperty()
+		return property ? property.getFirstValue() : null
+	}
+
+	get sortOrder() {
+		const value = this.propertyValue('x-apple-sort-order')
+		return value === null ? null : Number(value)
+	}
+
+	get created() { return this.propertyValue('created') }
+	get url() { return this.where.url }
+	get etag() { return this.where.etag }
+	get calendarUrl() { return this.where.calendarUrl }
+
+	propertyValue(name) { return this.vtodo.getFirstPropertyValue(name) }
+
+	parentProperty() {
+		return this.vtodo.getAllProperties('related-to').find((property) => {
+			const reltype = property.getFirstParameter('reltype')
+			return reltype === undefined || reltype.toUpperCase() === 'PARENT'
+		})
 	}
 }
 
-// Fields P03 adds as getters (and setters where marked): uid, summary (set), status,
-// completed (set: true writes STATUS:COMPLETED + COMPLETED + PERCENT-COMPLETE:100; false clears them),
-// closed (completed or CANCELLED), due (set), priority (set), categories (set), isProject,
-// parentUid (set; bare RELATED-TO), sortOrder (set; X-APPLE-SORT-ORDER, null when absent),
-// created, url, etag, calendarUrl.
+// Fields P03 adds as getters: uid, summary, status, completed, closed, due, priority,
+// categories, isProject, parentUid, sortOrder, created, url, etag, calendarUrl.
