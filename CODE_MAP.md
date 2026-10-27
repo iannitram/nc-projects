@@ -58,6 +58,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/composables/useRefresh.js` | Refresh on window focus and every ~2 min | P10 |
 | `src/styles/projects.css` | Layout, including the phone breakpoint | P05, P11 |
 | `src/main.js` + `src/App.vue` (Report a bug) | `installErrorBuffer()` at startup; craft-bugreport-web's `ReportButton` in the app navigation, given `{ app, version, commit, ncVersion, dropBase, dropToken, userName }` and `getWorkingFile()` returning the open area's projects and tasks as JSON; drop base and token are an app config value (`occ config:app:set cc_projects bug_drop_base/bug_drop_token`) handed to the page as initial state by `PageController`, never committed | M21 (#39, #40) |
+| `appinfo/info.xml` + `.github/workflows/release.yml` (updates from the admin panel) | The release fields the merged feed reads (id, a.b.c version, Nextcloud range, PHP minimum; guarded by `tests/unit/release.infoxml.spec.js`) and the tag workflow that calls craft-nc-appstore's `build-app.yml@v1`; signing and publishing happen on the release-key machine (R35), never in CI | M22 (#41, #42, #44) |
 
 ### Tests and tooling
 

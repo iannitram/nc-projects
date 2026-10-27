@@ -2,6 +2,7 @@
 
 Newest first. One line per change of stage, release or decision that the next session needs.
 
+- 2026-10-26 Must M22 added on the owner's word: updates from the Nextcloud admin panel through the merged private app-store feed (craft-nc-appstore); issues #41, #42, #44.
 - 2026-10-26 Must M21 added on the owner's word: Report a bug, through the shared craft-bugreport-web module and the bug File Drop.
 - 2026-10-26 Stage Dev Loop: code skeleton with stubs for every CODE_MAP module, CI (lint and tests on ubuntu, macos, windows; build on ubuntu), Roadmap docs (interlinks, Mac/PC/Linux, open source, dev stages) and issues #2-#27 sized by the rubric. No lockfiles yet: a satellite commits them in #2.
 - 2026-10-26 Normalized to pipeline v2 at Roadmap: added PIPELINE.md, AGENTS.md, this file and the GitHub templates; status now lives only in this repo (the old outside status page is retired).

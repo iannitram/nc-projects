@@ -4,6 +4,8 @@
 
 Must M21 added 2026-10-26 by the owner: "Yes, a 1.0 Must (Recommended)" (the request: "New feature request for both apps - bug logging button with the same pathway as the launcher bug submission pathway"; details "Launcher set, browser version (Recommended)", "Same File Drop (Recommended)", "One shared module repo (Recommended)").
 
+Must M22 added 2026-10-26 by the owner: "Private app store feed (Recommended)", "Yes, a 1.0 Must (Recommended)" (the requirement: "One feature that needs to work….once installed our plugins should update from the nextcloud admin panel, pulling updates automatically.").
+
 ## 1.0 in one sentence
 
 I can open **Projects** from Nextcloud's top bar and, in one panel, see every project on my own task lists with its tasks in my drag order, add and reorder tasks and projects, move a task to another project, make quick edits, start new projects, and file away stray tasks, while the Tasks app, phone clients and agents keep working on the same data unchanged.
@@ -126,6 +128,10 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 **M21. Report a bug.** WHEN I choose "Report a bug", THE APP SHALL open the shared report form (craft-bugreport-web): what happened, what I expected, the app's recent errors, an optional screenshot and, only if I tick it that time, the open area's projects and tasks as JSON; it SHALL show me every file and send the report to the bug File Drop only after I press Send.
 - Done looks like: a report sent from the app lands in the File Drop with the desktop launcher's layout, and the morning bug intake reads it unchanged.
 - Check: in the test container with the drop config set, make a report, check the consent screen lists every file, press Send, see the zip in the drop.
+
+**M22. Updates from the admin panel.** WHEN a new signed release of the app is published to our merged app-store feed (craft-nc-appstore), THE NEXTCLOUD ADMIN PANEL SHALL offer it on the Apps page and the scheduled job SHALL install it automatically.
+- Done looks like: Publishing a new version makes the Apps page offer it, and within the hour the server runs it; nothing is copied by hand, and the official apps still update.
+- Check: On the test Nextcloud (nc-projects-test, never the live server) with craft-nc-appstore's merged feed: publish a test release, see it offered on the Apps page, wait for the scheduled job, and check `occ app:list` shows the new version; then the same with a second version.
 
 ## Won'ts
 
