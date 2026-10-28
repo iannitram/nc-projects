@@ -197,6 +197,17 @@ describe('projects store setCompleted', () => {
 		expect(store.tasksByUid.A.completed).toBe(false)
 	})
 
+	it('shows "Could not save the change" and no "reloaded" notice when the conflict reload fails', async () => {
+		const store = await loadStore(open())
+		putTodo.mockRejectedValue(new ConflictError('/van/A.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		await store.setCompleted('A', true).catch(() => {})
+
+		expect(showError).toHaveBeenCalledWith('Could not save the change')
+		expect(showInfo).not.toHaveBeenCalled()
+	})
+
 	it('preserves node collapse state across a setCompleted rebuild', async () => {
 		const store = await loadStore(open())
 		const nodeA = store.areas[0].projects[0].children[0]
