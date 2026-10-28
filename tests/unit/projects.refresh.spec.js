@@ -310,4 +310,29 @@ describe('projects store refresh', () => {
 
 		expect(showInfo).not.toHaveBeenCalled()
 	})
+
+	it('updates lastRefreshedAt timestamp on successful load and refresh', async () => {
+		const store = useProjectsStore()
+		expect(store.lastRefreshedAt).toBeNull()
+
+		const data = { '/list-b/': gardenTodos(), '/list-c/': orchardTodos() }
+		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN }, { ...ORCHARD }]))
+		fetchTodos.mockImplementation(async (calendar) => deepFreeze(data[calendar.url]))
+
+		const beforeLoad = Date.now()
+		await store.load()
+		const afterLoad = Date.now()
+
+		expect(typeof store.lastRefreshedAt).toBe('number')
+		expect(store.lastRefreshedAt).toBeGreaterThanOrEqual(beforeLoad)
+		expect(store.lastRefreshedAt).toBeLessThanOrEqual(afterLoad)
+
+		const initialRefreshTime = store.lastRefreshedAt
+		await new Promise((resolve) => setTimeout(resolve, 5))
+
+		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN, ctag: 'v2' }, { ...ORCHARD }]))
+		await store.refresh()
+
+		expect(store.lastRefreshedAt).toBeGreaterThan(initialRefreshTime)
+	})
 })

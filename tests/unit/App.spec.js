@@ -31,9 +31,29 @@ describe('App', () => {
 		vi.clearAllMocks()
 	})
 
-	it('shows the Projects heading', () => {
-		const wrapper = mount(App)
-		expect(wrapper.find('h2').text()).toBe('Projects')
+	it('renders the top bar, the list and the status line inside one reading column', () => {
+		const pinia = createPinia()
+		setActivePinia(pinia)
+		const wrapper = mount(App, {
+			global: { plugins: [pinia] },
+		})
+		const column = wrapper.find('.cc-column')
+		expect(column.exists()).toBe(true)
+		expect(wrapper.findAll('.cc-column')).toHaveLength(1)
+		expect(column.find('.cc-top-bar').exists()).toBe(true)
+		expect(column.find('.cc-projects').exists()).toBe(true)
+		expect(column.find('.cc-status-line').exists()).toBe(true)
+	})
+
+	it('renders the TopBar with All areas and removes loose Projects heading', () => {
+		const pinia = createPinia()
+		setActivePinia(pinia)
+		const wrapper = mount(App, {
+			global: { plugins: [pinia] },
+		})
+		expect(wrapper.find('h1').text()).toBe('All areas')
+		const headings = wrapper.findAll('h2').map((h) => h.text())
+		expect(headings).not.toContain('Projects')
 	})
 
 	it('calls load() on mount and renders an AreaSection for each area', async () => {
