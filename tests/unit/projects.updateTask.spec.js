@@ -222,4 +222,16 @@ describe('projects store updateTask', () => {
 		expect(store.tasksByUid.t1.etag).toBe('"t1-fresh"')
 		expect(store.tasksByUid.t1.priority).toBe(1)
 	})
+
+	it('shows "Could not save the change" when the conflict reload fails', async () => {
+		const store = await loadStore(todos())
+		putTodo.mockRejectedValue(new ConflictError('/van/t1.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		await store.updateTask('t1', { summary: 'New title' }).catch(() => {})
+
+		expect(fetchTodo).toHaveBeenCalledWith('/van/t1.ics')
+		expect(showError).toHaveBeenCalledWith('Could not save the change')
+		expect(showInfo).not.toHaveBeenCalled()
+	})
 })

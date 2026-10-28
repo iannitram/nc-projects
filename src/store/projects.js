@@ -536,7 +536,10 @@ export const useProjectsStore = defineStore('projects', {
 				}
 			} catch (error) {
 				if (error instanceof ConflictError) {
-					await this.handleConflict([task.url])
+					const reloaded = await this.handleConflict([task.url])
+					if (!reloaded) {
+						showError('Could not save the change')
+					}
 				} else {
 					// Restore original values and show error
 					const restoredTask = Task.fromIcs(originalIcs, originalWhere)
