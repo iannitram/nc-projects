@@ -100,3 +100,16 @@ describe('TaskRow', () => {
 		expect(getTasksDeepLink(task)).toBe('/apps/tasks/collections/all/tasks/orphan.ics')
 	})
 })
+
+describe('TaskRow done styling (regression)', () => {
+	it('strikes through a title only for completed tasks', () => {
+		const style = TaskRowSource.slice(TaskRowSource.indexOf('<style'))
+		const rules = [...style.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+			.filter(([, , body]) => body.includes('line-through'))
+			.map(([, selector]) => selector.trim())
+		expect(rules.length).toBeGreaterThan(0)
+		for (const selector of rules) {
+			expect(selector).toMatch(/is-completed/)
+		}
+	})
+})

@@ -378,11 +378,6 @@ function setPriority(value) {
 	fill: var(--cc-priority-color);
 }
 
-.cc-task-row__title {
-	text-decoration: line-through;
-	color: var(--color-text-maxcontrast);
-}
-
 /* Priority ring, as in Tasks: high, medium, low. Theme variables only. */
 .cc-task-row__checkbox--high :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked)) {
 	color: var(--color-error);
