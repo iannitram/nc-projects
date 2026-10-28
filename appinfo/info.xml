@@ -10,6 +10,7 @@
     <namespace>CcProjects</namespace>
     <category>organization</category>
     <dependencies>
+        <php min-version="8.2"/>
         <nextcloud min-version="33" max-version="35"/>
     </dependencies>
     <navigations>
