@@ -47,6 +47,19 @@ describe('AreaSection', () => {
 		expect(wrapper.text()).toContain('Project 2')
 	})
 
+	it('labels the someday group after open projects, hiding the caption when empty', async () => {
+		const node = (uid, categories) => ({ task: { uid, summary: uid, categories }, children: [] })
+		const wrapper = mount(AreaSection, { props: { area: { name: 'Home', projects: [node('later', ['project', 'someday']), node('now', ['project'])] } } })
+		const caption = wrapper.get('.cc-area-section__someday-caption')
+		expect(caption.text()).toBe('Someday')
+		const cards = wrapper.findAllComponents(ProjectCard)
+		expect(cards.map((card) => card.props('project').task.uid)).toEqual(['now', 'later'])
+		expect(cards[0].element.compareDocumentPosition(caption.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+		expect(caption.element.compareDocumentPosition(cards[1].element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+		await wrapper.setProps({ area: { name: 'Home', projects: [node('now', ['project'])] } })
+		expect(wrapper.find('.cc-area-section__someday-caption').exists()).toBe(false)
+	})
+
 	it('renders its ProjectCards then the DoneStrip', () => {
 		const area = {
 			name: 'Home',
@@ -78,7 +91,7 @@ describe('AreaSection', () => {
 
 		const doneStrip = wrapper.findComponent(DoneStrip)
 		expect(doneStrip.exists()).toBe(true)
-		expect(doneStrip.text()).toContain('Done (1)')
+		expect(doneStrip.text()).toContain('1 done projects')
 
 		// Verify DOM order: ProjectCards container is before DoneStrip
 		const projectsEl = wrapper.find('.cc-area-section__projects').element
@@ -90,12 +103,28 @@ describe('AreaSection', () => {
 		const area = { name: 'Home', calendarUrl: '/list-a/', projects: [], done: [] }
 
 		async function typeAndSubmit(wrapper, value) {
+			expect(wrapper.find('input').exists()).toBe(false)
+			await wrapper.get('.cc-area-section__new-project button').trigger('click')
 			const input = wrapper.find('input')
 			await input.setValue(value)
 			await input.trigger('keydown.enter')
 			await flushPromises()
 			return input
 		}
+
+		it('shows New project above Done and cancels with Esc or empty blur', async () => {
+			const wrapper = mount(AreaSection, { props: { area: { ...area, done: [{ task: { uid: 'd', summary: 'Done' } }] } } })
+			const ghost = () => wrapper.get('.cc-area-section__new-project button')
+			expect(ghost().text()).toBe('New project in Home')
+			expect(wrapper.element.lastElementChild.classList.contains('cc-done-strip')).toBe(true)
+			await ghost().trigger('keydown.enter')
+			await wrapper.get('input').setValue('draft')
+			await wrapper.get('input').trigger('keydown.esc')
+			expect(wrapper.find('input').exists()).toBe(false)
+			await ghost().trigger('click')
+			await wrapper.get('input').trigger('blur')
+			expect(wrapper.find('input').exists()).toBe(false)
+		})
 
 		it('keeps the typed title and swallows the rejection when creation fails', async () => {
 			const store = useProjectsStore()
@@ -107,6 +136,23 @@ describe('AreaSection', () => {
 			expect(store.createProject).toHaveBeenCalledWith('Home', 'My project')
 			expect(input.element.value).toBe('My project')
 			expect(input.element.disabled).toBe(false)
+		})
+
+		it('keeps the field open, empty and focused after creation so a second project can be typed', async () => {
+			const store = useProjectsStore()
+			store.createProject = vi.fn().mockResolvedValue(undefined)
+			const wrapper = mount(AreaSection, { props: { area }, attachTo: document.body })
+
+			const input = await typeAndSubmit(wrapper, 'First')
+
+			expect(input.element.value).toBe('')
+			expect(document.activeElement).toBe(input.element)
+			await input.setValue('Second')
+			await input.trigger('keydown.enter')
+			await flushPromises()
+			expect(store.createProject).toHaveBeenCalledTimes(2)
+			expect(store.createProject).toHaveBeenLastCalledWith('Home', 'Second')
+			wrapper.unmount()
 		})
 
 		it('clears the field after creation succeeds', async () => {

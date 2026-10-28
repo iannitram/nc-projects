@@ -1,8 +1,8 @@
 <script setup>
-import { NcTextField } from '@nextcloud/vue'
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import DoneStrip from './DoneStrip.vue'
+import GhostInput from './GhostInput.vue'
 import ProjectCard from './ProjectCard.vue'
 import { DRAG_OPTIONS, onSiblingDrop } from '../composables/useDrag.js'
 import { areaSlug, isSomeday } from '../models/tree.js'
@@ -96,13 +96,6 @@ async function createProject(area) {
 	}
 }
 
-/**
- * Clear the new project input field.
- */
-function clearProject() {
-	newProject.value = ''
-}
-
 </script>
 
 <template>
@@ -125,20 +118,20 @@ function clearProject() {
 						:areaName="area.name" />
 				</template>
 			</Sortable>
+			<h4 v-if="somedayProjects.length" class="cc-area-section__someday-caption">Someday</h4>
 			<ProjectCard
 				v-for="project in somedayProjects"
 				:key="project.task?.uid || project.task?.summary"
 				:project="project"
 				:areaName="area.name" />
 		</div>
-		<DoneStrip :projects="area.done || []" />
-		<NcTextField
+		<GhostInput
 			v-model="newProject"
 			class="cc-area-section__new-project"
-			placeholder="+ New project"
+			:label="`New project in ${area.name}`"
 			:disabled="creating"
-			@keydown.enter.prevent="createProject(area)"
-			@keydown.esc="clearProject" />
+			@submit="createProject(area)" />
+		<DoneStrip :projects="area.done || []" />
 	</section>
 </template>
 
@@ -157,6 +150,11 @@ function clearProject() {
 	display: flex;
 	flex-direction: column;
 	gap: calc(var(--default-grid-baseline, 4px) * 3);
+}
+
+.cc-area-section__someday-caption {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
 }
 
 .cc-area-section__sortable {
