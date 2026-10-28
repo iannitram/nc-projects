@@ -1,5 +1,6 @@
 <script setup>
 import { mdiCogOutline, mdiFolderOutline, mdiTrayFull } from '@mdi/js'
+import { emit } from '@nextcloud/event-bus'
 import {
 	NcAppNavigation,
 	NcAppNavigationCaption,
@@ -7,6 +8,7 @@ import {
 	NcButton,
 	NcCounterBubble,
 	NcIconSvgWrapper,
+	useIsMobile,
 } from '@nextcloud/vue'
 import { getActivePinia } from 'pinia'
 import { computed, nextTick } from 'vue'
@@ -14,6 +16,7 @@ import { areaSlug } from '../models/tree.js'
 import { useProjectsStore } from '../store/projects.js'
 
 const store = getActivePinia() ? useProjectsStore() : null
+const isMobile = useIsMobile()
 
 const areas = computed(() => store?.areas || [])
 const orphans = computed(() => store?.orphans || [])
@@ -22,9 +25,20 @@ const needsFilingCount = computed(() => orphans.value.length + untaggedParents.v
 const currentView = computed(() => store?.view || 'areas')
 
 /**
+ * On phone width, close Nextcloud's navigation drawer after a choice so the
+ * content is visible. On desktop the navigation stays open.
+ */
+function closeDrawerOnPhone() {
+	if (isMobile.value) {
+		emit('toggle-navigation', { open: false })
+	}
+}
+
+/**
  * Switch back to the All areas view and scroll to top.
  */
 function selectAllAreas() {
+	closeDrawerOnPhone()
 	if (store) {
 		store.view = 'areas'
 	}
@@ -41,6 +55,7 @@ function selectAllAreas() {
  * @param {string} areaName the area's display name
  */
 function selectArea(areaName) {
+	closeDrawerOnPhone()
 	if (store) {
 		store.view = 'areas'
 	}
@@ -57,6 +72,7 @@ function selectArea(areaName) {
  * Switch content to the Needs filing tray view.
  */
 function selectNeedsFiling() {
+	closeDrawerOnPhone()
 	if (store) {
 		store.view = 'needs-filing'
 	}
