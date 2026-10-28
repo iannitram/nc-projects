@@ -35,7 +35,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
+const GARDEN = { url: '/list-b/', displayName: 'Garden', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
 	return [
@@ -58,11 +58,11 @@ function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, st
 }
 
 function stored(uid, fields) {
-	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/list-b/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/list-b/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }]))
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN }]))
 	fetchTodos.mockResolvedValue(deepFreeze(todos))
 	const store = useProjectsStore()
 	await store.load()
@@ -103,7 +103,7 @@ describe('projects store moveToProject (same list)', () => {
 
 		expect(putTodo).toHaveBeenCalledTimes(1)
 		const [url, ics, etag] = putTodo.mock.calls[0]
-		expect([url, etag]).toEqual(['/van/t1.ics', '"t1-e1"'])
+		expect([url, etag]).toEqual(['/list-b/t1.ics', '"t1-e1"'])
 		expect(sent(putTodo.mock.calls[0]).parentUid).toBe('Q')
 		expect(ics.match(/RELATED-TO/g)).toHaveLength(1)
 		expect(ics).toContain('RELATED-TO:Q')
@@ -140,8 +140,8 @@ describe('projects store moveToProject (same list)', () => {
 
 		expect(putTodo).toHaveBeenCalledTimes(2)
 		const [first, second] = putTodo.mock.calls
-		expect([first[0], sent(first).sortOrder, sent(first).parentUid]).toEqual(['/van/t1.ics', 11, 'Q'])
-		expect([second[0], sent(second).sortOrder, second[2]]).toEqual(['/van/q2.ics', 12, '"q2-e1"'])
+		expect([first[0], sent(first).sortOrder, sent(first).parentUid]).toEqual(['/list-b/t1.ics', 11, 'Q'])
+		expect([second[0], sent(second).sortOrder, second[2]]).toEqual(['/list-b/q2.ics', 12, '"q2-e1"'])
 		expect(taskUids(store, 'Q')).toEqual(['q1', 't1', 'q2'])
 	})
 
@@ -150,7 +150,7 @@ describe('projects store moveToProject (same list)', () => {
 
 		await store.moveToProject('t1', 'Q', 2)
 
-		expect(putTodo.mock.calls.map((call) => call[0])).toEqual(['/van/t1.ics'])
+		expect(putTodo.mock.calls.map((call) => call[0])).toEqual(['/list-b/t1.ics'])
 		expect(store.tasksByUid.s1.parentUid).toBe('t1')
 		const moved = store.areas[0].projects.find((node) => node.task.uid === 'Q').children.find((node) => node.task.uid === 't1')
 		expect(moved.children.map((node) => node.task.uid)).toEqual(['s1'])
@@ -172,12 +172,12 @@ describe('projects store moveToProject (same list)', () => {
 
 	it('reloads the task and shows "Someone else changed this; reloaded" on a conflict', async () => {
 		const store = await loadStore(spaced())
-		putTodo.mockRejectedValue(new ConflictError('/van/t1.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-b/t1.ics'))
 		fetchTodo.mockResolvedValue(fresh('t1', { parent: 'P', sort: 15 }))
 
 		await store.moveToProject('t1', 'Q', 2).catch(() => {})
 
-		expect(fetchTodo).toHaveBeenCalledWith('/van/t1.ics')
+		expect(fetchTodo).toHaveBeenCalledWith('/list-b/t1.ics')
 		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 		expect(showError).not.toHaveBeenCalled()
 		expect(store.tasksByUid.t1.etag).toBe('"t1-fresh"')
