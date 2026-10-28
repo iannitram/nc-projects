@@ -25,7 +25,7 @@ APPLE_EPOCH = datetime(2001, 1, 1, tzinfo=timezone.utc)
 # live server), so code that matches by URI fails the checks.
 AREAS = {
     "area-a-1": "Area A",
-    "8d3c6c1e-5b0a-4c55-9a51-0c7e1f3b2a10": "Area B",
+    "00000000-0000-4000-8000-00000000000b": "Area B",
     "area-c": "Area C",
     "area-d-2": "Area D",
     "area-e": "Area E",

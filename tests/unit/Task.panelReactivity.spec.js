@@ -32,7 +32,7 @@ function task(uid, fields) {
 		'END:VCALENDAR',
 		'',
 	].join('\r\n')
-	return Task.fromIcs(ics, { url: `/van/${uid}.ics`, etag: '"e1"', calendarUrl: '/van/' })
+	return Task.fromIcs(ics, { url: `/list-a/${uid}.ics`, etag: '"e1"', calendarUrl: '/list-a/' })
 }
 
 // Follow rebuilt nodes as the panel does, preserving the mounted card and row.
@@ -59,7 +59,7 @@ afterEach(() => {
 
 function mountPanel() {
 	const store = useProjectsStore()
-	store.areaInputs = [{ name: 'Van', calendar: { url: '/van/' } }]
+	store.areaInputs = [{ name: 'Area A', calendar: { url: '/list-a/' } }]
 	store.tasksByUid = {
 		P: task('P', ['CATEGORIES:project']),
 		T: task('T', ['RELATED-TO:P']),
