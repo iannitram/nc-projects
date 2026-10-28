@@ -169,6 +169,17 @@ describe('projects store reorder (tasks under a parent)', () => {
 		expect(store.tasksByUid.c.sortOrder).toBe(25)
 	})
 
+	it('shows "Could not save the new order" and no "reloaded" notice when the conflict reload fails', async () => {
+		const store = await loadStore(spaced())
+		putTodo.mockRejectedValue(new ConflictError('/garden/c.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		await store.reorder('P', 'Garden', 'c', 0).catch(() => {})
+
+		expect(showError).toHaveBeenCalledWith('Could not save the new order')
+		expect(showInfo).not.toHaveBeenCalled()
+	})
+
 	it('writes nothing when the moved uid is not among the parent\'s children', async () => {
 		const store = await loadStore(spaced())
 

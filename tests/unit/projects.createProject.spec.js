@@ -22,9 +22,9 @@ vi.mock('@nextcloud/dialogs', () => ({
 	showSuccess: vi.fn(),
 }))
 
-import { showError } from '@nextcloud/dialogs'
+import { showError, showInfo } from '@nextcloud/dialogs'
 import { Task } from '../../src/models/Task.js'
-import { createTodo, fetchTodos, listTaskCalendars } from '../../src/services/dav.js'
+import { ConflictError, createTodo, fetchTodo, fetchTodos, listTaskCalendars } from '../../src/services/dav.js'
 import { useProjectsStore } from '../../src/store/projects.js'
 
 function deepFreeze(value) {
@@ -124,5 +124,16 @@ describe('projects store createProject', () => {
 		expect(showError).toHaveBeenCalledWith('Could not create the project')
 		expect(Object.keys(store.tasksByUid).sort()).toEqual(['A', 'B'])
 		expect(store.areas[0].projects.map((node) => node.task.summary)).toEqual(['A', 'B'])
+	})
+
+	it('shows "Could not create the project" and no "reloaded" notice when the conflict reload fails', async () => {
+		const store = await loadStore(todos())
+		createTodo.mockRejectedValue(new ConflictError('/garden/conflict.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		await store.createProject('Garden', 'Build deck')
+
+		expect(showError).toHaveBeenCalledWith('Could not create the project')
+		expect(showInfo).not.toHaveBeenCalled()
 	})
 })

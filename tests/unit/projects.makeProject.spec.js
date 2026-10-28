@@ -167,6 +167,17 @@ describe('projects store makeProject', () => {
 		expect(projectUids(store)).toEqual(['P'])
 	})
 
+	it('shows "Could not make the project" and no "reloaded" notice when the conflict reload fails', async () => {
+		const store = await loadStore(todos())
+		putTodo.mockRejectedValue(new ConflictError('/van/U.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		await store.makeProject('U').catch(() => {})
+
+		expect(showError).toHaveBeenCalledWith('Could not make the project')
+		expect(showInfo).not.toHaveBeenCalled()
+	})
+
 	it('reloads the task and shows "Someone else changed this; reloaded" on a conflict', async () => {
 		const store = await loadStore(todos())
 		putTodo.mockRejectedValue(new ConflictError('/list-b/U.ics'))
