@@ -8,7 +8,7 @@ const props = defineProps({
 	open: { type: Boolean, default: false },
 	/** @type {import('vue').PropType<import('../models/Task.js').Task>} */
 	task: { type: Object, default: null },
-	container: { type: [String, Object], default: null },
+	container: { type: [String, Object], default: 'body' },
 })
 
 const emit = defineEmits(['close', 'update:open'])
@@ -264,8 +264,9 @@ async function onMove() {
 		size="normal"
 		:container="container"
 		:closeOnClickOutside="false"
-		@closing="onCancel">
-		<div class="cc-move-to-project">
+		@closing="onCancel"
+		@update:open="(val) => { if (!val) onCancel() }">
+		<div class="cc-move-to-project" @keydown.esc.stop="onCancel">
 			<NcTextField
 				v-model="searchQuery"
 				class="cc-move-to-project__search"
@@ -292,7 +293,8 @@ async function onMove() {
 									'is-selected': selectedProjectUid === project.task.uid,
 									'is-disabled': isCurrentProject(project),
 								}"
-								:for="`move-target-${project.task.uid}`">
+								:for="`move-target-${project.task.uid}`"
+								@click="selectProject(project)">
 								<input
 									:id="`move-target-${project.task.uid}`"
 									v-model="selectedProjectUid"

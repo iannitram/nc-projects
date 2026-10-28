@@ -56,6 +56,7 @@ describe('MoveToProjectDialog', () => {
 		return mount(MoveToProjectDialog, {
 			props: {
 				open: true,
+				container: null,
 				task: store.tasksByUid['task-1'],
 				...props,
 			},
@@ -232,6 +233,23 @@ describe('MoveToProjectDialog', () => {
 		await moveBtn.trigger('keydown.enter')
 
 		expect(store.moveToProject).toHaveBeenCalledWith('task-1', 'p-shed', 0)
+		expect(wrapper.emitted('close')).toBeTruthy()
+	})
+
+	it('defaults container to "body" for page-level mounting above navigation', () => {
+		const wrapper = mount(MoveToProjectDialog, {
+			props: {
+				open: true,
+				task: store.tasksByUid['task-1'],
+			},
+		})
+		expect(wrapper.props().container).toBe('body')
+	})
+
+	it('closes without moving on Escape key', async () => {
+		const wrapper = mountDialog()
+		await wrapper.find('.cc-move-to-project').trigger('keydown', { key: 'Escape' })
+		expect(store.moveToProject).not.toHaveBeenCalled()
 		expect(wrapper.emitted('close')).toBeTruthy()
 	})
 })

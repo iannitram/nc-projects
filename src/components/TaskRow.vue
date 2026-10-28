@@ -72,6 +72,7 @@ const PRIORITY_OPTIONS = [
 
 const editing = ref(false)
 const moveDialogOpen = ref(false)
+const actionsRef = ref(null)
 const titleDraft = ref('')
 const titleInput = ref(null)
 let titleCancelled = false
@@ -215,6 +216,27 @@ function clearDue() {
 function setPriority(value) {
 	update({ priority: value })
 }
+
+/**
+ * Open the move-to-project dialog, closing the actions menu first.
+ */
+function openMoveDialog() {
+	actionsRef.value?.closeMenu?.(false)
+	moveDialogOpen.value = true
+}
+
+/**
+ * Close the move dialog and return focus to the actions trigger button.
+ */
+function onMoveDialogClose() {
+	moveDialogOpen.value = false
+	nextTick(() => {
+		const trigger = actionsRef.value?.$el?.querySelector?.('button') || actionsRef.value?.$el
+		if (trigger && typeof trigger.focus === 'function') {
+			trigger.focus()
+		}
+	})
+}
 </script>
 
 <template>
@@ -267,6 +289,7 @@ function setPriority(value) {
 			{{ node.deeper }} more {{ node.deeper === 1 ? 'level' : 'levels' }} in Tasks
 		</a>
 		<NcActions
+			ref="actionsRef"
 			class="cc-task-row__menu cc-no-drag"
 			:aria-label="`Actions for ${summary}`"
 			@mousedown.stop
@@ -311,8 +334,9 @@ function setPriority(value) {
 			</NcActionRadio>
 			<NcActionSeparator />
 			<NcActionButton
+				closeAfterClick
 				class="cc-no-drag"
-				@click="moveDialogOpen = true"
+				@click="openMoveDialog"
 				@mousedown.stop
 				@pointerdown.stop
 				@touchstart.stop>
@@ -335,7 +359,7 @@ function setPriority(value) {
 			v-if="moveDialogOpen"
 			:open="moveDialogOpen"
 			:task="task"
-			@close="moveDialogOpen = false" />
+			@close="onMoveDialogClose" />
 	</div>
 </template>
 

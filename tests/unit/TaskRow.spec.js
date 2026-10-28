@@ -100,7 +100,7 @@ describe('TaskRow', () => {
 		expect(getTasksDeepLink(task)).toBe('/apps/tasks/collections/all/tasks/orphan.ics')
 	})
 
-	it('opens the MoveToProjectDialog from the actions menu', async () => {
+	it('opens the MoveToProjectDialog from the actions menu, closes menu first, and returns focus on close', async () => {
 		setActivePinia(createPinia())
 		const wrapper = mount(TaskRow, {
 			props: {
@@ -117,17 +117,38 @@ describe('TaskRow', () => {
 			},
 			global: {
 				stubs: {
-					NcActions: { template: '<div><slot /></div>' },
+					NcActions: {
+						template: '<div class="nc-actions"><button type="button" class="action-item__menutoggle"></button><slot /></div>',
+						provide() {
+							return {
+								[Symbol.for('NcActions:closeMenu')]: vi.fn(),
+							}
+						},
+						methods: {
+							closeMenu: vi.fn(),
+						},
+					},
 				},
 			},
+			attachTo: document.body,
 		})
 		expect(wrapper.findComponent({ name: 'MoveToProjectDialog' }).exists()).toBe(false)
 		const moveAction = wrapper.findAllComponents({ name: 'NcActionButton' }).find((btn) => btn.text().includes('Move to project…'))
 		expect(moveAction).toBeDefined()
+		expect(moveAction.props('closeAfterClick')).toBe(true)
+
+		const toggleBtn = wrapper.find('.action-item__menutoggle').element
+		const focusSpy = vi.spyOn(toggleBtn, 'focus')
+
 		await moveAction.find('button').trigger('click')
 		const dialog = wrapper.findComponent({ name: 'MoveToProjectDialog' })
 		expect(dialog.exists()).toBe(true)
 		expect(dialog.props('task').uid).toBe('t1')
+
+		await dialog.vm.$emit('close')
+		await wrapper.vm.$nextTick()
+		expect(wrapper.findComponent({ name: 'MoveToProjectDialog' }).exists()).toBe(false)
+		expect(focusSpy).toHaveBeenCalled()
 	})
 })
 
