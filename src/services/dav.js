@@ -220,6 +220,27 @@ export async function fetchTodo(url, session = getDavSession()) {
 }
 
 /**
+ * The library reports every HTTP error (412 too) as status -1, so a failed
+ * write is checked by re-reading the etag it was guarded by.
+ *
+ * @param {object} calendar the containing calendar
+ * @param {string} path the task's path relative to the calendar
+ * @param {string} etag the etag the write was made against
+ * @return {Promise<boolean>}
+ */
+async function etagChanged(calendar, path, etag) {
+	try {
+		const current = await calendar.find(path)
+		if (current.etag === undefined || current.etag === null) {
+			return false
+		}
+		return current.etag !== etag
+	} catch {
+		return false
+	}
+}
+
+/**
  * Replace a task's iCalendar text, guarded by If-Match.
  *
  * @param {string} url the task's URL
@@ -232,13 +253,14 @@ export async function fetchTodo(url, session = getDavSession()) {
 export async function putTodo(url, ics, etag, session = getDavSession()) {
 	return withReconnect(session, async () => {
 		const calendar = await findCalendarForTodo(session, url)
-		const todo = await calendar.find(url.slice(calendar.url.length))
+		const path = url.slice(calendar.url.length)
+		const todo = await calendar.find(path)
 		todo.data = ics
 		todo.etag = etag
 		try {
 			await todo.update()
 		} catch (error) {
-			if (error.status === 412) {
+			if (error.status === 412 || (error.status === -1 && await etagChanged(calendar, path, etag))) {
 				throw new ConflictError(url)
 			}
 			throw error
