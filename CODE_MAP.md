@@ -4,6 +4,8 @@ Describes commit: eb3b328 (2026-10-28)
 
 **Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`), the panel (`App.vue`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`) and store actions for loading, refreshing, adding, ordering, completion, quick edits and project creation are **present**; `moveToProject` and `reorder` for projects within an area remain **stubs**. When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
 
+**Design pass (approved 2026-10-28, #102):** [brief](docs/design/2026-10-28-design-pass/brief.md) · [mockups, sections a to g](docs/design/2026-10-28-design-pass/mockups.html) · [implementation notes](docs/design/2026-10-28-design-pass/implementation-notes.md). UI work follows these.
+
 ## Shape in one picture
 
 ```
