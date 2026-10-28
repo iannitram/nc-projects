@@ -2,7 +2,7 @@
 # Print one stored task's raw iCalendar from the TEST container (the spec's
 # "read the stored task"). Usage:
 #   scripts/dav-get.sh <list-uri> <file.ics> [user]     (user defaults to owner)
-#   scripts/dav-get.sh personal-1 f-mix-old.ics
+#   scripts/dav-get.sh area-a-1 f-mix-old.ics
 # Diff two runs to compare stored copies before and after a change.
 set -euo pipefail
 LIST="$1"; FILE="$2"; USER_="${3:-owner}"

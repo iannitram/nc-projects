@@ -1,9 +1,6 @@
 /**
- * Which task lists are areas (P02; CODE_MAP rules 4 and 5; ADR 0005). Pure.
+ * Which task lists may be selected as areas. Pure.
  */
-
-/** The eight areas, by display name, in panel order. */
-export const AREA_NAMES = Object.freeze(['Personal', 'The Channel', 'Van', 'Barnum', 'Cheltenham', 'DCIS', 'DPS', 'System'])
 
 /**
  * True for a list that is never an area: shared by someone else, an agent queue
@@ -17,33 +14,25 @@ export function isExcluded(calendar) {
 }
 
 /**
- * The areas found among the user's lists, in AREA_NAMES order; missing names are skipped.
+ * The task lists the user may choose, in display order.
  *
  * @param {import('./dav.js').TaskCalendar[]} calendars every task list
+ * @return {import('./dav.js').TaskCalendar[]}
+ */
+export function candidateLists(calendars) {
+	return calendars.filter((calendar) => !isExcluded(calendar))
+}
+
+/**
+ * Resolve saved calendar URLs to their current calendars, in the saved order.
+ *
+ * @param {import('./dav.js').TaskCalendar[]} calendars every task list
+ * @param {string[]} areaLists selected calendar URLs
  * @return {{name: string, calendar: import('./dav.js').TaskCalendar}[]}
  */
-export function pickAreas(calendars) {
-	// First filter out excluded calendars
-	const validCalendars = calendars.filter((calendar) => !isExcluded(calendar))
-
-	// Then find the first occurrence of each area name in order
-	const result = []
-	const seenNames = new Set()
-
-	for (const calendar of validCalendars) {
-		if (seenNames.has(calendar.displayName)) {
-			continue
-		}
-
-		const indexInAreaNames = AREA_NAMES.indexOf(calendar.displayName)
-		if (indexInAreaNames !== -1) {
-			result.push({ name: calendar.displayName, calendar })
-			seenNames.add(calendar.displayName)
-		}
-	}
-
-	// Sort by the order in AREA_NAMES
-	return result.sort((a, b) => {
-		return AREA_NAMES.indexOf(a.name) - AREA_NAMES.indexOf(b.name)
+export function pickAreas(calendars, areaLists) {
+	return areaLists.flatMap((url) => {
+		const calendar = calendars.find((candidate) => candidate.url === url && !isExcluded(candidate))
+		return calendar ? [{ name: calendar.displayName, calendar }] : []
 	})
 }

@@ -11,7 +11,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const calendarUrl = '/remote.php/dav/calendars/owner/personal/'
+const calendarUrl = '/remote.php/dav/calendars/owner/list-a/'
 
 function ics(uid, lines = []) {
 	return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VTODO', `UID:${uid}`, `SUMMARY:${uid}`, 'STATUS:NEEDS-ACTION', ...lines, 'END:VTODO', 'END:VCALENDAR', ''].join('\r\n')
@@ -37,7 +37,7 @@ describe('effectiveSortOrder on tasks parsed from ICS', () => {
 
 describe('buildTree with ordered and unordered siblings from ICS', () => {
 	it('sorts a (order 10), c (created +100 s), b (created 2026-03-01), d (order 900000000)', () => {
-		const areas = deepFreeze([{ name: 'Personal', calendar: { url: calendarUrl } }])
+		const areas = deepFreeze([{ name: 'Home', calendar: { url: calendarUrl } }])
 		const tasks = Object.freeze([
 			task('d', ['RELATED-TO:p', 'X-APPLE-SORT-ORDER:900000000']),
 			task('b', ['RELATED-TO:p', 'CREATED:20260301T090100Z']),
