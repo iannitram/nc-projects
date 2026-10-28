@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { reactive, toRaw } from 'vue'
+import { computed, reactive, toRaw } from 'vue'
 import { Task } from '../../src/models/Task.js'
 
 const ICS = [
@@ -58,5 +58,62 @@ describe('Task through a reactive proxy', () => {
 		if (changed === 'SUMMARY') {
 			expect(lines(ics)).not.toContain('SUMMARY:Original title')
 		}
+	})
+})
+
+describe('Task computed dependencies', () => {
+	it.each([
+		['completed', true, (value) => value],
+		['summary', 'Renamed task', (value) => value],
+		['due', new Date('2031-04-05T06:07:08Z'), (value) => toRaw(value).toJSDate().toISOString()],
+		['priority', 1, (value) => value],
+	])('invalidates a computed reading %s after an in-place edit', (field, value, read) => {
+		const task = reactiveTask()
+		let runs = 0
+		const observed = computed(() => {
+			runs++
+			return read(task[field])
+		})
+		const before = observed.value
+		expect(runs).toBe(1)
+
+		task[field] = value
+
+		expect(observed.value).toEqual(value instanceof Date ? value.toISOString() : value)
+		expect(observed.value).not.toEqual(before)
+		expect(runs).toBe(2)
+	})
+})
+
+// These getters derive their values from fields changed by another setter.
+describe('Task derived computed dependencies', () => {
+	it.each([
+		['closed', (task) => { task.completed = true }, true],
+		['status', (task) => { task.completed = true }, 'COMPLETED'],
+		['isProject', (task) => { task.categories = ['project'] }, true],
+		['summary', (task) => { task.setValue('summary', 'Helper edit') }, 'Helper edit'],
+		['priority', (task) => { task.removeProperties('priority') }, null],
+	])('invalidates %s when its ICAL source changes', (field, edit, expected) => {
+		const task = reactiveTask()
+		const observed = computed(() => task[field])
+		const before = observed.value
+
+		edit(task)
+
+		expect(observed.value).toEqual(expected)
+		expect(observed.value).not.toEqual(before)
+	})
+
+	it('keeps revision outside the serialized ICAL data', () => {
+		const task = reactiveTask()
+		expect(task.revision).toBe(0)
+		expect(task.toIcs()).toBe(ICS)
+
+		task.touch()
+
+		expect(task.revision).toBeGreaterThan(0)
+		expect(task.toIcs().toUpperCase()).not.toContain('REVISION')
+		expect(count(task.toIcs(), 'DTSTAMP')).toBe(1)
+		expect(count(task.toIcs(), 'LAST-MODIFIED')).toBe(1)
 	})
 })
