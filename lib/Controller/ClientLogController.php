@@ -97,8 +97,9 @@ final class ClientLogController extends Controller {
 	 * fragments go, file names and paths become "<file>" (not for a user agent); at most 500 bytes.
 	 */
 	public static function sanitizeText(string $text, bool $keepPaths = false): string {
-		// Control characters (newlines included) become spaces first: one event is always one log line.
-		$text = preg_replace('/[\x00-\x1F\x7F]+/', ' ', mb_strcut($text, 0, self::MAX_INPUT, 'UTF-8')) ?? '';
+		// Control characters (newlines, C1 controls such as NEL, and the Unicode line and paragraph
+		// separators included) become spaces first: one event is always one log line.
+		$text = preg_replace('/(?:[\x00-\x1F\x7F]|\xC2[\x80-\x9F]|\xE2\x80[\xA8\xA9])+/', ' ', mb_strcut($text, 0, self::MAX_INPUT, 'UTF-8')) ?? '';
 		$text = preg_replace('/\'[^\']*\'|"[^"]*"|`[^`]*`/', '…', $text) ?? '';
 		$cut = strcspn($text, "'\"`");
 		if ($cut < strlen($text)) {
@@ -171,7 +172,7 @@ final class ClientLogController extends Controller {
 	private static function frameFile(string $url): string {
 		$path = str_replace('\\', '/', preg_split('/[?#]/', $url)[0] ?? '');
 		$leaf = basename($path);
-		return preg_match('/^cc_projects[\w.\-]*\.m?js$/', $leaf) === 1 ? $leaf : '<other>';
+		return preg_match('/^cc_projects[\w.\-]*\.m?js$/D', $leaf) === 1 ? $leaf : '<other>';
 	}
 
 	private static function field(mixed $value): string {

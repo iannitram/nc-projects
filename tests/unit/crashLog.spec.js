@@ -178,7 +178,7 @@ describe('privacy: no user content in any POST body', () => {
 
 	it('turns newlines and other control characters into spaces', () => {
 		// eslint-disable-next-line no-control-regex
-		expect(sanitizeText('boom\r\nFAKE entry\u0000\u001b[0m')).not.toMatch(/[\u0000-\u001F\u007F]/)
+		expect(sanitizeText('boom\r\nFAKE entry\u0000\u001b[0m\u0085x\u2028y\u2029z\u009b')).not.toMatch(/[\u0000-\u001F\u007F-\u009F\u2028\u2029]/)
 	})
 
 	it('replaces a full URL with a query, and drops its query and fragment', () => {
