@@ -350,7 +350,9 @@ function onDrop(evt) {
 	outline: 2px solid var(--color-primary-element);
 }
 
+/* Transforms do not apply to inline boxes, and the wrapper's `inline` makes it one. */
 .cc-task-tree__collapse-icon {
+	display: inline-flex;
 	transition: transform 0.15s;
 }
 

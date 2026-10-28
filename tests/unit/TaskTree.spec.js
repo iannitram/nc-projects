@@ -1,4 +1,6 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import TaskTree from '../../src/components/TaskTree.vue'
 
@@ -76,6 +78,7 @@ describe('TaskTree', () => {
 			expect(toggle.text()).not.toMatch(/[▶▼]/)
 			expect(toggle.find('svg').exists()).toBe(true)
 			expect(toggle.find('.cc-task-tree__collapse-icon').classes()).not.toContain('is-collapsed')
+			expect(readFileSync(resolve(process.cwd(), 'src/components/TaskTree.vue'), 'utf8')).toMatch(/\.cc-task-tree__collapse-icon \{\s*display: inline-flex;/)
 			expect(toggle.attributes('aria-label')).toBe('Collapse subtasks')
 
 			await toggle.trigger('click')
