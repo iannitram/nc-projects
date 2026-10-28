@@ -23,10 +23,11 @@ export function isTaskClosed(task) {
 </script>
 
 <script setup>
+import { showInfo } from '@nextcloud/dialogs'
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import TaskRow from './TaskRow.vue'
-import { DRAG_OPTIONS, onSiblingDrop } from '../composables/useDrag.js'
+import { DRAG_OPTIONS, fullIndexForDrop, onSiblingDrop } from '../composables/useDrag.js'
 import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -34,6 +35,8 @@ const props = defineProps({
 	nodes: { type: Array, required: true },
 	depth: { type: Number, default: 1 },
 	showDone: { type: Boolean, default: false },
+	areaName: { type: String, default: null },
+	projectUid: { type: String, default: null },
 })
 
 const collapsedKeys = ref(new Set())
@@ -113,12 +116,25 @@ const visibleNodes = computed(() => {
 
 /** The project or task whose children these are: every child carries it as its parent. */
 const parentUid = computed(() => props.nodes?.[0]?.task?.parentUid || null)
+const effectiveProjectUid = computed(() => props.projectUid || parentUid.value)
 
-/** Sortable options: Tasks' options, and a group unique to this parent so drops stay among its siblings. */
-const sortOptions = computed(() => ({
-	...DRAG_OPTIONS,
-	group: { name: `cc-tasks-${parentUid.value ?? 'none'}` },
-}))
+/** Sortable options: Tasks' options, and group configuration (shared across same-area projects for top-level tasks). */
+const sortOptions = computed(() => {
+	if (props.depth === 1 && props.areaName) {
+		return {
+			...DRAG_OPTIONS,
+			group: {
+				name: `cc-tasks-area-${props.areaName}`,
+				pull: true,
+				put: true,
+			},
+		}
+	}
+	return {
+		...DRAG_OPTIONS,
+		group: { name: `cc-tasks-${parentUid.value ?? 'none'}` },
+	}
+})
 
 /**
  * Row key for the sortable list (the same key the rows had before).
@@ -146,25 +162,80 @@ function restoreDomPosition(evt) {
 }
 
 /**
- * Turn a finished drag into a reorder of this list's parent (the store decides what to write).
+ * Read a comma-separated uid list off a list element's data attribute.
+ *
+ * @param {HTMLElement} element The list element
+ * @param {string} name The dataset key
+ * @return {string[]} The uids
+ */
+function uidsOf(element, name) {
+	return (element.dataset[name] || '').split(',').filter(Boolean)
+}
+
+/**
+ * Tell the user when a drag was released over a project on another list. Sortable's per-area
+ * group refuses that drop silently (no hover or move callback fires for it), so look under the
+ * pointer once, when the drag ends. Cross-list moves come later (#26).
+ *
+ * @param {{originalEvent?: object}} evt The sortable end event
+ */
+function warnIfDroppedOnOtherList(evt) {
+	if (props.depth !== 1 || !props.areaName) {
+		return
+	}
+	const point = evt.originalEvent?.changedTouches?.[0] ?? evt.originalEvent
+	if (typeof point?.clientX !== 'number' || typeof document.elementFromPoint !== 'function') {
+		return
+	}
+	const under = document.elementFromPoint(point.clientX, point.clientY)
+	const targetArea = under?.closest?.('[data-area-name]')?.dataset.areaName
+	if (targetArea && targetArea !== props.areaName) {
+		showInfo("Can't move a task to a project on another list yet")
+	}
+}
+
+/**
+ * Turn a finished drag into a reorder or a move to another project.
  *
  * @param {object} evt The sortable end event
- * @return {Promise<void> | undefined} The store's reorder, when the drop changed the order
+ * @return {Promise<void> | undefined} The store's reorder or moveToProject
  */
 function onDrop(evt) {
-	restoreDomPosition(evt)
-	if (!parentUid.value) {
+	if (!evt.to || evt.from === evt.to) {
+		restoreDomPosition(evt)
+		warnIfDroppedOnOtherList(evt)
+		const targetParent = parentUid.value || effectiveProjectUid.value
+		if (!targetParent) {
+			return undefined
+		}
+		return onSiblingDrop(
+			useProjectsStore(),
+			{
+				parentUid: targetParent,
+				allUids: (props.nodes || []).map((node) => node.task?.uid),
+				visibleUids: visibleNodes.value.map((node) => node.task?.uid),
+			},
+			evt,
+		)
+	}
+
+	// Cross-list: Sortable moved the row's element into the target list. Take it out again and
+	// let Vue render the moved task in the target from the store. (Putting it back in the source
+	// list does not work: Vue keeps each row between two anchor nodes, and an element re-inserted
+	// by index lands outside the anchors of its own row, so Vue never removes it and the row
+	// stays in the source list until a reload. Without the element in the source DOM, Vue's
+	// removal of the row is a no-op.)
+	evt.item.remove()
+
+	const movedUid = visibleNodes.value[evt.oldIndex]?.task?.uid
+	const targetProjectUid = evt.to.dataset.projectUid
+	if (!movedUid || !targetProjectUid) {
 		return undefined
 	}
-	return onSiblingDrop(
-		useProjectsStore(),
-		{
-			parentUid: parentUid.value,
-			allUids: (props.nodes || []).map((node) => node.task?.uid),
-			visibleUids: visibleNodes.value.map((node) => node.task?.uid),
-		},
-		evt,
-	)
+	const allUids = uidsOf(evt.to, 'allUids')
+	const visibleUids = uidsOf(evt.to, 'visibleUids')
+	const fullIndex = fullIndexForDrop(allUids, visibleUids, movedUid, evt.newIndex)
+	return useProjectsStore().moveToProject(movedUid, targetProjectUid, fullIndex)
 }
 </script>
 
@@ -176,6 +247,10 @@ function onDrop(evt) {
 		:list="visibleNodes"
 		:itemKey="rowKey"
 		:options="sortOptions"
+		:data-project-uid="effectiveProjectUid"
+		:data-area-name="depth === 1 ? areaName : null"
+		:data-all-uids="(nodes || []).map((node) => node.task?.uid).filter(Boolean).join(',')"
+		:data-visible-uids="visibleNodes.map((node) => node.task?.uid).filter(Boolean).join(',')"
 		@end="onDrop">
 		<template #item="{ element: node }">
 			<li
@@ -204,7 +279,9 @@ function onDrop(evt) {
 					<TaskTree
 						:nodes="node.children"
 						:depth="depth + 1"
-						:showDone="showDone" />
+						:showDone="showDone"
+						:areaName="areaName"
+						:projectUid="effectiveProjectUid" />
 				</div>
 			</li>
 		</template>
