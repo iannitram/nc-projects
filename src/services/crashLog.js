@@ -50,7 +50,9 @@ let state = null
  * @return {string} the sanitized text
  */
 export function sanitizeText(text, keepPaths = false) {
-	let out = String(text).slice(0, MAX_INPUT).replace(QUOTED, '…')
+	// Control characters (newlines included) become spaces first: one event is always one log line.
+	// eslint-disable-next-line no-control-regex
+	let out = String(text).slice(0, MAX_INPUT).replace(/[\u0000-\u001F\u007F]+/g, ' ').replace(QUOTED, '…')
 	const quote = out.search(UNPAIRED_QUOTE)
 	if (quote !== -1) {
 		out = `${out.slice(0, quote)}…`
