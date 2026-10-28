@@ -34,6 +34,25 @@ describe('project band', () => {
 		vi.restoreAllMocks()
 	})
 
+	it.each([
+		['blocked', 'Mark blocked', 'Unmark blocked'],
+		['someday', 'Move to Someday', 'Move out of Someday'],
+	])('toggles %s from the menu and flips its label', async (category, add, remove) => {
+		const value = project()
+		value.task.categories = ['project', 'custom']
+		const wrapper = render(value)
+		const toggle = vi.spyOn(useProjectsStore(), 'toggleCategory').mockImplementation(async () => {
+			await wrapper.setProps({ project: { ...value, task: { ...value.task, categories: [...value.task.categories, category] } } })
+		})
+		await wrapper.findComponent(NcActions).find('button').trigger('click')
+		await vi.waitFor(() => expect(wrapper.findAllComponents(NcActionButton).some((button) => button.text() === add)).toBe(true))
+		await wrapper.findAllComponents(NcActionButton).find((button) => button.text() === add).find('button').trigger('click')
+		expect(toggle).toHaveBeenCalledExactlyOnceWith('p-band', category)
+		await wrapper.findComponent(NcActions).find('button').trigger('click')
+		await vi.waitFor(() => expect(wrapper.findAllComponents(NcActionButton).some((button) => button.text() === remove)).toBe(true))
+		expect(wrapper.get(`.cc-project-card__badge--${category}`).text()).toBe(category)
+	})
+
 	it('collapses from the named button and restores after a new store and mount', async () => {
 		const wrapper = render(project())
 		const button = wrapper.get('button[aria-label="Collapse Garden shed"]')

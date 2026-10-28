@@ -204,6 +204,25 @@ const isSomeday = computed(() => {
 	return categories.value.some((cat) => typeof cat === 'string' && cat.toLowerCase() === 'someday')
 })
 
+const updatingCategory = ref(false)
+
+/**
+ * Serialize menu edits while a category write is pending.
+ *
+ * @param {string} category the status category
+ */
+async function toggleCategory(category) {
+	if (updatingCategory.value) {
+		return
+	}
+	updatingCategory.value = true
+	try {
+		await store?.toggleCategory(props.project.task.uid, category)
+	} finally {
+		updatingCategory.value = false
+	}
+}
+
 watch(() => props.project.task.uid, (uid) => {
 	if (store && readProjectCollapsed(uid)) {
 		store.collapsedProjects.add(uid)
@@ -284,6 +303,12 @@ function toggleCollapsed() {
 				</NcActionCheckbox>
 				<NcActionButton class="cc-project-card__check-off" @click="checkOffProject">
 					Check off project…
+				</NcActionButton>
+				<NcActionButton :disabled="updatingCategory" @click="toggleCategory('blocked')">
+					{{ isBlocked ? 'Unmark blocked' : 'Mark blocked' }}
+				</NcActionButton>
+				<NcActionButton :disabled="updatingCategory" @click="toggleCategory('someday')">
+					{{ isSomeday ? 'Move out of Someday' : 'Move to Someday' }}
 				</NcActionButton>
 				<NcActionLink :href="getTasksDeepLink(project.task)">
 					Open in Tasks
