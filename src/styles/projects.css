@@ -135,9 +135,7 @@
 	.cc-task-row__date,
 	.cc-task-row__date input,
 	.cc-task-row__date .input-field__input,
-	.cc-task-row__date input.input-field__input,
-	input.input-field__input,
-	.input-field__input {
+	.cc-task-row__date input.input-field__input {
 		min-height: 44px;
 		display: inline-flex;
 		align-items: center;

@@ -305,8 +305,6 @@ function setPriority(value) {
 	flex: 1;
 	font-size: 0.95rem;
 	cursor: text;
-	word-break: break-word;
-	overflow-wrap: anywhere;
 }
 
 .cc-task-row__title-input {
