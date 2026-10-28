@@ -9,7 +9,7 @@ import { markRaw, toRaw } from 'vue'
 import { planCompletion } from '../models/completion.js'
 import { placeMoved } from '../models/sortOrder.js'
 import { Task } from '../models/Task.js'
-import { buildTree } from '../models/tree.js'
+import { buildTree, isSomeday } from '../models/tree.js'
 import { notImplemented } from '../notImplemented.js'
 import { pickAreas } from '../services/areas.js'
 import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
@@ -354,32 +354,36 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {number} newIndex its index after the drop
 		 */
 		async reorder(parentUid, areaName, movedUid, newIndex) {
-			// The projects-in-an-area case (parentUid null) is another issue
+			let siblings
 			if (parentUid === null) {
-				return notImplemented('reorder', parentUid, areaName, movedUid, newIndex)
-			}
-
-			// Find the parent node at any depth of the tree
-			let parentNode = null
-			for (const area of this.areas) {
-				for (const project of area.projects) {
-					parentNode = project.task.uid === parentUid ? project : findNode(project.children, parentUid)
+				const area = this.areas.find((a) => a.name === areaName)
+				if (!area) {
+					return
+				}
+				siblings = (area.projects || []).filter((project) => !isSomeday(project.task)).map((project) => project.task)
+			} else {
+				// Find the parent node at any depth of the tree
+				let parentNode = null
+				for (const area of this.areas) {
+					for (const project of area.projects) {
+						parentNode = project.task.uid === parentUid ? project : findNode(project.children, parentUid)
+						if (parentNode) {
+							break
+						}
+					}
 					if (parentNode) {
 						break
 					}
 				}
-				if (parentNode) {
-					break
+
+				// If parent not found, return without doing anything
+				if (!parentNode) {
+					return
 				}
-			}
 
-			// If parent not found, return without doing anything
-			if (!parentNode) {
-				return
+				// Get the children of the parent in display order
+				siblings = parentNode.children?.map((child) => child.task) || []
 			}
-
-			// Get the children of the parent in display order
-			const siblings = parentNode.children?.map((child) => child.task) || []
 
 			// If the moved task is not among the children, return without doing anything
 			if (!siblings.some((task) => task.uid === movedUid)) {
