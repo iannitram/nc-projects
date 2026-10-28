@@ -158,6 +158,7 @@ export class ConflictError extends Error {
  * @property {boolean} ownedByMe false for lists shared with the user by someone else
  * @property {boolean} writable false for read-only lists
  * @property {string} ctag collection tag, for cheap refresh
+ * @property {string} [color] collection colour
  */
 
 /**
@@ -179,13 +180,17 @@ export async function listTaskCalendars(session = getDavSession()) {
 		const client = await session.client()
 		return (await session.calendars(true))
 			.filter((calendar) => calendar.components.includes('VTODO'))
-			.map((calendar) => ({
-				url: calendar.url,
-				displayName: calendar.displayname,
-				ownedByMe: calendar.owner === client.currentUserPrincipal.url,
-				writable: calendar.isWriteable(),
-				ctag: calendar.ctag ?? calendar._props[`{${CALENDAR_SERVER_NAMESPACE}}getctag`],
-			}))
+			.map((calendar) => {
+				const color = calendar.color ?? calendar._props?.['{http://apple.com/ns/ical/}calendar-color']
+				return {
+					url: calendar.url,
+					displayName: calendar.displayname,
+					ownedByMe: calendar.owner === client.currentUserPrincipal.url,
+					writable: calendar.isWriteable(),
+					ctag: calendar.ctag ?? calendar._props[`{${CALENDAR_SERVER_NAMESPACE}}getctag`],
+					...(color !== undefined ? { color } : {}),
+				}
+			})
 	})
 }
 

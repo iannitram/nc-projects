@@ -231,6 +231,39 @@ describe('App', () => {
 		wrapper.unmount()
 	})
 
+	it('switches between area sections and Needs filing tray', async () => {
+		const pinia = createPinia()
+		setActivePinia(pinia)
+		const store = useProjectsStore()
+		vi.spyOn(store, 'load').mockResolvedValue()
+
+		store.areas = [
+			{ name: 'Home', calendarUrl: '/home/', projects: [], done: [] },
+		]
+		store.orphans = [{ uid: 'o1', summary: 'Orphan task', parentUid: 'p-none' }]
+		store.untaggedParents = [{ uid: 'u1', summary: 'Untagged task' }]
+
+		const wrapper = mount(App, {
+			global: { plugins: [pinia] },
+		})
+
+		expect(wrapper.find('.cc-projects__areas').exists()).toBe(true)
+		expect(wrapper.find('.cc-needs-filing-tray').exists()).toBe(false)
+
+		store.view = 'needs-filing'
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.find('.cc-projects__areas').exists()).toBe(false)
+		expect(wrapper.find('.cc-needs-filing-tray').exists()).toBe(true)
+		expect(wrapper.text()).toContain('Orphan tasks')
+
+		store.view = 'areas'
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.find('.cc-projects__areas').exists()).toBe(true)
+		expect(wrapper.find('.cc-needs-filing-tray').exists()).toBe(false)
+	})
+
 	it('does not register an unhandledrejection listener on window', () => {
 		const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
 		const pinia = createPinia()

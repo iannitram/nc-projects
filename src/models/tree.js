@@ -53,6 +53,20 @@ export function isSomeday(task) {
 }
 
 /**
+ * Convert an area name into a DOM-safe slug for section IDs and navigation anchors.
+ *
+ * @param {string} name area name
+ * @return {string} slug
+ */
+export function areaSlug(name) {
+	return String(name || '')
+		.toLowerCase()
+		.trim()
+		.replace(/[\s\W-]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+}
+
+/**
  *
  * @param task
  */
