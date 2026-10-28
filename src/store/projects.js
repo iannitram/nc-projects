@@ -288,7 +288,126 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {number} newIndex where it lands among the project's tasks
 		 */
 		async moveToProject(taskUid, projectUid, newIndex) {
-			return notImplemented('moveToProject', taskUid, projectUid, newIndex)
+			this.davSession ??= markRaw(getDavSession())
+			const moved = this.tasksByUid[taskUid]
+			if (!moved) {
+				showError('Could not move the task: task not found')
+				return
+			}
+
+			// Find the target project in the tree
+			let targetProject = null
+			for (const area of this.areas) {
+				for (const project of area.projects) {
+					if (project.task.uid === projectUid) {
+						targetProject = project
+						break
+					}
+				}
+				if (targetProject) {
+					break
+				}
+			}
+
+			if (!targetProject) {
+				showError('Could not move the task: target project not found')
+				return
+			}
+
+			// Get all siblings in the destination project, including the moved task for calculation purposes
+			const siblings = (targetProject.children?.map((child) => child.task) || []).map((task) => ({
+				uid: task.uid,
+				sortOrder: task.sortOrder,
+				created: task.created,
+			}))
+
+			// Add the moved task to siblings list for placement calculation
+			const movedTaskInSiblings = {
+				uid: moved.uid,
+				sortOrder: moved.sortOrder,
+				created: moved.created,
+			}
+
+			// Include the moved task in the siblings list so placeMoved can calculate its new position correctly
+			siblings.push(movedTaskInSiblings)
+
+			// Calculate where the moved task should be placed using placeMoved function
+			const toUpdate = placeMoved(siblings, taskUid, newIndex)
+
+			if (toUpdate.length === 0) {
+				return
+			}
+
+			const rebuild = () => {
+				const tree = buildTree(this.areas.map((area) => ({
+					name: area.name,
+					calendar: { url: area.calendarUrl },
+				})), Object.values(this.tasksByUid))
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
+			}
+
+			// Optimistic: keep each task's original resource, then apply the new sort orders and rebuild before the first write is awaited
+			const before = new Map()
+			for (const { uid, sortOrder } of toUpdate) {
+				const task = this.tasksByUid[uid]
+				if (task) {
+					before.set(uid, { ics: toRaw(task).toIcs(), where: toRaw(task).where })
+					toRaw(task).sortOrder = sortOrder
+					// For the moved task, also update its parentUid to point to new project
+					if (uid === taskUid) {
+						toRaw(task).parentUid = projectUid
+					}
+				}
+			}
+			rebuild()
+
+			// A landed write keeps its new sort order and new etag; only the failed write and the ones not yet sent are rolled back
+			const landed = new Set()
+			try {
+				for (const { uid } of toUpdate) {
+					const task = this.tasksByUid[uid]
+					if (task) {
+						const stored = await putTodo(task.url, task.toIcs(), task.etag)
+						toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
+						landed.add(uid)
+					}
+				}
+			} catch (error) {
+				// Handle ConflictError differently: reload every task of the change
+				if (error instanceof ConflictError) {
+					try {
+						for (const { uid } of toUpdate) {
+							const task = this.tasksByUid[uid]
+							if (task) {
+								const stored = await fetchTodo(task.url)
+								const updatedTask = Task.fromIcs(stored.ics, {
+									url: stored.url,
+									etag: stored.etag,
+									calendarUrl: stored.calendarUrl,
+								})
+								this.tasksByUid[uid] = updatedTask
+							}
+						}
+
+						rebuild()
+						showInfo('Someone else changed this; reloaded')
+					} catch {
+						// If reload fails, show error
+						showError('Could not save the move')
+					}
+					return
+				}
+
+				for (const [uid, original] of before) {
+					if (!landed.has(uid)) {
+						this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
+					}
+				}
+				rebuild()
+				showError('Could not save the move')
+			}
 		},
 		/**
 		 * @param {string} uid the task
