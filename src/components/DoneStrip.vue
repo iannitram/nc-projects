@@ -1,5 +1,7 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { mdiCheckboxMarkedOutline, mdiChevronDown, mdiChevronRight, mdiOpenInNew } from '@mdi/js'
+import { NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
+import { computed, ref, toRaw } from 'vue'
 import { getTasksDeepLink } from './TaskRow.vue'
 
 const props = defineProps({
@@ -56,6 +58,18 @@ function getProjectLink(project) {
 }
 
 /**
+ * Read the COMPLETED timestamp, rather than the model's boolean completed flag.
+ *
+ * @param {object} project the project node
+ * @return {Date|null} Localizable completion date, if present
+ */
+function completionDate(project) {
+	const value = toRaw(getProjectTask(project).propertyValue?.('completed'))
+	const date = value?.toJSDate?.()
+	return date && !Number.isNaN(date.getTime()) ? date : null
+}
+
+/**
  * Get unique key for a project.
  *
  * @param {import('../models/tree.js').ProjectNode | object} project project node
@@ -72,15 +86,17 @@ function getProjectKey(project) {
 		v-if="count > 0"
 		class="cc-done-strip">
 		<div class="cc-done-strip__header">
-			<button
-				type="button"
+			<NcButton
+				variant="tertiary"
 				class="cc-done-strip__toggle cc-done-strip__disclosure"
 				:aria-expanded="expanded"
 				:aria-label="expanded ? 'Collapse done projects' : 'Expand done projects'"
 				@click="toggle">
-				<span class="cc-done-strip__icon">{{ expanded ? '▼' : '▶' }}</span>
-				<span class="cc-done-strip__title">Done ({{ count }})</span>
-			</button>
+				<template #icon>
+					<NcIconSvgWrapper :path="expanded ? mdiChevronDown : mdiChevronRight" :size="20" />
+				</template>
+				<span class="cc-done-strip__title">{{ count }} done projects</span>
+			</NcButton>
 		</div>
 		<ul
 			v-if="expanded"
@@ -89,11 +105,29 @@ function getProjectKey(project) {
 				v-for="project in completedProjects"
 				:key="getProjectKey(project)"
 				class="cc-done-strip__item">
-				<a
+				<span
+					role="checkbox"
+					aria-checked="true"
+					aria-readonly="true"
+					:aria-label="`Completed: ${getProjectTitle(project)}`">
+					<NcIconSvgWrapper :path="mdiCheckboxMarkedOutline" :size="20" />
+				</span>
+				<span class="cc-done-strip__project-title">{{ getProjectTitle(project) }}</span>
+				<time
+					v-if="completionDate(project)"
+					:datetime="completionDate(project).toISOString()">
+					{{ completionDate(project).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) }}
+				</time>
+				<NcButton
 					:href="getProjectLink(project)"
+					variant="tertiary"
+					:aria-label="`Open in Tasks: ${getProjectTitle(project)}`"
+					title="Open in Tasks"
 					class="cc-done-strip__link">
-					{{ getProjectTitle(project) }}
-				</a>
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiOpenInNew" :size="20" />
+					</template>
+				</NcButton>
 			</li>
 		</ul>
 	</div>
@@ -104,44 +138,48 @@ function getProjectKey(project) {
 	margin: calc(var(--default-grid-baseline, 4px) * 2) 0;
 }
 
-.cc-done-strip__toggle {
-	background: transparent;
-	border: none;
-	cursor: pointer;
-	padding: calc(var(--default-grid-baseline, 4px) * 1) 0;
-	display: inline-flex;
-	align-items: center;
-	gap: calc(var(--default-grid-baseline, 4px) * 1);
-	color: var(--color-text-maxcontrast, #777);
-	font-size: 0.9rem;
-	font-weight: 500;
-}
-
-.cc-done-strip__toggle:hover {
-	color: var(--color-main-text, #222);
-}
-
-.cc-done-strip__icon {
-	font-size: 0.75rem;
+.cc-done-strip__title,
+.cc-done-strip__item {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
 }
 
 .cc-done-strip__list {
 	list-style: none;
-	margin: calc(var(--default-grid-baseline, 4px) * 1) 0 0 0;
-	padding: 0 0 0 calc(var(--default-grid-baseline, 4px) * 4);
+	margin: 4px 0 0;
+	padding-inline-start: 44px;
 }
 
 .cc-done-strip__item {
-	margin: calc(var(--default-grid-baseline, 4px) * 1) 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
 }
 
-.cc-done-strip__link {
-	color: var(--color-text-maxcontrast, #777);
-	text-decoration: none;
+.cc-done-strip__project-title {
+	flex: 1;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
-.cc-done-strip__link:hover {
-	color: var(--color-primary, #0082c9);
-	text-decoration: underline;
+.cc-done-strip__item time {
+	white-space: nowrap;
+}
+
+/* Keep the link reachable so keyboard focus reveals its icon. */
+.cc-done-strip__link :deep(svg) {
+	visibility: hidden;
+}
+
+.cc-done-strip__item:hover .cc-done-strip__link :deep(svg),
+.cc-done-strip__item:focus-within .cc-done-strip__link :deep(svg) {
+	visibility: visible;
+}
+
+@media (hover: none), (pointer: coarse) {
+	.cc-done-strip__link :deep(svg) {
+		visibility: visible;
+	}
 }
 </style>

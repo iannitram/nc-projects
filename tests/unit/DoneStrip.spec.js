@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import DoneStrip from '../../src/components/DoneStrip.vue'
+import { Task } from '../../src/models/Task.js'
 
 vi.mock('@nextcloud/router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -17,7 +18,7 @@ describe('DoneStrip', () => {
 		expect(wrapper.text()).toBe('')
 	})
 
-	it('is collapsed by default, displaying "Done (N)" with a disclosure button', () => {
+	it('is collapsed by default, displaying "N done projects" with a disclosure button', () => {
 		const projects = [
 			{
 				task: {
@@ -46,9 +47,10 @@ describe('DoneStrip', () => {
 		})
 
 		expect(wrapper.find('.cc-done-strip').exists()).toBe(true)
-		expect(wrapper.text()).toContain('Done (2)')
+		expect(wrapper.text()).toContain('2 done projects')
 		const toggle = wrapper.find('button.cc-done-strip__toggle')
 		expect(toggle.exists()).toBe(true)
+		expect(toggle.find('svg').exists()).toBe(true)
 		expect(toggle.attributes('aria-expanded')).toBe('false')
 		expect(wrapper.find('.cc-done-strip__list').exists()).toBe(false)
 	})
@@ -91,15 +93,47 @@ describe('DoneStrip', () => {
 		expect(items).toHaveLength(2)
 
 		const links = wrapper.findAll('.cc-done-strip__link')
-		expect(links[0].text()).toBe('Done Project 1')
+		expect(items[0].text()).toContain('Done Project 1')
+		expect(links[0].attributes('aria-label')).toBe('Open in Tasks: Done Project 1')
 		expect(links[0].attributes('href')).toBe('/apps/tasks/calendars/list-a/tasks/p1.ics')
 
-		expect(links[1].text()).toBe('Done Project 2')
+		expect(items[1].text()).toContain('Done Project 2')
+		expect(links[1].attributes('aria-label')).toBe('Open in Tasks: Done Project 2')
 		expect(links[1].attributes('href')).toBe('/apps/tasks/calendars/list-a/tasks/p2.ics')
 
 		await toggle.trigger('click')
 		expect(toggle.attributes('aria-expanded')).toBe('false')
 		expect(wrapper.find('.cc-done-strip__list').exists()).toBe(false)
+	})
+
+	it('shows a read-only checked indicator and the actual COMPLETED date only when present', async () => {
+		const task = (uid, completed) => Task.fromIcs([
+			'BEGIN:VCALENDAR',
+			'VERSION:2.0',
+			'BEGIN:VTODO',
+			`UID:${uid}`,
+			`SUMMARY:${uid}`,
+			'STATUS:COMPLETED',
+			...(completed ? [`COMPLETED:${completed}`] : []),
+			'END:VTODO',
+			'END:VCALENDAR',
+			'',
+		].join('\r\n'), { url: `/${uid}.ics`, calendarUrl: '/home/' })
+		const wrapper = mount(DoneStrip, { props: { projects: [
+			{ task: task('dated', '20261022T120000Z') },
+			{ task: task('undated') },
+		] } })
+		expect(wrapper.find('time').exists()).toBe(false)
+		await wrapper.get('.cc-done-strip__toggle').trigger('click')
+		const rows = wrapper.findAll('.cc-done-strip__item')
+		for (const row of rows) {
+			expect(row.get('[role="checkbox"]').attributes('aria-checked')).toBe('true')
+			expect(row.get('[role="checkbox"]').attributes('aria-readonly')).toBe('true')
+			expect(row.get('a').get('svg').exists()).toBe(true)
+		}
+		expect(rows[0].get('time').attributes('datetime')).toBe('2026-10-22T12:00:00.000Z')
+		expect(rows[0].get('time').text()).toBe(new Date('2026-10-22T12:00:00Z').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }))
+		expect(rows[1].find('time').exists()).toBe(false)
 	})
 
 	it('accepts completed projects via the done prop', () => {
@@ -121,6 +155,6 @@ describe('DoneStrip', () => {
 		})
 
 		expect(wrapper.find('.cc-done-strip').exists()).toBe(true)
-		expect(wrapper.text()).toContain('Done (1)')
+		expect(wrapper.text()).toContain('1 done projects')
 	})
 })
