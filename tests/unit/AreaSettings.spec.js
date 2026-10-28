@@ -10,6 +10,18 @@ vi.mock('../../src/services/dav.js', () => ({
 
 import { listTaskCalendars } from '../../src/services/dav.js'
 
+/**
+ * Text of the element that names an input through aria-labelledby.
+ *
+ * @param {import('@vue/test-utils').VueWrapper} wrapper The mounted wrapper
+ * @param {import('@vue/test-utils').DOMWrapper} input The checkbox input
+ * @return {string} The label text
+ */
+function accessibleName(wrapper, input) {
+	const id = input.element.getAttribute('aria-labelledby')
+	return wrapper.find(`[id="${id}"]`).text()
+}
+
 describe('AreaSettings', () => {
 	let pinia
 	let store
@@ -194,10 +206,9 @@ describe('AreaSettings', () => {
 
 		const inputs = wrapper.findAll('input[type="checkbox"]')
 		expect(inputs).toHaveLength(2)
-		// The accessible name comes from a label that contains the area name
-		expect(inputs[0].element.labels).toHaveLength(1)
-		expect(inputs[0].element.labels[0].textContent).toContain('Home')
-		expect(inputs[1].element.labels[0].textContent).toContain('Work')
+		// The accessible name comes from the component's label (aria-labelledby) that contains the area name
+		expect(accessibleName(wrapper, inputs[0])).toContain('Home')
+		expect(accessibleName(wrapper, inputs[1])).toContain('Work')
 		expect(inputs[1].element.checked).toBe(false)
 
 		// Clicking the name (not the input) toggles the checkbox
@@ -208,5 +219,61 @@ describe('AreaSettings', () => {
 		await wrapper.findAll('.cc-area-settings__lbl')[0].trigger('click')
 		await wrapper.vm.$nextTick()
 		expect(inputs[0].element.checked).toBe(false)
+	})
+
+	it('toggles exactly once per real mouse click on the name, swatch or box', async () => {
+		store.settingsOpen = true
+		store.availableLists = [
+			{ url: '/home/', displayName: 'Home', color: '#3d8c40' },
+			{ url: '/work/', displayName: 'Work', color: '#2f6fb5' },
+		]
+		store.areaLists = []
+		listTaskCalendars.mockResolvedValue([])
+
+		const wrapper = mount(AreaSettings, {
+			props: { container: null },
+			global: { plugins: [pinia] },
+		})
+		await wrapper.vm.$nextTick()
+
+		const rows = wrapper.findAllComponents({ name: 'NcCheckboxRadioSwitch' })
+		const inputs = wrapper.findAll('input[type="checkbox"]')
+		const fullClick = (element) => {
+			// A real click is mousedown, mouseup, then click; only the click should toggle.
+			for (const type of ['mousedown', 'mouseup', 'click']) {
+				element.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }))
+			}
+		}
+		const targets = [
+			wrapper.findAll('.cc-area-settings__lbl')[1].element, // name
+			wrapper.findAll('.cc-area-settings__swatch')[1].element, // swatch
+			wrapper.findAll('.checkbox-radio-switch__icon')[1].element, // box
+		]
+
+		// Nothing wraps the row in a <label>: a label would forward the click to the input and toggle twice
+		for (const target of targets) {
+			expect(target.closest('label')).toBeNull()
+		}
+		const inputClicks = vi.fn()
+		const inputChanges = vi.fn()
+		inputs[1].element.addEventListener('click', inputClicks)
+		inputs[1].element.addEventListener('change', inputChanges)
+
+		for (const [index, target] of targets.entries()) {
+			const before = inputs[1].element.checked
+			const emittedBefore = rows[1].emitted('update:modelValue')?.length ?? 0
+			fullClick(target)
+			await wrapper.vm.$nextTick()
+			expect(rows[1].emitted('update:modelValue')?.length ?? 0, `click ${index}`).toBe(emittedBefore + 1)
+			expect(inputs[1].element.checked, `click ${index}`).toBe(!before)
+		}
+		expect(rows[1].emitted('update:modelValue').at(-1)[0]).toEqual(['/work/'])
+		expect(inputs[1].element.checked).toBe(true)
+		expect(inputs[0].element.checked).toBe(false)
+		expect(inputClicks).not.toHaveBeenCalled()
+		expect(inputChanges).not.toHaveBeenCalled()
+
+		// The accessible name still carries the area name
+		expect(accessibleName(wrapper, inputs[1])).toContain('Work')
 	})
 })

@@ -161,9 +161,8 @@ const excludedNote = computed(() => {
 				class="cc-area-settings__checkbox-row">
 				<NcCheckboxRadioSwitch
 					v-model="selected"
-					wrapperElement="label"
 					:value="calendar.url">
-					<div class="cc-area-settings__item">
+					<span class="cc-area-settings__item">
 						<span
 							class="cc-area-settings__swatch"
 							:style="{ backgroundColor: getCalendarColor(calendar) }"
@@ -172,7 +171,7 @@ const excludedNote = computed(() => {
 						<span v-if="getTaskCount(calendar)" class="cc-area-settings__meta">
 							{{ getTaskCount(calendar) }}
 						</span>
-					</div>
+					</span>
 				</NcCheckboxRadioSwitch>
 			</div>
 		</div>
@@ -215,10 +214,16 @@ const excludedNote = computed(() => {
 	background: var(--color-background-hover);
 }
 
-/* The wrapper is the <label> itself, so the padding lives inside it:
- * clicks anywhere on the row then reach the label and toggle the input. */
+/* NcCheckboxRadioSwitch's own content area is the click target (one toggle per click),
+ * so it fills the row; the default slot holds the visible name, swatch and count. */
 .cc-area-settings__checkbox-row :deep(.checkbox-radio-switch) {
+	display: flex;
 	width: 100%;
+}
+
+.cc-area-settings__checkbox-row :deep(.checkbox-radio-switch__content) {
+	flex: 1;
+	min-width: 0;
 	min-height: 40px;
 	box-sizing: border-box;
 	padding: 0 calc(var(--default-grid-baseline, 4px) * 2);
