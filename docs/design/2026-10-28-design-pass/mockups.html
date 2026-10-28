@@ -1,0 +1,1463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NC Projects Mockups</title>
+<style>
+/* ------------------------------------------------------------------
+   Review page (not part of the app)
+------------------------------------------------------------------ */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+	margin: 0;
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Ubuntu, "Helvetica Neue", "Noto Sans", sans-serif;
+	background: #eceae6;
+	color: #1d1d1b;
+	line-height: 1.5;
+}
+.page { max-width: 1360px; margin: 0 auto; padding: 32px 16px 96px; }
+.page > header { max-width: 780px; margin-bottom: 40px; }
+.page h1 { font-size: 28px; line-height: 1.2; margin: 0 0 12px; font-weight: 650; letter-spacing: -0.01em; }
+.page .lede { font-size: 16px; color: #45443f; margin: 0 0 16px; text-wrap: pretty; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0; padding: 0; list-style: none; }
+.toc a { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; background: #fff; color: #1d1d1b; text-decoration: none; font-size: 14px; border: 1px solid #d9d6cf; }
+.toc a:hover { border-color: #8a877e; }
+.review-section { margin: 56px 0 0; scroll-margin-top: 16px; }
+.review-section > h2 { font-size: 20px; margin: 0 0 4px; font-weight: 650; }
+.review-section > .sub { margin: 0 0 20px; color: #55534c; max-width: 820px; text-wrap: pretty; }
+.frame-label { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 24px 0 8px; font-size: 14px; color: #55534c; }
+.frame-label b { color: #1d1d1b; font-weight: 650; font-size: 15px; }
+.tag { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: #dedad2; color: #3b3a35; }
+.tag.now { background: #f3d9d4; color: #6e1d10; }
+.tag.new { background: #d6e8d8; color: #1c4b25; }
+.notes { margin: 12px 0 0; padding: 0 0 0 20px; color: #3b3a35; font-size: 14px; max-width: 900px; }
+.notes li { margin: 4px 0; text-wrap: pretty; }
+.notes .n { font-weight: 700; }
+.row-frames { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.row-frames > div { min-width: 0; }
+.row-frames > div:has(.fixed-w) { flex: 0 1 414px; }
+
+/* Scaled stage: a fixed-size frame shrunk to fit narrow review windows. */
+.stage { position: relative; width: 100%; overflow: hidden; }
+.stage > .stage-inner { transform-origin: 0 0; position: absolute; top: 0; left: 0; }
+.stage.fixed-w { display: inline-block; }
+
+/* Global theme switch for the review */
+.theme-switch { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: flex; gap: 4px; padding: 4px; background: #fff; border: 1px solid #d9d6cf; border-radius: 999px; box-shadow: 0 2px 12px rgba(0,0,0,.12); }
+.theme-switch button { border: 0; background: transparent; font: inherit; font-size: 13px; min-height: 32px; padding: 0 12px; border-radius: 999px; cursor: pointer; color: #3b3a35; }
+.theme-switch button[aria-pressed="true"] { background: #1d1d1b; color: #fff; }
+
+/* ------------------------------------------------------------------
+   Nextcloud 33 tokens (approximations of the default theme)
+------------------------------------------------------------------ */
+.nc {
+	--color-background-plain: #00679e;
+	--color-main-background: #ffffff;
+	--color-main-background-blur: rgba(255, 255, 255, .86);
+	--color-main-text: #222222;
+	--color-text-maxcontrast: #6b6b6b;
+	--color-background-hover: #f2f2f2;
+	--color-background-dark: #ededed;
+	--color-band: #f5f6f7;
+	--color-border: #ededed;
+	--color-border-dark: #dbdbdb;
+	--color-border-maxcontrast: #7d7d7d;
+	--color-primary-element: #00679e;
+	--color-primary-element-text: #ffffff;
+	--color-primary-element-light: #e5eff5;
+	--color-primary-element-light-text: #00293f;
+	--color-primary-text: #00679e;
+	--color-error: #db0606;
+	--color-error-text: #c20505;
+	--color-warning: #a37200;
+	--color-warning-light: #fdf5e1;
+	--color-info: #0071ad;
+	--color-success: #2d7b41;
+	--prio-high: #db0606;
+	--prio-medium: #c28b00;
+	--prio-low: #0071ad;
+	--color-box-shadow: rgba(0, 0, 0, .18);
+	--color-backdrop: rgba(0, 0, 0, .45);
+	--border-radius-element: 8px;
+	--border-radius-container: 12px;
+	--border-radius-pill: 999px;
+	--default-clickable-area: 34px;
+	--default-grid-baseline: 4px;
+	font-size: 15px;
+	line-height: 1.5;
+	color: var(--color-main-text);
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Ubuntu, "Helvetica Neue", "Noto Sans", sans-serif;
+}
+.nc[data-theme="dark"] {
+	--color-background-plain: #0a3248;
+	--color-main-background: #171717;
+	--color-main-background-blur: rgba(23, 23, 23, .86);
+	--color-main-text: #ebebeb;
+	--color-text-maxcontrast: #a3a3a3;
+	--color-background-hover: #262626;
+	--color-background-dark: #2c2c2c;
+	--color-band: #202020;
+	--color-border: #2b2b2b;
+	--color-border-dark: #444444;
+	--color-border-maxcontrast: #8f8f8f;
+	--color-primary-element: #3d9fd6;
+	--color-primary-element-text: #04121a;
+	--color-primary-element-light: #12303f;
+	--color-primary-element-light-text: #cfe6f3;
+	--color-primary-text: #6dbbe6;
+	--color-error: #e25555;
+	--color-error-text: #ff7a7a;
+	--color-warning: #d9a521;
+	--color-warning-light: #3a2f12;
+	--prio-high: #ff6b6b;
+	--prio-medium: #e0b032;
+	--prio-low: #4aa6e0;
+	--color-box-shadow: rgba(0, 0, 0, .6);
+	--color-backdrop: rgba(0, 0, 0, .6);
+}
+.nc *, .nc *::before, .nc *::after { box-sizing: border-box; }
+.nc button { font: inherit; color: inherit; }
+.nc svg.i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nc svg.i.s16 { width: 16px; height: 16px; }
+.nc svg.i.s14 { width: 14px; height: 14px; }
+
+/* ------------------------------------------------------------------
+   Nextcloud chrome
+------------------------------------------------------------------ */
+.nc.desk { width: 1280px; height: 800px; background: var(--color-background-plain); display: grid; grid-template-rows: 50px minmax(0, 1fr); overflow: hidden; position: relative; }
+.nc-header { display: flex; align-items: center; gap: 4px; padding: 0 8px 0 12px; color: #fff; }
+.nc-logo { width: 62px; height: 30px; display: grid; place-items: center; margin-right: 8px; }
+.nc-logo span { display: block; width: 44px; height: 20px; border: 3px solid #fff; border-radius: 999px; position: relative; }
+.nc-apps { display: flex; gap: 2px; }
+.nc-app { width: 50px; height: 50px; display: grid; place-items: center; position: relative; opacity: .8; }
+.nc-app.active { opacity: 1; }
+.nc-app.active::after { content: ""; position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: #fff; }
+.nc-app svg.i { stroke: #fff; }
+.nc-header .spacer { flex: 1; }
+.nc-avatar { width: 32px; height: 32px; border-radius: 50%; background: #e8d6b9; color: #5b4523; display: grid; place-items: center; font-size: 14px; font-weight: 600; margin: 0 6px; }
+.nc-body { margin: 0 8px 8px; border-radius: var(--border-radius-container); overflow: hidden; display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 0; }
+.nc-body.nonav { grid-template-columns: minmax(0, 1fr); }
+
+/* App navigation (NcAppNavigation) */
+.nav { background: var(--color-main-background-blur); display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--color-border); padding: 8px; gap: 2px; }
+.nav-top { display: flex; justify-content: flex-end; margin-bottom: 2px; }
+.icon-btn { width: var(--default-clickable-area); height: var(--default-clickable-area); border-radius: var(--border-radius-element); display: grid; place-items: center; border: 0; background: transparent; color: var(--color-main-text); cursor: pointer; flex: none; }
+.icon-btn:hover, .icon-btn.is-hover { background: var(--color-background-hover); }
+.icon-btn.on { background: var(--color-primary-element-light); color: var(--color-primary-element-light-text); }
+.nav-item { display: flex; align-items: center; gap: 10px; min-height: var(--default-clickable-area); padding: 0 8px 0 10px; border-radius: var(--border-radius-element); color: var(--color-main-text); text-decoration: none; font-size: 15px; }
+.nav-item:hover { background: var(--color-background-hover); }
+.nav-item.active { background: var(--color-primary-element-light); color: var(--color-primary-element-light-text); font-weight: 600; }
+.nav-item .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-item .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; margin: 0 5px; }
+.nav-caption { font-size: 13px; color: var(--color-text-maxcontrast); font-weight: 600; padding: 14px 10px 4px; }
+.counter { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 999px; font-size: 12px; font-weight: 600; display: inline-grid; place-items: center; color: var(--color-text-maxcontrast); }
+.counter.hl { background: var(--color-primary-element); color: var(--color-primary-element-text); }
+.nav-spacer { flex: 1; }
+.nav-foot { border-top: 1px solid var(--color-border); padding-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+
+/* App content (NcAppContent) */
+.content { background: var(--color-main-background); min-height: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.topbar { display: flex; align-items: center; gap: 6px; min-height: 52px; padding: 0 12px 0 20px; border-bottom: 1px solid var(--color-border); flex: none; }
+.topbar h1 { font-size: 20px; font-weight: 650; margin: 0; line-height: 1.2; }
+.topbar .meta { color: var(--color-text-maxcontrast); font-size: 14px; }
+.topbar .spacer { flex: 1; }
+.btn { display: inline-flex; align-items: center; gap: 6px; min-height: var(--default-clickable-area); padding: 0 14px 0 10px; border-radius: var(--border-radius-element); border: 0; background: var(--color-background-dark); color: var(--color-main-text); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.btn.primary { background: var(--color-primary-element); color: var(--color-primary-element-text); }
+.btn.tertiary { background: transparent; color: var(--color-primary-text); padding: 0 10px; }
+.btn.tertiary:hover { background: var(--color-background-hover); }
+.btn.plain { padding: 0 14px; }
+.scroll { flex: 1; min-height: 0; overflow: hidden; }
+.column { max-width: 920px; padding: 8px 24px 24px 20px; }
+.statusline { flex: none; display: flex; gap: 16px; padding: 6px 20px; border-top: 1px solid var(--color-border); color: var(--color-text-maxcontrast); font-size: 13px; }
+
+/* ------------------------------------------------------------------
+   Proposed components
+------------------------------------------------------------------ */
+.area { margin: 0 0 28px; }
+.area-head { display: flex; align-items: baseline; gap: 10px; padding: 16px 0 8px 4px; }
+.area-head h2 { margin: 0; font-size: 18px; font-weight: 650; line-height: 1.3; }
+.area-head .meta { font-size: 13px; color: var(--color-text-maxcontrast); }
+
+/* Project band (was: the card) */
+.proj { margin: 0 0 6px; border-radius: var(--border-radius-element); }
+.proj-head { display: grid; grid-template-columns: 20px 24px 28px minmax(0, 1fr) auto var(--default-clickable-area); align-items: center; gap: 2px; min-height: 44px; padding: 0 4px 0 0; border-radius: var(--border-radius-element); background: var(--color-band); }
+.proj-head:hover, .proj-head.is-hover { background: var(--color-background-hover); }
+.proj-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 4px; }
+.proj-title .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proj-sum { display: flex; align-items: center; gap: 12px; color: var(--color-text-maxcontrast); font-size: 13px; padding: 0 6px 0 12px; white-space: nowrap; }
+.proj.collapsed .proj-sum .next { display: inline; }
+.prog { display: inline-flex; align-items: center; gap: 8px; }
+.bar { width: 64px; height: 4px; border-radius: 2px; background: var(--color-background-dark); overflow: hidden; display: inline-block; }
+.bar i { display: block; height: 100%; background: var(--color-primary-element); border-radius: 2px; }
+.badge { font-size: 12px; font-weight: 600; line-height: 18px; padding: 0 8px; border-radius: 999px; flex: none; }
+.badge.blocked { background: var(--color-error); color: #fff; }
+.nc[data-theme="dark"] .badge.blocked { color: #1a0000; }
+.badge.someday { background: var(--color-background-dark); color: var(--color-text-maxcontrast); }
+.chev { width: 24px; height: 24px; display: grid; place-items: center; color: var(--color-text-maxcontrast); border: 0; background: transparent; border-radius: 6px; padding: 0; cursor: pointer; }
+.chev svg { transition: transform .15s; }
+.collapsed > .proj-head .chev svg, .chev.closed svg { transform: rotate(-90deg); }
+.grip { width: 20px; height: 28px; display: grid; place-items: center; color: var(--color-text-maxcontrast); opacity: 0; cursor: grab; }
+.is-hover > .grip, .row.is-hover .grip, .proj-head.is-hover .grip { opacity: 1; }
+.more { opacity: 0; }
+.is-hover .more, .more.show { opacity: 1; }
+
+/* Checkbox (NcCheckboxRadioSwitch look) with Tasks-style priority ring */
+.cb { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--color-border-maxcontrast); display: grid; place-items: center; flex: none; margin: 0 auto; background: var(--color-main-background); }
+.cb.p-high { border-color: var(--prio-high); }
+.cb.p-medium { border-color: var(--prio-medium); }
+.cb.p-low { border-color: var(--prio-low); }
+.cb.on { background: var(--color-primary-element); border-color: var(--color-primary-element); color: var(--color-primary-element-text); }
+.cb.on.muted { background: var(--color-text-maxcontrast); border-color: var(--color-text-maxcontrast); color: var(--color-main-background); }
+.cb svg { width: 12px; height: 12px; stroke-width: 3; }
+
+/* Task tree */
+.tree { list-style: none; margin: 0; padding: 2px 0 4px 44px; }
+.tree .tree { padding: 0 0 0 24px; position: relative; }
+.tree .tree::before { content: ""; position: absolute; left: 33px; top: 2px; bottom: 6px; width: 1px; background: var(--color-border-dark); }
+.row { display: grid; grid-template-columns: 20px 24px 28px minmax(0, 1fr) auto var(--default-clickable-area); align-items: center; gap: 2px; min-height: var(--default-clickable-area); border-radius: var(--border-radius-element); margin-left: -44px; padding-right: 4px; }
+.tree .tree .row { margin-left: -44px; }
+.row:hover, .row.is-hover { background: var(--color-background-hover); }
+.row .title { padding: 4px 4px; min-width: 0; text-wrap: pretty; }
+.row.done .title { color: var(--color-text-maxcontrast); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--color-text-maxcontrast) 60%, transparent); }
+.row .meta { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--color-text-maxcontrast); white-space: nowrap; padding-left: 8px; }
+.due { display: inline-flex; align-items: center; gap: 4px; }
+.due.over { color: var(--color-error-text); font-weight: 600; }
+.due.soon { color: var(--color-main-text); }
+.sub-count { display: inline-flex; align-items: center; gap: 3px; }
+.deeper { display: inline-flex; align-items: center; gap: 4px; color: var(--color-primary-text); text-decoration: none; font-size: 13px; padding: 2px 6px; border-radius: 6px; }
+.deeper:hover { background: var(--color-background-hover); }
+.row.editing .title { padding: 0; }
+.inline-input { width: 100%; height: 30px; border: 2px solid var(--color-primary-element); border-radius: var(--border-radius-element); padding: 0 8px; font: inherit; color: var(--color-main-text); background: var(--color-main-background); outline: none; }
+.ghost { display: grid; grid-template-columns: 20px 24px 28px minmax(0, 1fr) auto; align-items: center; gap: 2px; min-height: var(--default-clickable-area); margin-left: -44px; color: var(--color-text-maxcontrast); border-radius: var(--border-radius-element); padding-right: 8px; }
+.ghost:hover { background: var(--color-background-hover); color: var(--color-main-text); }
+.ghost .plus { grid-column: 3; display: grid; place-items: center; }
+.ghost .lbl { padding-left: 4px; }
+.ghost .right { font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.ghost .right a { color: var(--color-primary-text); text-decoration: none; font-weight: 600; }
+.ghost.newproj { margin-left: 0; grid-template-columns: 20px 24px 28px minmax(0, 1fr); min-height: 40px; }
+.flash { animation: none; background: var(--color-warning-light) !important; box-shadow: inset 3px 0 0 var(--color-warning); }
+
+/* Someday group */
+.group-cap { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-maxcontrast); font-weight: 600; padding: 14px 0 4px 48px; }
+.proj.someday .proj-head { background: transparent; }
+.proj.someday .proj-title { color: var(--color-text-maxcontrast); font-weight: 600; }
+
+/* Done strip */
+.done-strip { margin: 10px 0 0; border-top: 1px solid var(--color-border); padding-top: 6px; }
+.done-toggle { display: grid; grid-template-columns: 20px 24px 28px minmax(0, 1fr); align-items: center; gap: 2px; min-height: 40px; width: 100%; border: 0; background: transparent; color: var(--color-text-maxcontrast); font-size: 14px; font-weight: 600; text-align: left; border-radius: var(--border-radius-element); cursor: pointer; padding: 0; }
+.done-toggle:hover { background: var(--color-background-hover); color: var(--color-main-text); }
+.done-list { list-style: none; margin: 0; padding: 0 0 4px; }
+.done-list li { display: grid; grid-template-columns: 20px 24px 28px minmax(0, 1fr) auto var(--default-clickable-area); align-items: center; gap: 2px; min-height: var(--default-clickable-area); border-radius: var(--border-radius-element); color: var(--color-text-maxcontrast); }
+.done-list li:hover, .done-list li.is-hover { background: var(--color-background-hover); }
+.done-list .t { padding-left: 4px; }
+.done-list .when { font-size: 13px; padding-right: 6px; }
+.done-list li .cb { width: 16px; height: 16px; }
+
+/* Menus, popovers, dialogs, toasts */
+.menu { position: absolute; z-index: 20; background: var(--color-main-background); border-radius: var(--border-radius-element); box-shadow: 0 4px 20px var(--color-box-shadow); padding: 4px; min-width: 232px; border: 1px solid var(--color-border); }
+.menu .mi { display: flex; align-items: center; gap: 12px; min-height: var(--default-clickable-area); padding: 0 12px 0 10px; border-radius: 6px; font-size: 14px; color: var(--color-main-text); }
+.menu .mi:hover, .menu .mi.is-hover { background: var(--color-background-hover); }
+.menu .mi .k { margin-left: auto; color: var(--color-text-maxcontrast); font-size: 13px; }
+.menu .sep { height: 1px; background: var(--color-border); margin: 4px 6px; }
+.menu .cap { font-size: 12px; font-weight: 600; color: var(--color-text-maxcontrast); padding: 6px 10px 2px; }
+.radio { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--color-border-maxcontrast); flex: none; display: grid; place-items: center; }
+.radio.on { border-color: var(--color-primary-element); }
+.radio.on::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary-element); }
+.swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.backdrop { position: absolute; inset: 0; background: var(--color-backdrop); z-index: 30; display: grid; place-items: center; }
+.dialog { background: var(--color-main-background); border-radius: var(--border-radius-container); box-shadow: 0 8px 40px var(--color-box-shadow); width: 480px; max-width: calc(100% - 32px); display: flex; flex-direction: column; max-height: calc(100% - 48px); }
+.dialog h3 { margin: 0; font-size: 20px; font-weight: 650; line-height: 1.3; }
+.dialog .d-head { padding: 20px 20px 4px 24px; display: flex; align-items: flex-start; gap: 8px; }
+.dialog .d-head h3 { flex: 1; }
+.dialog .d-body { padding: 4px 24px 8px; overflow: hidden; }
+.dialog .d-body p { margin: 0 0 12px; color: var(--color-text-maxcontrast); font-size: 14px; text-wrap: pretty; }
+.dialog .d-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 20px; }
+.check-row { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 8px; border-radius: var(--border-radius-element); }
+.check-row:hover { background: var(--color-background-hover); }
+.check-row .lbl { flex: 1; }
+.check-row .meta { color: var(--color-text-maxcontrast); font-size: 13px; }
+.excluded { margin-top: 10px; padding: 10px 12px; border-radius: var(--border-radius-element); background: var(--color-band); color: var(--color-text-maxcontrast); font-size: 13px; text-wrap: pretty; }
+.field { display: flex; align-items: center; gap: 8px; height: 40px; border: 2px solid var(--color-border-maxcontrast); border-radius: var(--border-radius-element); padding: 0 10px; color: var(--color-text-maxcontrast); margin-bottom: 8px; }
+.field.focus { border-color: var(--color-primary-element); color: var(--color-main-text); }
+.pick-cap { font-size: 13px; font-weight: 600; color: var(--color-text-maxcontrast); padding: 10px 8px 2px; }
+.pick { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: var(--border-radius-element); }
+.pick:hover { background: var(--color-background-hover); }
+.pick.sel { background: var(--color-primary-element-light); color: var(--color-primary-element-light-text); font-weight: 600; }
+.pick.cur { color: var(--color-text-maxcontrast); }
+.pick .lbl { flex: 1; }
+.pick .meta { font-size: 13px; color: var(--color-text-maxcontrast); font-weight: 400; }
+.pick.sel .meta { color: inherit; }
+.consequence { margin: 8px 0 0; padding: 10px 12px; border-radius: var(--border-radius-element); background: var(--color-band); font-size: 13px; color: var(--color-main-text); display: flex; gap: 8px; align-items: flex-start; text-wrap: pretty; }
+.toast { position: absolute; right: 16px; bottom: 44px; z-index: 25; display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 14px; border-radius: var(--border-radius-element); background: var(--color-main-background); box-shadow: 0 4px 20px var(--color-box-shadow); border-left: 4px solid var(--color-info); font-size: 14px; max-width: 420px; }
+.toast .x { color: var(--color-text-maxcontrast); }
+
+/* Empty content (NcEmptyContent) */
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 72px 24px; gap: 8px; }
+.empty .ic { width: 64px; height: 64px; display: grid; place-items: center; color: var(--color-text-maxcontrast); opacity: .8; }
+.empty .ic svg.i { width: 56px; height: 56px; stroke-width: 1.3; }
+.empty h3 { margin: 8px 0 0; font-size: 20px; font-weight: 650; }
+.empty p { margin: 0 0 12px; color: var(--color-text-maxcontrast); max-width: 420px; text-wrap: pretty; }
+.empty.small { padding: 28px 16px; }
+.empty.small .ic { width: 44px; height: 44px; }
+.empty.small .ic svg.i { width: 36px; height: 36px; }
+.empty.small h3 { font-size: 16px; }
+
+/* Needs filing view */
+.tray-intro { color: var(--color-text-maxcontrast); margin: 4px 0 8px 4px; max-width: 640px; font-size: 14px; text-wrap: pretty; }
+.tray-group { margin: 18px 0 0; }
+.tray-group h2 { margin: 0 0 4px 4px; font-size: 16px; font-weight: 650; display: flex; gap: 8px; align-items: baseline; }
+.tray-group h2 .meta { font-size: 13px; color: var(--color-text-maxcontrast); font-weight: 400; }
+.tray-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 8px 8px 12px; border-radius: var(--border-radius-element); border-bottom: 1px solid var(--color-border); }
+.tray-item:hover, .tray-item.is-hover { background: var(--color-background-hover); }
+.tray-item .why { font-size: 13px; color: var(--color-text-maxcontrast); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tray-item .acts { display: flex; gap: 4px; }
+.listchip { display: inline-flex; align-items: center; gap: 5px; }
+
+/* Drag states (sortable chosen / ghost / drop target) */
+.row.lifted { background: var(--color-main-background); box-shadow: 0 6px 24px var(--color-box-shadow); outline: 1px solid var(--color-border-dark); transform: rotate(-.6deg); position: relative; z-index: 5; }
+.row.lifted .grip { opacity: 1; color: var(--color-main-text); }
+.drop-line { height: 2px; background: var(--color-primary-element); border-radius: 2px; margin: 0 0 0 0; position: relative; }
+.drop-line::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--color-primary-element); background: var(--color-main-background); }
+.proj.drop-target > .proj-head { outline: 2px dashed var(--color-primary-element); outline-offset: -2px; background: var(--color-primary-element-light); color: var(--color-primary-element-light-text); }
+.drop-hint { font-size: 13px; font-weight: 600; color: var(--color-primary-element-light-text); }
+.ghost-slot { min-height: 34px; border-radius: var(--border-radius-element); border: 1px dashed var(--color-border-dark); margin: 0 4px 0 -44px; background: repeating-linear-gradient(-45deg, transparent 0 6px, var(--color-band) 6px 12px); }
+.drag-badge { position: absolute; right: -10px; top: -10px; background: var(--color-primary-element); color: var(--color-primary-element-text); font-size: 12px; font-weight: 700; padding: 0 7px; border-radius: 999px; line-height: 20px; }
+
+/* ------------------------------------------------------------------
+   Phone (390 x 844)
+------------------------------------------------------------------ */
+.phone-shell { width: 414px; padding: 12px; border-radius: 48px; background: #1d1d1b; box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+.nc.phone { width: 390px; height: 844px; border-radius: 36px; overflow: hidden; background: var(--color-background-plain); display: grid; grid-template-rows: 44px 50px minmax(0, 1fr); position: relative; --default-clickable-area: 44px; }
+.os-bar { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; color: #fff; font-size: 14px; font-weight: 600; }
+.nc.phone .nc-header { padding: 0 6px 0 10px; }
+.nc.phone .nc-app { width: 44px; }
+.nc.phone .content { border-radius: 12px 12px 0 0; }
+.nc.phone .topbar { min-height: 52px; padding: 0 6px 0 4px; gap: 2px; }
+.nc.phone .topbar h1 { font-size: 18px; }
+.nc.phone .column { padding: 4px 8px 16px; max-width: none; }
+.nc.phone .proj-head { grid-template-columns: 0 44px 44px minmax(0, 1fr) auto 44px; min-height: 52px; }
+.nc.phone .proj-head .grip { visibility: hidden; width: 0; overflow: hidden; }
+.nc.phone .chev { width: 44px; height: 44px; }
+.nc.phone .row { grid-template-columns: 0 44px 44px minmax(0, 1fr) auto 44px; min-height: 48px; margin-left: -48px; }
+.nc.phone .row .grip { visibility: hidden; width: 0; overflow: hidden; }
+.nc.phone .tree { padding-left: 48px; }
+.nc.phone .tree .tree { padding-left: 20px; }
+.nc.phone .tree .tree::before { left: 23px; }
+.nc.phone .tree .tree .row { margin-left: -48px; }
+.nc.phone .more { opacity: 1; color: var(--color-text-maxcontrast); }
+.nc.phone .icon-btn { width: 44px; height: 44px; }
+.nc.phone .ghost { grid-template-columns: 0 44px 44px minmax(0, 1fr) auto; min-height: 48px; margin-left: -48px; }
+.nc.phone .row .meta { font-size: 13px; gap: 6px; padding-left: 4px; }
+.nc.phone .proj-sum { padding: 0 2px 0 6px; gap: 8px; }
+.nc.phone .bar { width: 36px; }
+.nc.phone .area-head { padding: 12px 0 6px 8px; }
+.nc.phone .done-toggle { grid-template-columns: 0 44px 44px minmax(0, 1fr); min-height: 48px; }
+.nc.phone .group-cap { padding-left: 52px; }
+.nc.phone .ghost.newproj { margin-left: 0; grid-template-columns: 0 44px 44px minmax(0, 1fr); }
+.nc.phone .row.lifted { transform: scale(1.02); }
+.nc.phone .nav { position: absolute; top: 94px; left: 0; bottom: 0; width: 300px; z-index: 30; border-radius: 0 12px 0 0; background: var(--color-main-background); box-shadow: 4px 0 24px var(--color-box-shadow); padding: 8px; }
+.nc.phone .nav .nav-item { min-height: 44px; }
+.nc.phone .scrim { position: absolute; inset: 94px 0 0 0; background: var(--color-backdrop); z-index: 29; }
+.longpress-ring { position: absolute; box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-primary-element) 20%, transparent); width: 56px; height: 56px; border-radius: 50%; border: 3px solid var(--color-primary-element); opacity: .55; pointer-events: none; }
+.coach { position: absolute; left: 12px; right: 12px; z-index: 20; padding: 10px 14px; border-radius: var(--border-radius-element); background: var(--color-main-text); color: var(--color-main-background); font-size: 14px; display: flex; gap: 8px; align-items: center; box-shadow: 0 4px 20px var(--color-box-shadow); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 31; background: var(--color-main-background); border-radius: 16px 16px 0 0; box-shadow: 0 -4px 24px var(--color-box-shadow); padding: 8px 8px 28px; }
+.sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--color-border-dark); margin: 4px auto 10px; }
+.sheet .s-title { font-weight: 650; padding: 0 12px 6px; }
+.sheet .mi { display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 12px; border-radius: 8px; }
+
+/* ------------------------------------------------------------------
+   Current (today's main): a faithful sketch of what the code renders
+------------------------------------------------------------------ */
+.cur-content { background: var(--color-main-background); overflow: hidden; padding: 16px; position: relative; }
+.cur-h2 { font-size: 20px; margin: 0 0 8px; font-weight: 700; }
+.cur-btn { display: inline-flex; align-items: center; min-height: 34px; padding: 0 16px; border-radius: 8px; background: var(--color-background-dark); font-weight: 600; font-size: 14px; border: 0; }
+.cur-h3 { font-size: 1.25rem; font-weight: 600; margin: 16px 0 12px; }
+.cur-card { border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.cur-card.someday { opacity: .6; }
+.cur-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.cur-head h4 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.cur-acts { display: flex; align-items: center; gap: 12px; }
+.cur-prog { display: flex; align-items: center; gap: 8px; min-width: 120px; font-size: .85rem; color: var(--color-text-maxcontrast); }
+.cur-bar { width: 120px; height: 6px; border-radius: 3px; background: var(--color-background-dark); overflow: hidden; }
+.cur-bar i { display: block; height: 100%; background: var(--color-primary-element); }
+.cur-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+.cur-switch i { width: 32px; height: 18px; border-radius: 9px; background: var(--color-border-maxcontrast); position: relative; display: inline-block; }
+.cur-switch i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+.cur-badge { font-size: .75rem; padding: 2px 6px; border-radius: 10px; font-weight: 500; background: var(--color-error); color: #fff; }
+.cur-badge.sd { background: var(--color-background-dark); color: var(--color-text-maxcontrast); }
+.cur-tree { list-style: none; margin: 0; padding: 0; }
+.cur-tree .cur-tree { margin-left: 20px; }
+.cur-tree li { margin: 4px 0; }
+.cur-row { display: flex; align-items: center; gap: 4px; }
+.cur-tog { width: 20px; height: 20px; display: grid; place-items: center; font-size: .75rem; color: var(--color-text-maxcontrast); flex: none; }
+.cur-task { display: flex; align-items: center; gap: 8px; padding: 4px 6px; flex: 1; }
+.cur-task .t { flex: 1; font-size: .95rem; }
+.cur-date { width: 160px; height: 34px; border: 2px solid var(--color-border-maxcontrast); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 14px; color: var(--color-text-maxcontrast); flex: none; }
+.cur-date.set { color: var(--color-main-text); }
+.cur-link { font-size: .85rem; color: var(--color-primary-text); white-space: nowrap; }
+.cur-dots { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+.cur-deeper { font-size: .85rem; font-weight: 600; color: var(--color-primary-text); border: 1px dashed var(--color-primary-text); border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+.cur-input { height: 36px; border: 2px solid var(--color-border-maxcontrast); border-radius: 8px; display: flex; align-items: center; padding: 0 12px; color: var(--color-text-maxcontrast); font-size: 15px; margin-top: 4px; }
+.cur-done { color: var(--color-text-maxcontrast); font-size: .9rem; font-weight: 500; margin: 8px 0; display: flex; gap: 4px; align-items: center; }
+.cur-closed { opacity: .6; }
+.pin { position: absolute; z-index: 10; width: 22px; height: 22px; border-radius: 50%; background: #e0442b; color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 3px rgba(224,68,43,.25); font-family: system-ui, sans-serif; }
+.pin-wrap { position: relative; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+	<defs>
+		<symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+		<symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+		<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+		<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/></symbol>
+		<symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.2" fill="currentColor"/><circle cx="15" cy="6" r="1.2" fill="currentColor"/><circle cx="9" cy="12" r="1.2" fill="currentColor"/><circle cx="15" cy="12" r="1.2" fill="currentColor"/><circle cx="9" cy="18" r="1.2" fill="currentColor"/><circle cx="15" cy="18" r="1.2" fill="currentColor"/></symbol>
+		<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+		<symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+		<symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4h11l-2 4 2 4H6"/></symbol>
+		<symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+		<symbol id="i-move" viewBox="0 0 24 24"><path d="M4 12h12M12 7l5 5-5 5M20 5v14"/></symbol>
+		<symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></symbol>
+		<symbol id="i-bug" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M9 7a3 3 0 0 1 6 0M3 13h4M17 13h4M4 7l3 2M20 7l-3 2M4 19l3-2M20 19l-3-2M12 11v9"/></symbol>
+		<symbol id="i-tray" viewBox="0 0 24 24"><path d="M4 13l2.5-8h11L20 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 13h5l1 2h4l1-2h5"/></symbol>
+		<symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+		<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+		<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+		<symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+		<symbol id="i-tasks" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></symbol>
+		<symbol id="i-calapp" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/></symbol>
+		<symbol id="i-proj" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M14 16.5h5M16.5 14v5"/></symbol>
+		<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+		<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+		<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></symbol>
+		<symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/><path d="M4 4l16 16"/></symbol>
+		<symbol id="i-unfold" viewBox="0 0 24 24"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></symbol>
+		<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+		<symbol id="i-sub" viewBox="0 0 24 24"><path d="M6 4v10a2 2 0 0 0 2 2h10M15 13l3 3-3 3"/></symbol>
+		<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+		<symbol id="i-checkall" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></symbol>
+	</defs>
+</svg>
+
+<div class="page">
+	<header>
+		<h1>NC Projects: design pass</h1>
+		<p class="lede">Mockups for the owner's approval before any code changes. The direction matches nc-outliner: the words carry the hierarchy, controls show up only on hover or when you open a menu, and a slim top bar replaces rows of text buttons. Every current feature is kept. All names below are sample data.</p>
+		<ul class="toc">
+			<li><a href="#a">a · Main view, current vs proposed</a></li>
+			<li><a href="#b">b · Dark mode</a></li>
+			<li><a href="#c">c · First run and area settings</a></li>
+			<li><a href="#d">d · Needs filing and move to project</a></li>
+			<li><a href="#e">e · Done strip and show done</a></li>
+			<li><a href="#f">f · Phone</a></li>
+			<li><a href="#g">g · Empty and error states</a></li>
+		</ul>
+	</header>
+
+	<!-- =========================================================
+	     (a) MAIN VIEW: CURRENT
+	========================================================== -->
+	<section class="review-section" id="a" data-screen-label="a Main view">
+		<h2>a · Main view at 1280 px</h2>
+		<p class="sub">Top: what <code>main</code> renders today, drawn from the code (App.vue, AreaSection, ProjectCard, TaskTree, TaskRow). Bottom: the proposal. Red numbers mark the problems listed under the first frame.</p>
+
+		<div class="frame-label"><b>Current</b><span class="tag now">today on main</span></div>
+		<div class="stage" data-w="1280" data-h="800">
+			<div class="stage-inner">
+				<div class="nc desk" data-theme="light">
+					<div class="nc-header">
+						<div class="nc-logo"><span></span></div>
+						<div class="nc-apps">
+							<div class="nc-app"><svg class="i"><use href="#i-folder"/></svg></div>
+							<div class="nc-app"><svg class="i"><use href="#i-calapp"/></svg></div>
+							<div class="nc-app"><svg class="i"><use href="#i-tasks"/></svg></div>
+							<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+						</div>
+						<div class="spacer"></div>
+						<div class="nc-app"><svg class="i"><use href="#i-search"/></svg></div>
+						<div class="nc-app"><svg class="i"><use href="#i-bell"/></svg></div>
+						<div class="nc-avatar">A</div>
+					</div>
+					<div class="nc-body nonav">
+						<main class="cur-content">
+							<span class="pin" style="left:120px;top:14px">1</span>
+							<h2 class="cur-h2">Projects</h2>
+							<button class="cur-btn" type="button">Choose areas</button>
+							<h3 class="cur-h3">Home</h3>
+							<div class="cur-card">
+								<div class="cur-head pin-wrap">
+									<h4>Kitchen refresh</h4>
+									<div class="cur-acts">
+										<div class="cur-prog"><div class="cur-bar"><i style="width:43%"></i></div><span>3/7</span></div>
+										<span class="cur-switch"><i></i>Show done</span>
+										<span class="cb"></span>
+									</div>
+									<span class="pin" style="right:-8px;top:-14px">2</span>
+								</div>
+								<ul class="cur-tree">
+									<li>
+										<div class="cur-row pin-wrap">
+											<span class="cur-tog">▼</span>
+											<div class="cur-task"><span class="cb"></span><span class="t">Choose worktop sample</span><span class="cur-date set">10/31/2026 <svg class="i s16"><use href="#i-cal"/></svg></span><span class="cur-link">Clear due date</span><span class="cur-dots"><svg class="i"><use href="#i-dots"/></svg></span><span class="cur-link">Open in Tasks</span></div>
+											<span class="pin" style="left:870px;top:-12px">3</span>
+										</div>
+										<ul class="cur-tree">
+											<li><div class="cur-row"><span class="cur-tog"></span><div class="cur-task"><span class="cb"></span><span class="t">Get oak sample</span><span class="cur-date">mm/dd/yyyy <svg class="i s16"><use href="#i-cal"/></svg></span><span class="cur-dots"><svg class="i"><use href="#i-dots"/></svg></span><span class="cur-link">Open in Tasks</span></div></div></li>
+											<li class="cur-closed"><div class="cur-row pin-wrap"><span class="cur-tog"></span><div class="cur-task"><span class="cb on"><svg class="i"><use href="#i-check"/></svg></span><span class="t" style="text-decoration:line-through">Get slate sample</span><span class="cur-date">mm/dd/yyyy <svg class="i s16"><use href="#i-cal"/></svg></span><span class="cur-dots"><svg class="i"><use href="#i-dots"/></svg></span><span class="cur-link">Open in Tasks</span></div><span class="pin" style="left:-28px;top:6px">4</span></div></li>
+										</ul>
+									</li>
+									<li><div class="cur-row"><span class="cur-tog"></span><div class="cur-task"><span class="cb"></span><span class="t">Book electrician</span><span class="cur-date">mm/dd/yyyy <svg class="i s16"><use href="#i-cal"/></svg></span><span class="cur-dots"><svg class="i"><use href="#i-dots"/></svg></span><span class="cur-link">Open in Tasks</span></div></div></li>
+									<li><div class="cur-row pin-wrap"><span class="cur-tog"></span><div class="cur-task"><span class="cb"></span><span class="t">Order hinges</span><span class="cur-date">mm/dd/yyyy <svg class="i s16"><use href="#i-cal"/></svg></span><span class="cur-dots"><svg class="i"><use href="#i-dots"/></svg></span><span class="cur-link">Open in Tasks</span><span class="cur-deeper">+2 deeper</span></div></div></li>
+								</ul>
+								<div class="cur-input pin-wrap">+ Add task<span class="pin" style="left:130px;top:6px">5</span></div>
+							</div>
+							<div class="cur-card">
+								<div class="cur-head">
+									<div style="display:flex;gap:8px;align-items:center"><h4>Garden shed</h4><span class="cur-badge">blocked</span></div>
+									<div class="cur-acts">
+										<div class="cur-prog"><div class="cur-bar"><i style="width:55%"></i></div><span>5/9</span></div>
+										<span class="cur-switch"><i></i>Show done</span>
+										<span class="cb"></span>
+									</div>
+								</div>
+								<ul class="cur-tree">
+									<li><div class="cur-row"><span class="cur-tog"></span><div class="cur-task"><span class="cb"></span><span class="t">Get timber quote</span><span class="cur-date">mm/dd/yyyy <svg class="i s16"><use href="#i-cal"/></svg></span><span class="cur-dots"><svg class="i"><use href="#i-dots"/></svg></span><span class="cur-link">Open in Tasks</span></div></div></li>
+								</ul>
+								<div class="cur-input">+ Add task</div>
+							</div>
+							<div class="cur-card someday pin-wrap">
+								<div class="cur-head">
+									<div style="display:flex;gap:8px;align-items:center"><h4>Repaint hallway</h4><span class="cur-badge sd">someday</span></div>
+									<div class="cur-acts">
+										<div class="cur-prog"><div class="cur-bar"><i style="width:0"></i></div><span>0/0</span></div>
+										<span class="cur-switch"><i></i>Show done</span>
+										<span class="cb"></span>
+									</div>
+								</div>
+								<div class="cur-input">+ Add task</div>
+								<span class="pin" style="left:-10px;top:-10px">6</span>
+							</div>
+							<div class="cur-done pin-wrap">▶ Done (4)<span class="pin" style="left:90px;top:0">7</span></div>
+							<div class="cur-input">+ New project</div>
+							<h3 class="cur-h3">Work</h3>
+						</main>
+					</div>
+				</div>
+			</div>
+		</div>
+		<ol class="notes">
+			<li><span class="n">No app navigation and no top bar.</span> The page title and "Choose areas" are loose in the content, and areas only exist as one long scroll with no way to jump between them.</li>
+			<li><span class="n">The card header spreads over the full width.</span> The title sits at the far left and its progress, "Show done" switch and an unlabelled checkbox (which checks off the whole project and its tasks) sit 1,000 px away at the far right. At 1280 px nothing caps the line length.</li>
+			<li><span class="n">Every task row shows every control all the time:</span> a boxed date field (an empty one still reads "mm/dd/yyyy"), "Clear due date", a priority "⋯" that doesn't show the priority, and "Open in Tasks". The task title is the quietest thing in its own row.</li>
+			<li><span class="n">Done items fade by opacity, twice.</span> The class and an inline style both apply 0.6, so a done subtask under a done parent drops to about 0.36: unreadable and below contrast minimums.</li>
+			<li><span class="n">Boxed "+ Add task" and "+ New project" fields</span> on every card add a heavy outlined box per project, so an area of eight projects carries eight empty inputs.</li>
+			<li><span class="n">Someday cards fade the whole card to 0.6</span>, including the controls, so they look disabled rather than parked. Empty projects show "0/0" and a bar.</li>
+			<li><span class="n">Inconsistent glyphs and order:</span> text triangles (▶ ▼) instead of the Nextcloud icon set, and the Done strip sits above "+ New project", so new projects appear to be filed under Done.</li>
+			<li><span class="n">Not visible here:</span> the Needs filing tray is built but not mounted; there is no "move to project" control (drag groups are per parent, so a task can't be dragged to another project); the phone layout is a long list of 44 px overrides, so rows wrap to three lines; the first-run state repeats "Choose your areas" as a paragraph and a button; the settings dialog has no Cancel.</li>
+		</ol>
+
+		<!-- =========================================================
+		     (a) MAIN VIEW: PROPOSED
+		========================================================== -->
+		<div class="frame-label"><b>Proposed</b><span class="tag new">for approval</span><span>Hover is shown on "Choose worktop sample"; the reloaded row shows the conflict notice.</span></div>
+		<div class="stage" data-w="1280" data-h="800">
+			<div class="stage-inner">
+				<div class="nc desk themable" data-theme="light">
+					<div class="nc-header">
+						<div class="nc-logo"><span></span></div>
+						<div class="nc-apps">
+							<div class="nc-app"><svg class="i"><use href="#i-folder"/></svg></div>
+							<div class="nc-app"><svg class="i"><use href="#i-calapp"/></svg></div>
+							<div class="nc-app"><svg class="i"><use href="#i-tasks"/></svg></div>
+							<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+						</div>
+						<div class="spacer"></div>
+						<div class="nc-app"><svg class="i"><use href="#i-search"/></svg></div>
+						<div class="nc-app"><svg class="i"><use href="#i-bell"/></svg></div>
+						<div class="nc-avatar">A</div>
+					</div>
+					<div class="nc-body">
+						<nav class="nav">
+							<div class="nav-top"><button class="icon-btn" type="button" aria-label="Close navigation"><svg class="i"><use href="#i-menu"/></svg></button></div>
+							<a class="nav-item active" href="#a"><svg class="i"><use href="#i-layers"/></svg><span class="label">All areas</span></a>
+							<div class="nav-caption">Areas</div>
+							<a class="nav-item" href="#a"><span class="dot" style="background:#3d8c40"></span><span class="label">Home</span><span class="counter">4</span></a>
+							<a class="nav-item" href="#a"><span class="dot" style="background:#2f6fb5"></span><span class="label">Work</span><span class="counter">6</span></a>
+							<a class="nav-item" href="#a"><span class="dot" style="background:#b4572f"></span><span class="label">Studio</span><span class="counter">3</span></a>
+							<div class="nav-caption">Tidy up</div>
+							<a class="nav-item" href="#d"><svg class="i"><use href="#i-tray"/></svg><span class="label">Needs filing</span><span class="counter hl">3</span></a>
+							<div class="nav-spacer"></div>
+							<div class="nav-foot">
+								<a class="nav-item" href="#e"><svg class="i"><use href="#i-bug"/></svg><span class="label">Report a bug</span></a>
+								<a class="nav-item" href="#c"><svg class="i"><use href="#i-cog"/></svg><span class="label">Choose areas</span></a>
+							</div>
+						</nav>
+						<main class="content">
+							<div class="topbar">
+								<h1>All areas</h1>
+								<span class="meta">13 projects</span>
+								<div class="spacer"></div>
+								<button class="icon-btn" type="button" title="Collapse all projects" aria-label="Collapse all projects"><svg class="i"><use href="#i-unfold"/></svg></button>
+								<button class="btn primary" type="button"><svg class="i"><use href="#i-plus"/></svg>New project</button>
+							</div>
+							<div class="scroll">
+								<div class="column">
+									<section class="area">
+										<div class="area-head"><h2>Home</h2><span class="meta">4 projects</span></div>
+
+										<div class="proj">
+											<div class="proj-head">
+												<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+												<button class="chev" type="button" aria-label="Collapse Kitchen refresh"><svg class="i s16"><use href="#i-chev"/></svg></button>
+												<span class="cb"></span>
+												<span class="proj-title"><span class="t">Kitchen refresh</span></span>
+												<span class="proj-sum"><span class="prog"><span class="bar"><i style="width:43%"></i></span>3 of 7</span></span>
+												<button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button>
+											</div>
+											<ul class="tree">
+												<li>
+													<div class="row is-hover">
+														<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+														<button class="chev" type="button" aria-label="Collapse subtasks"><svg class="i s16"><use href="#i-chev"/></svg></button>
+														<span class="cb p-high"></span>
+														<span class="title">Choose worktop sample</span>
+														<span class="meta"><span class="due soon"><svg class="i s14"><use href="#i-cal"/></svg>Fri 31 Oct</span></span>
+														<button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button>
+													</div>
+													<ul class="tree">
+														<li><div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb"></span><span class="title">Get oak sample</span><span class="meta"><span class="due over"><svg class="i s14"><use href="#i-cal"/></svg>Mon 27 Oct</span></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+														<li><div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb"></span><span class="title">Get slate sample</span><span class="meta"></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+													</ul>
+												</li>
+												<li><div class="row flash"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb p-medium"></span><span class="title">Book electrician for under-cabinet lights</span><span class="meta"><span class="due"><svg class="i s14"><use href="#i-cal"/></svg>Tue 4 Nov</span></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+												<li><div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><button class="chev closed" type="button" aria-label="Expand subtasks"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="title">Order hinges</span><span class="meta"><span class="sub-count">3 subtasks</span></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+												<li><div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb p-low"></span><span class="title">Pick a tap finish</span><span class="meta"><a class="deeper" href="#a">2 more levels in Tasks <svg class="i s14"><use href="#i-ext"/></svg></a></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+												<li><div class="ghost"><span></span><span></span><span class="plus"><svg class="i s16"><use href="#i-plus"/></svg></span><span class="lbl">Add task</span><span class="right">3 done · <a href="#e">Show</a></span></div></li>
+											</ul>
+										</div>
+
+										<div class="proj collapsed">
+											<div class="proj-head">
+												<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+												<button class="chev" type="button" aria-label="Expand Garden shed"><svg class="i s16"><use href="#i-chev"/></svg></button>
+												<span class="cb"></span>
+												<span class="proj-title"><span class="t">Garden shed</span><span class="badge blocked">blocked</span></span>
+												<span class="proj-sum"><span>Next due Sat 8 Nov</span><span class="prog"><span class="bar"><i style="width:55%"></i></span>5 of 9</span></span>
+												<button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button>
+											</div>
+										</div>
+
+										<div class="proj collapsed">
+											<div class="proj-head">
+												<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+												<button class="chev" type="button" aria-label="Expand Bike service"><svg class="i s16"><use href="#i-chev"/></svg></button>
+												<span class="cb"></span>
+												<span class="proj-title"><span class="t">Bike service</span></span>
+												<span class="proj-sum"><span class="prog"><span class="bar"><i style="width:33%"></i></span>1 of 3</span></span>
+												<button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button>
+											</div>
+										</div>
+
+										<div class="group-cap">Someday</div>
+										<div class="proj someday collapsed">
+											<div class="proj-head">
+												<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+												<button class="chev" type="button" aria-label="Expand Repaint hallway"><svg class="i s16"><use href="#i-chev"/></svg></button>
+												<span class="cb"></span>
+												<span class="proj-title"><span class="t">Repaint hallway</span></span>
+												<span class="proj-sum"><span>No tasks yet</span></span>
+												<button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button>
+											</div>
+										</div>
+
+										<div class="ghost newproj"><span></span><span></span><span class="plus"><svg class="i s16"><use href="#i-plus"/></svg></span><span class="lbl">New project in Home</span></div>
+
+										<div class="done-strip">
+											<button class="done-toggle" type="button" aria-expanded="false"><span></span><span class="chev closed"><svg class="i s16"><use href="#i-chev"/></svg></span><span style="display:grid;place-items:center"><svg class="i s16"><use href="#i-checkall"/></svg></span><span>4 done projects</span></button>
+										</div>
+									</section>
+
+									<section class="area">
+										<div class="area-head"><h2>Work</h2><span class="meta">6 projects</span></div>
+										<div class="proj collapsed">
+											<div class="proj-head">
+												<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+												<button class="chev" type="button" aria-label="Expand Quarterly report"><svg class="i s16"><use href="#i-chev"/></svg></button>
+												<span class="cb"></span>
+												<span class="proj-title"><span class="t">Quarterly report</span></span>
+												<span class="proj-sum"><span>Next due Thu 30 Oct</span><span class="prog"><span class="bar"><i style="width:70%"></i></span>7 of 10</span></span>
+												<button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button>
+											</div>
+										</div>
+									</section>
+								</div>
+							</div>
+							<div class="statusline"><span>13 open projects · 58 open tasks</span><span>Updated 1 min ago</span></div>
+							<div class="toast" role="status"><svg class="i" style="color:var(--color-info)"><use href="#i-refresh"/></svg><span>Someone else changed this; reloaded</span><span class="x"><svg class="i s16"><use href="#i-x"/></svg></span></div>
+						</main>
+					</div>
+				</div>
+			</div>
+		</div>
+		<ul class="notes">
+			<li><span class="n">Navigation is a table of contents.</span> "All areas" keeps today's one-page panel (spec M1). Clicking an area scrolls to it rather than hiding the others. Needs filing gets its own item with a count. "Report a bug" (M21) and "Choose areas" sit in the footer.</li>
+			<li><span class="n">The top bar holds one action.</span> "New project" asks which area when used from the top bar. Each area also keeps its quiet "New project in Home" row. Collapse all is an icon button.</li>
+			<li><span class="n">Projects are bands, not boxed cards.</span> The project checkbox sits where task checkboxes sit, the title reads first, and progress becomes a short bar with "3 of 7" right beside it. A collapsed project shows its next due date. Collapsing is remembered per project in this browser, like Show done.</li>
+			<li><span class="n">Task rows are just text.</span> The due date appears only when one is set (red when overdue). Priority is the checkbox outline colour, as in the Tasks app (high red, medium amber, low blue). The drag grip and "⋯" menu appear on hover. The menu holds Due date, Priority, Move to project and Open in Tasks (see d).</li>
+			<li><span class="n">The reading column stops at 920 px</span>, so a title is never 1,000 px from its own progress bar. A status line at the bottom gives the totals and when the data was last refreshed (M13).</li>
+			<li><span class="n">The conflict notice (M14) stays a Nextcloud toast.</span> The reloaded row is also tinted for a few seconds, so you can see which task changed.</li>
+		</ul>
+	</section>
+
+	<!-- =========================================================
+	     (b) DARK MODE
+	========================================================== -->
+	<section class="review-section" id="b" data-screen-label="b Dark mode">
+		<h2>b · Dark mode</h2>
+		<p class="sub">The same view in Nextcloud's dark theme. Everything is drawn from theme variables, so there are no hard-coded colours to fix up. The checkbox priority colours and the overdue red get lighter dark-theme versions so they still pass contrast. Shown with a task being renamed inline and the project menu open.</p>
+		<div class="stage" data-w="1280" data-h="800">
+			<div class="stage-inner">
+				<div class="nc desk" data-theme="dark">
+					<div class="nc-header">
+						<div class="nc-logo"><span></span></div>
+						<div class="nc-apps">
+							<div class="nc-app"><svg class="i"><use href="#i-folder"/></svg></div>
+							<div class="nc-app"><svg class="i"><use href="#i-calapp"/></svg></div>
+							<div class="nc-app"><svg class="i"><use href="#i-tasks"/></svg></div>
+							<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+						</div>
+						<div class="spacer"></div>
+						<div class="nc-app"><svg class="i"><use href="#i-search"/></svg></div>
+						<div class="nc-app"><svg class="i"><use href="#i-bell"/></svg></div>
+						<div class="nc-avatar">A</div>
+					</div>
+					<div class="nc-body">
+						<nav class="nav">
+							<div class="nav-top"><button class="icon-btn" type="button" aria-label="Close navigation"><svg class="i"><use href="#i-menu"/></svg></button></div>
+							<a class="nav-item" href="#b"><svg class="i"><use href="#i-layers"/></svg><span class="label">All areas</span></a>
+							<div class="nav-caption">Areas</div>
+							<a class="nav-item active" href="#b"><span class="dot" style="background:#3d8c40"></span><span class="label">Home</span><span class="counter">4</span></a>
+							<a class="nav-item" href="#b"><span class="dot" style="background:#2f6fb5"></span><span class="label">Work</span><span class="counter">6</span></a>
+							<a class="nav-item" href="#b"><span class="dot" style="background:#b4572f"></span><span class="label">Studio</span><span class="counter">3</span></a>
+							<div class="nav-caption">Tidy up</div>
+							<a class="nav-item" href="#d"><svg class="i"><use href="#i-tray"/></svg><span class="label">Needs filing</span><span class="counter hl">3</span></a>
+							<div class="nav-spacer"></div>
+							<div class="nav-foot">
+								<a class="nav-item" href="#b"><svg class="i"><use href="#i-bug"/></svg><span class="label">Report a bug</span></a>
+								<a class="nav-item" href="#c"><svg class="i"><use href="#i-cog"/></svg><span class="label">Choose areas</span></a>
+							</div>
+						</nav>
+						<main class="content">
+							<div class="topbar">
+								<h1>All areas</h1>
+								<span class="meta">13 projects</span>
+								<div class="spacer"></div>
+								<button class="icon-btn" type="button" aria-label="Collapse all projects"><svg class="i"><use href="#i-unfold"/></svg></button>
+								<button class="btn primary" type="button"><svg class="i"><use href="#i-plus"/></svg>New project</button>
+							</div>
+							<div class="scroll">
+								<div class="column">
+									<section class="area">
+										<div class="area-head"><h2>Home</h2><span class="meta">4 projects</span></div>
+										<div class="proj">
+											<div class="proj-head is-hover">
+												<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+												<button class="chev" type="button" aria-label="Collapse Kitchen refresh"><svg class="i s16"><use href="#i-chev"/></svg></button>
+												<span class="cb"></span>
+												<span class="proj-title"><span class="t">Kitchen refresh</span></span>
+												<span class="proj-sum"><span class="prog"><span class="bar"><i style="width:43%"></i></span>3 of 7</span></span>
+												<button class="icon-btn more show on" type="button" aria-label="Project actions" style="position:relative"><svg class="i"><use href="#i-dots"/></svg></button>
+											</div>
+											<ul class="tree">
+												<li>
+													<div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><button class="chev" type="button" aria-label="Collapse subtasks"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb p-high"></span><span class="title">Choose worktop sample</span><span class="meta"><span class="due soon"><svg class="i s14"><use href="#i-cal"/></svg>Fri 31 Oct</span></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div>
+													<ul class="tree">
+														<li><div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb"></span><span class="title">Get oak sample</span><span class="meta"><span class="due over"><svg class="i s14"><use href="#i-cal"/></svg>Mon 27 Oct</span></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+														<li><div class="row editing"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb"></span><span class="title"><input class="inline-input" value="Get slate and quartz samples" aria-label="Task title"></span><span class="meta"></span><span></span></div></li>
+													</ul>
+												</li>
+												<li><div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb p-medium"></span><span class="title">Book electrician for under-cabinet lights</span><span class="meta"><span class="due"><svg class="i s14"><use href="#i-cal"/></svg>Tue 4 Nov</span></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+												<li><div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><button class="chev closed" type="button" aria-label="Expand subtasks"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="title">Order hinges</span><span class="meta"><span class="sub-count">3 subtasks</span></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+												<li><div class="row done"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb on muted"><svg class="i"><use href="#i-check"/></svg></span><span class="title">Measure cabinet run</span><span class="meta"></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+												<li><div class="ghost"><span></span><span></span><span class="plus"><svg class="i s16"><use href="#i-plus"/></svg></span><span class="lbl">Add task</span><span class="right">3 done · <a href="#e">Hide</a></span></div></li>
+											</ul>
+										</div>
+										<div class="proj collapsed">
+											<div class="proj-head">
+												<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+												<button class="chev" type="button" aria-label="Expand Garden shed"><svg class="i s16"><use href="#i-chev"/></svg></button>
+												<span class="cb"></span>
+												<span class="proj-title"><span class="t">Garden shed</span><span class="badge blocked">blocked</span></span>
+												<span class="proj-sum"><span>Next due Sat 8 Nov</span><span class="prog"><span class="bar"><i style="width:55%"></i></span>5 of 9</span></span>
+												<button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button>
+											</div>
+										</div>
+										<div class="group-cap">Someday</div>
+										<div class="proj someday collapsed">
+											<div class="proj-head">
+												<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+												<button class="chev" type="button" aria-label="Expand Repaint hallway"><svg class="i s16"><use href="#i-chev"/></svg></button>
+												<span class="cb"></span>
+												<span class="proj-title"><span class="t">Repaint hallway</span></span>
+												<span class="proj-sum"><span>No tasks yet</span></span>
+												<button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button>
+											</div>
+										</div>
+										<div class="ghost newproj"><span></span><span></span><span class="plus"><svg class="i s16"><use href="#i-plus"/></svg></span><span class="lbl">New project in Home</span></div>
+										<div class="done-strip"><button class="done-toggle" type="button" aria-expanded="false"><span></span><span class="chev closed"><svg class="i s16"><use href="#i-chev"/></svg></span><span style="display:grid;place-items:center"><svg class="i s16"><use href="#i-checkall"/></svg></span><span>4 done projects</span></button></div>
+									</section>
+								</div>
+							</div>
+							<div class="statusline"><span>13 open projects · 58 open tasks</span><span>Updated 1 min ago</span></div>
+							<div class="menu" style="left:690px;top:124px" role="menu">
+								<div class="mi"><svg class="i"><use href="#i-eye"/></svg>Show done tasks<span class="k">3</span></div>
+								<div class="mi"><svg class="i"><use href="#i-flag"/></svg>Mark blocked</div>
+								<div class="mi"><svg class="i"><use href="#i-layers"/></svg>Move to Someday</div>
+								<div class="sep"></div>
+								<div class="mi is-hover"><svg class="i"><use href="#i-check"/></svg>Check off project…</div>
+								<div class="mi"><svg class="i"><use href="#i-ext"/></svg>Open in Tasks</div>
+							</div>
+						</main>
+					</div>
+				</div>
+			</div>
+		</div>
+		<ul class="notes">
+			<li><span class="n">The project "⋯" menu</span> repeats the header controls in words: Show done, Check off project, Open in Tasks. "Mark blocked" and "Move to Someday" are <b>new and optional</b>: they would add or remove the <code>blocked</code> and <code>someday</code> categories. Cut them if you'd rather keep 1.0 to its Musts.</li>
+			<li><span class="n">Checking off a project with open tasks asks first</span> ("Check off Kitchen refresh and its 4 open tasks?"), because it closes every task under it (M8). A project with no open tasks is checked off straight away.</li>
+			<li><span class="n">Inline rename is unchanged</span>: click the title, Enter saves, Esc cancels. The field takes the row's own height, so the list doesn't jump.</li>
+		</ul>
+	</section>
+
+	<!-- =========================================================
+	     (c) FIRST RUN + AREA SETTINGS
+	========================================================== -->
+	<section class="review-section" id="c" data-screen-label="c First run and settings">
+		<h2>c · First run, and the area settings dialog</h2>
+		<p class="sub">Left: a user who hasn't picked any areas yet. Right: the dialog, opened from the first-run button or from "Choose areas" at the bottom of the navigation. It opens over the whole app, never under the navigation (the bug seen in nc-outliner's Versions dialog).</p>
+		<div class="row-frames">
+			<div style="flex:1 1 560px">
+				<div class="frame-label"><b>First run</b><span class="tag new">proposed</span></div>
+				<div class="stage" data-w="1280" data-h="800">
+					<div class="stage-inner">
+						<div class="nc desk themable" data-theme="light">
+							<div class="nc-header">
+								<div class="nc-logo"><span></span></div>
+								<div class="nc-apps">
+									<div class="nc-app"><svg class="i"><use href="#i-folder"/></svg></div>
+									<div class="nc-app"><svg class="i"><use href="#i-calapp"/></svg></div>
+									<div class="nc-app"><svg class="i"><use href="#i-tasks"/></svg></div>
+									<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+								</div>
+								<div class="spacer"></div>
+								<div class="nc-avatar">A</div>
+							</div>
+							<div class="nc-body">
+								<nav class="nav">
+									<div class="nav-top"><button class="icon-btn" type="button" aria-label="Close navigation"><svg class="i"><use href="#i-menu"/></svg></button></div>
+									<a class="nav-item active" href="#c"><svg class="i"><use href="#i-layers"/></svg><span class="label">All areas</span></a>
+									<div class="nav-spacer"></div>
+									<div class="nav-foot">
+										<a class="nav-item" href="#c"><svg class="i"><use href="#i-bug"/></svg><span class="label">Report a bug</span></a>
+										<a class="nav-item" href="#c"><svg class="i"><use href="#i-cog"/></svg><span class="label">Choose areas</span></a>
+									</div>
+								</nav>
+								<main class="content">
+									<div class="topbar"><h1>Projects</h1></div>
+									<div class="scroll">
+										<div class="empty" style="padding-top:120px">
+											<div class="ic"><svg class="i"><use href="#i-layers"/></svg></div>
+											<h3>Choose your areas</h3>
+											<p>Areas are the task lists you plan in, such as Home or Work. Pick the ones to show here. Projects reads them as they are, and you can change your choice later.</p>
+											<button class="btn primary plain" type="button">Choose areas</button>
+										</div>
+									</div>
+								</main>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div style="flex:1 1 560px">
+				<div class="frame-label"><b>Area settings dialog</b><span class="tag new">proposed</span></div>
+				<div class="stage" data-w="1280" data-h="800">
+					<div class="stage-inner">
+						<div class="nc desk themable" data-theme="light">
+							<div class="nc-header">
+								<div class="nc-logo"><span></span></div>
+								<div class="nc-apps">
+									<div class="nc-app"><svg class="i"><use href="#i-folder"/></svg></div>
+									<div class="nc-app"><svg class="i"><use href="#i-calapp"/></svg></div>
+									<div class="nc-app"><svg class="i"><use href="#i-tasks"/></svg></div>
+									<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+								</div>
+								<div class="spacer"></div>
+								<div class="nc-avatar">A</div>
+							</div>
+							<div class="nc-body">
+								<nav class="nav">
+									<div class="nav-top"><button class="icon-btn" type="button" aria-label="Close navigation"><svg class="i"><use href="#i-menu"/></svg></button></div>
+									<a class="nav-item active" href="#c"><svg class="i"><use href="#i-layers"/></svg><span class="label">All areas</span></a>
+								</nav>
+								<main class="content">
+									<div class="topbar"><h1>Projects</h1></div>
+								</main>
+							</div>
+							<div class="backdrop">
+								<div class="dialog" role="dialog" aria-label="Choose areas">
+									<div class="d-head"><h3>Choose areas</h3><button class="icon-btn" type="button" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
+									<div class="d-body">
+										<p>Each area you tick becomes a section of the panel. Untick one to hide it; nothing on the list changes.</p>
+										<div class="check-row"><span class="cb on"><svg class="i"><use href="#i-check"/></svg></span><span class="swatch" style="background:#3d8c40"></span><span class="lbl">Home</span><span class="meta">24 open tasks</span></div>
+										<div class="check-row"><span class="cb on"><svg class="i"><use href="#i-check"/></svg></span><span class="swatch" style="background:#2f6fb5"></span><span class="lbl">Work</span><span class="meta">41 open tasks</span></div>
+										<div class="check-row"><span class="cb on"><svg class="i"><use href="#i-check"/></svg></span><span class="swatch" style="background:#b4572f"></span><span class="lbl">Studio</span><span class="meta">12 open tasks</span></div>
+										<div class="check-row"><span class="cb"></span><span class="swatch" style="background:#8a5fb0"></span><span class="lbl">Reading list</span><span class="meta">9 open tasks</span></div>
+										<div class="check-row"><span class="cb"></span><span class="swatch" style="background:#c79a1e"></span><span class="lbl">Errands</span><span class="meta">3 open tasks</span></div>
+										<div class="excluded">Shared lists, agent queues and Deck boards can't be areas, so they aren't listed (2 shared lists, 1 agent queue, 1 Deck board).</div>
+									</div>
+									<div class="d-foot"><button class="btn plain" type="button">Cancel</button><button class="btn primary plain" type="button">Save</button></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<ul class="notes">
+			<li><span class="n">The first-run text explains what an area is</span>, instead of repeating "Choose your areas" as both a paragraph and a button. It uses NcEmptyContent, like other Nextcloud apps.</li>
+			<li><span class="n">The dialog gets a sentence of help, the list colours from the Tasks app, Cancel next to Save, and a line saying which lists are left out and why.</span> The per-list task counts are optional; drop them if they cost an extra request.</li>
+			<li><span class="n">Areas appear in the panel in the order of this list</span> (the server's list order), as today. Reordering areas is not proposed.</li>
+		</ul>
+	</section>
+
+	<!-- =========================================================
+	     (d) NEEDS FILING + MOVE TO PROJECT
+	========================================================== -->
+	<section class="review-section" id="d" data-screen-label="d Needs filing and move">
+		<h2>d · The Needs filing tray, and moving a task to another project</h2>
+		<p class="sub">Three frames. 1: the tray as its own page, opened from the navigation (today the component exists but isn't shown anywhere). 2: the "Move to project…" dialog, opened from the tray or from any task's "⋯" menu, which also works by keyboard and on phones. 3: dragging a task onto another project, the mouse route to the same move (M17).</p>
+
+		<div class="frame-label"><b>1 · Needs filing</b><span class="tag new">proposed</span><span>Bottom left: the task row menu from a project, which is the other way into Move to project.</span></div>
+		<div class="stage" data-w="1280" data-h="800">
+			<div class="stage-inner">
+				<div class="nc desk themable" data-theme="light">
+					<div class="nc-header">
+						<div class="nc-logo"><span></span></div>
+						<div class="nc-apps">
+							<div class="nc-app"><svg class="i"><use href="#i-folder"/></svg></div>
+							<div class="nc-app"><svg class="i"><use href="#i-calapp"/></svg></div>
+							<div class="nc-app"><svg class="i"><use href="#i-tasks"/></svg></div>
+							<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+						</div>
+						<div class="spacer"></div>
+						<div class="nc-avatar">A</div>
+					</div>
+					<div class="nc-body">
+						<nav class="nav">
+							<div class="nav-top"><button class="icon-btn" type="button" aria-label="Close navigation"><svg class="i"><use href="#i-menu"/></svg></button></div>
+							<a class="nav-item" href="#a"><svg class="i"><use href="#i-layers"/></svg><span class="label">All areas</span></a>
+							<div class="nav-caption">Areas</div>
+							<a class="nav-item" href="#a"><span class="dot" style="background:#3d8c40"></span><span class="label">Home</span><span class="counter">4</span></a>
+							<a class="nav-item" href="#a"><span class="dot" style="background:#2f6fb5"></span><span class="label">Work</span><span class="counter">6</span></a>
+							<a class="nav-item" href="#a"><span class="dot" style="background:#b4572f"></span><span class="label">Studio</span><span class="counter">3</span></a>
+							<div class="nav-caption">Tidy up</div>
+							<a class="nav-item active" href="#d"><svg class="i"><use href="#i-tray"/></svg><span class="label">Needs filing</span><span class="counter hl">3</span></a>
+							<div class="nav-spacer"></div>
+							<div class="nav-foot">
+								<a class="nav-item" href="#d"><svg class="i"><use href="#i-bug"/></svg><span class="label">Report a bug</span></a>
+								<a class="nav-item" href="#c"><svg class="i"><use href="#i-cog"/></svg><span class="label">Choose areas</span></a>
+							</div>
+						</nav>
+						<main class="content">
+							<div class="topbar"><h1>Needs filing</h1><span class="meta">3 tasks</span></div>
+							<div class="scroll">
+								<div class="column">
+									<p class="tray-intro">Tasks that don't sit under a project. Make each one a project, or move it into one.</p>
+									<div class="tray-group">
+										<h2>Orphan tasks <span class="meta">their parent is missing or done</span></h2>
+										<div class="tray-item is-hover">
+											<div>
+												<div>Sand window frames</div>
+												<div class="why"><span class="listchip"><span class="swatch" style="background:#3d8c40"></span>Home</span><span>·</span><span>Parent "Spring clean" is done</span></div>
+											</div>
+											<div class="acts"><button class="btn tertiary" type="button">Make project</button><button class="btn" type="button"><svg class="i s16"><use href="#i-move"/></svg>Move to project…</button></div>
+										</div>
+										<div class="tray-item">
+											<div>
+												<div>Draft episode outline</div>
+												<div class="why"><span class="listchip"><span class="swatch" style="background:#b4572f"></span>Studio</span><span>·</span><span>Parent no longer exists</span></div>
+											</div>
+											<div class="acts"><button class="btn tertiary" type="button">Make project</button><button class="btn" type="button"><svg class="i s16"><use href="#i-move"/></svg>Move to project…</button></div>
+										</div>
+									</div>
+									<div class="tray-group">
+										<h2>Parents without a project tag <span class="meta">they have subtasks but aren't projects</span></h2>
+										<div class="tray-item">
+											<div>
+												<div>Website refresh</div>
+												<div class="why"><span class="listchip"><span class="swatch" style="background:#2f6fb5"></span>Work</span><span>·</span><span>4 subtasks</span></div>
+											</div>
+											<div class="acts"><button class="btn tertiary" type="button">Make project</button><button class="btn" type="button"><svg class="i s16"><use href="#i-move"/></svg>Move to project…</button></div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="menu" style="left:24px;top:360px" role="menu">
+								<div class="cap">From a task's "⋯" menu in a project</div>
+								<div class="mi"><svg class="i"><use href="#i-cal"/></svg>Due date…<span class="k">Fri 31 Oct</span></div>
+								<div class="mi"><svg class="i"><use href="#i-x"/></svg>Clear due date</div>
+								<div class="sep"></div>
+								<div class="cap">Priority</div>
+								<div class="mi"><span class="radio on"></span>High</div>
+								<div class="mi"><span class="radio"></span>Medium</div>
+								<div class="mi"><span class="radio"></span>Low</div>
+								<div class="mi"><span class="radio"></span>None</div>
+								<div class="sep"></div>
+								<div class="mi is-hover"><svg class="i"><use href="#i-move"/></svg>Move to project…</div>
+								<div class="mi"><svg class="i"><use href="#i-ext"/></svg>Open in Tasks</div>
+							</div>
+						</main>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row-frames">
+			<div style="flex:1 1 560px">
+				<div class="frame-label"><b>2 · Move to project</b><span class="tag new">proposed</span></div>
+				<div class="stage" data-w="1280" data-h="800">
+					<div class="stage-inner">
+						<div class="nc desk themable" data-theme="light">
+							<div class="nc-header">
+								<div class="nc-logo"><span></span></div>
+								<div class="nc-apps">
+									<div class="nc-app"><svg class="i"><use href="#i-folder"/></svg></div>
+									<div class="nc-app"><svg class="i"><use href="#i-calapp"/></svg></div>
+									<div class="nc-app"><svg class="i"><use href="#i-tasks"/></svg></div>
+									<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+								</div>
+								<div class="spacer"></div>
+								<div class="nc-avatar">A</div>
+							</div>
+							<div class="nc-body">
+								<nav class="nav"><div class="nav-top"><button class="icon-btn" type="button" aria-label="Close navigation"><svg class="i"><use href="#i-menu"/></svg></button></div><a class="nav-item active" href="#d"><svg class="i"><use href="#i-tray"/></svg><span class="label">Needs filing</span><span class="counter hl">3</span></a></nav>
+								<main class="content"><div class="topbar"><h1>Needs filing</h1></div></main>
+							</div>
+							<div class="backdrop">
+								<div class="dialog" role="dialog" aria-label="Move Sand window frames">
+									<div class="d-head"><h3>Move "Sand window frames"</h3><button class="icon-btn" type="button" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
+									<div class="d-body">
+										<div class="field focus"><svg class="i s16"><use href="#i-search"/></svg><span>Find a project</span></div>
+										<div class="pick-cap">Home</div>
+										<div class="pick"><span class="lbl">Kitchen refresh</span><span class="meta">3 of 7</span></div>
+										<div class="pick sel"><span class="lbl">Garden shed</span><span class="meta">5 of 9</span><svg class="i s16"><use href="#i-check"/></svg></div>
+										<div class="pick"><span class="lbl">Bike service</span><span class="meta">1 of 3</span></div>
+										<div class="pick-cap">Studio</div>
+										<div class="pick"><span class="lbl">Short film edit</span><span class="meta">8 of 15</span></div>
+										<div class="pick"><span class="lbl">Podcast season 2</span><span class="meta">2 of 11</span></div>
+										<div class="consequence"><svg class="i s16" style="margin-top:2px"><use href="#i-info"/></svg><span>Moves under "Garden shed". It stays on the Home list.</span></div>
+									</div>
+									<div class="d-foot"><button class="btn plain" type="button">Cancel</button><button class="btn primary plain" type="button">Move</button></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div style="flex:1 1 560px">
+				<div class="frame-label"><b>3 · Drag onto another project</b><span class="tag new">proposed</span></div>
+				<div class="stage" data-w="1280" data-h="800">
+					<div class="stage-inner">
+						<div class="nc desk themable" data-theme="light">
+							<div class="nc-header">
+								<div class="nc-logo"><span></span></div>
+								<div class="nc-apps">
+									<div class="nc-app"><svg class="i"><use href="#i-folder"/></svg></div>
+									<div class="nc-app"><svg class="i"><use href="#i-calapp"/></svg></div>
+									<div class="nc-app"><svg class="i"><use href="#i-tasks"/></svg></div>
+									<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+								</div>
+								<div class="spacer"></div>
+								<div class="nc-avatar">A</div>
+							</div>
+							<div class="nc-body">
+								<nav class="nav"><div class="nav-top"><button class="icon-btn" type="button" aria-label="Close navigation"><svg class="i"><use href="#i-menu"/></svg></button></div><a class="nav-item active" href="#a"><svg class="i"><use href="#i-layers"/></svg><span class="label">All areas</span></a></nav>
+								<main class="content">
+									<div class="topbar"><h1>All areas</h1><span class="meta">13 projects</span></div>
+									<div class="scroll">
+										<div class="column">
+											<section class="area">
+												<div class="area-head"><h2>Home</h2><span class="meta">4 projects</span></div>
+												<div class="proj">
+													<div class="proj-head">
+														<span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span>
+														<button class="chev" type="button" aria-label="Collapse Kitchen refresh"><svg class="i s16"><use href="#i-chev"/></svg></button>
+														<span class="cb"></span>
+														<span class="proj-title"><span class="t">Kitchen refresh</span></span>
+														<span class="proj-sum"><span class="prog"><span class="bar"><i style="width:43%"></i></span>3 of 7</span></span>
+														<button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button>
+													</div>
+													<ul class="tree">
+														<li><div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb p-high"></span><span class="title">Choose worktop sample</span><span class="meta"><span class="due soon"><svg class="i s14"><use href="#i-cal"/></svg>Fri 31 Oct</span></span><span></span></div></li>
+														<li><div class="ghost-slot"></div></li>
+														<li><div class="row"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><span></span><span class="cb"></span><span class="title">Pick a tap finish</span><span class="meta"></span><span></span></div></li>
+													</ul>
+												</div>
+												<div class="proj drop-target" style="position:relative">
+													<div class="proj-head">
+														<span class="grip"></span>
+														<button class="chev" type="button" aria-label="Expand Garden shed"><svg class="i s16"><use href="#i-chev"/></svg></button>
+														<span class="cb"></span>
+														<span class="proj-title"><span class="t">Garden shed</span><span class="badge blocked">blocked</span></span>
+														<span class="proj-sum"><span class="drop-hint">Drop to move here</span></span>
+														<span></span>
+													</div>
+													<ul class="tree" style="position:relative">
+														<li><div class="row"><span class="grip"></span><span></span><span class="cb"></span><span class="title">Get timber quote</span><span class="meta"></span><span></span></div></li>
+														<li><div class="drop-line" style="margin:2px 0"></div></li>
+														<li style="position:absolute;left:120px;top:44px;width:520px">
+															<div class="row lifted" style="margin-left:0"><span class="grip"><svg class="i s16"><use href="#i-grip"/></svg></span><button class="chev closed" type="button" aria-label="Subtasks"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="title">Order hinges</span><span class="meta"><span class="sub-count">3 subtasks come along</span></span><span></span><span class="drag-badge">+3</span></div>
+														</li>
+														<li><div class="row"><span class="grip"></span><span></span><span class="cb"></span><span class="title">Clear the base</span><span class="meta"></span><span></span></div></li>
+													</ul>
+												</div>
+											</section>
+										</div>
+									</div>
+								</main>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<ul class="notes">
+			<li><span class="n">The tray is a page, not a box tucked under the areas.</span> It's reached from the navigation, where the count is highlighted while anything is waiting. Each item says why it's there and which list it's on.</li>
+			<li><span class="n">One move flow, two ways in.</span> The dialog lists projects by area, with search. It says what will happen before you confirm. When the target is on another list it reads "Moves under 'Short film edit' and to the Studio list, with its 2 subtasks." The task's current project is listed but can't be picked.</li>
+			<li><span class="n">Dragging:</span> the project you'd drop into is outlined and says "Drop to move here", a line shows exactly where the task will land, and a "+3" badge on the dragged row shows that its subtasks come too. The gap it left stays visible. Dropping onto a project on a different list asks first, using the same sentence as the dialog. (Dragging to a project on the same list needs the drag groups to be shared across projects; see the implementation notes.)</li>
+			<li><span class="n">The row menu holds every quick edit (M18):</span> Due date, Clear due date, Priority as four choices with the current one marked, Move to project, and Open in Tasks.</li>
+		</ul>
+	</section>
+
+	<!-- =========================================================
+	     (e) DONE STRIP + SHOW DONE
+	========================================================== -->
+	<section class="review-section" id="e" data-screen-label="e Done strip">
+		<h2>e · The Done strip, and done tasks inside a project</h2>
+		<p class="sub">Content column only, at 920 px. Left: an area's Done strip collapsed and expanded (M8). Right: one project with its done tasks hidden, then shown (M6).</p>
+		<div class="row-frames">
+			<div style="flex:1 1 460px">
+				<div class="frame-label"><b>Done strip, collapsed then expanded</b></div>
+				<div class="stage" data-w="620" data-h="430">
+					<div class="stage-inner">
+						<div class="nc themable" data-theme="light" style="width:620px;height:430px;background:var(--color-main-background);padding:12px 20px;border-radius:12px;overflow:hidden">
+							<div class="ghost newproj"><span></span><span></span><span class="plus"><svg class="i s16"><use href="#i-plus"/></svg></span><span class="lbl">New project in Home</span></div>
+							<div class="done-strip"><button class="done-toggle" type="button" aria-expanded="false"><span></span><span class="chev closed"><svg class="i s16"><use href="#i-chev"/></svg></span><span style="display:grid;place-items:center"><svg class="i s16"><use href="#i-checkall"/></svg></span><span>4 done projects</span></button></div>
+							<div style="height:24px"></div>
+							<div class="ghost newproj"><span></span><span></span><span class="plus"><svg class="i s16"><use href="#i-plus"/></svg></span><span class="lbl">New project in Home</span></div>
+							<div class="done-strip">
+								<button class="done-toggle" type="button" aria-expanded="true"><span></span><span class="chev"><svg class="i s16"><use href="#i-chev"/></svg></span><span style="display:grid;place-items:center"><svg class="i s16"><use href="#i-checkall"/></svg></span><span>4 done projects</span></button>
+								<ul class="done-list">
+									<li><span></span><span></span><span class="cb on muted"><svg class="i"><use href="#i-check"/></svg></span><span class="t">Spring clean</span><span class="when">22 Oct</span><span></span></li>
+									<li class="is-hover"><span></span><span></span><span class="cb on muted"><svg class="i"><use href="#i-check"/></svg></span><span class="t" style="color:var(--color-main-text)">Fix the gate latch</span><span class="when">14 Oct</span><a class="icon-btn" href="#e" aria-label="Open in Tasks" title="Open in Tasks"><svg class="i s16"><use href="#i-ext"/></svg></a></li>
+									<li><span></span><span></span><span class="cb on muted"><svg class="i"><use href="#i-check"/></svg></span><span class="t">Winter tyres</span><span class="when">3 Oct</span><span></span></li>
+									<li><span></span><span></span><span class="cb on muted"><svg class="i"><use href="#i-check"/></svg></span><span class="t">Sort the loft</span><span class="when">19 Sep</span><span></span></li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div style="flex:1 1 460px">
+				<div class="frame-label"><b>Done tasks: hidden, then shown</b></div>
+				<div class="stage" data-w="620" data-h="430">
+					<div class="stage-inner">
+						<div class="nc themable" data-theme="light" style="width:620px;height:430px;background:var(--color-main-background);padding:12px 20px;border-radius:12px;overflow:hidden">
+							<div class="proj">
+								<div class="proj-head"><span class="grip"></span><button class="chev" type="button" aria-label="Collapse Bike service"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="proj-title"><span class="t">Bike service</span></span><span class="proj-sum"><span class="prog"><span class="bar"><i style="width:33%"></i></span>1 of 3</span></span><span></span></div>
+								<ul class="tree">
+									<li><div class="row"><span class="grip"></span><span></span><span class="cb"></span><span class="title">Replace brake pads</span><span class="meta"></span><span></span></div></li>
+									<li><div class="row"><span class="grip"></span><span></span><span class="cb"></span><span class="title">True the back wheel</span><span class="meta"></span><span></span></div></li>
+									<li><div class="ghost"><span></span><span></span><span class="plus"><svg class="i s16"><use href="#i-plus"/></svg></span><span class="lbl">Add task</span><span class="right">1 done · <a href="#e">Show</a></span></div></li>
+								</ul>
+							</div>
+							<div style="height:18px"></div>
+							<div class="proj">
+								<div class="proj-head"><span class="grip"></span><button class="chev" type="button" aria-label="Collapse Bike service"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="proj-title"><span class="t">Bike service</span></span><span class="proj-sum"><span class="prog"><span class="bar"><i style="width:33%"></i></span>1 of 3</span></span><span></span></div>
+								<ul class="tree">
+									<li><div class="row done"><span class="grip"></span><span></span><span class="cb on muted"><svg class="i"><use href="#i-check"/></svg></span><span class="title">Clean and oil the chain</span><span class="meta"></span><span></span></div></li>
+									<li><div class="row"><span class="grip"></span><span></span><span class="cb"></span><span class="title">Replace brake pads</span><span class="meta"></span><span></span></div></li>
+									<li><div class="row"><span class="grip"></span><span></span><span class="cb"></span><span class="title">True the back wheel</span><span class="meta"></span><span></span></div></li>
+									<li><div class="ghost"><span></span><span></span><span class="plus"><svg class="i s16"><use href="#i-plus"/></svg></span><span class="lbl">Add task</span><span class="right">1 done · <a href="#e">Hide</a></span></div></li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<ul class="notes">
+			<li><span class="n">The strip is the last thing in an area, below "New project in Home".</span> It starts collapsed (M8) and says "4 done projects" rather than "Done (4)". When expanded it lists each project with the date it was checked off; hovering a row shows "Open in Tasks".</li>
+			<li><span class="n">"Show done" moves from a switch in every header to a quiet "1 done · Show" at the foot of the project.</span> It only appears when a project has done tasks. It's still remembered per project in this browser and writes nothing (M6). The project menu has the same toggle.</li>
+			<li><span class="n">Done tasks are struck through in the secondary text colour instead of faded by opacity</span>, so they stay readable (4.5:1) at every depth.</li>
+		</ul>
+	</section>
+
+	<!-- =========================================================
+	     (f) PHONE
+	========================================================== -->
+	<section class="review-section" id="f" data-screen-label="f Phone">
+		<h2>f · Phone, 390 × 844</h2>
+		<p class="sub">One column, with the same rows as desktop at 48 px tall. Every target is at least 44 px. Left: the panel. Middle: a long press has picked up a task. Right: the navigation drawer, then the "⋯" menu as a bottom sheet.</p>
+		<div class="row-frames">
+			<div>
+				<div class="frame-label"><b>Panel</b></div>
+				<div class="stage fixed-w" data-w="414" data-h="868" data-max="414">
+					<div class="stage-inner">
+						<div class="phone-shell">
+							<div class="nc phone themable" data-theme="light">
+								<div class="os-bar"><span>9:41</span><span>5G ▮</span></div>
+								<div class="nc-header">
+									<div class="nc-logo" style="width:48px"><span style="width:34px;height:16px"></span></div>
+									<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+									<div class="spacer"></div>
+									<div class="nc-app"><svg class="i"><use href="#i-search"/></svg></div>
+									<div class="nc-avatar">A</div>
+								</div>
+								<main class="content">
+									<div class="topbar">
+										<button class="icon-btn" type="button" aria-label="Open navigation"><svg class="i"><use href="#i-menu"/></svg></button>
+										<h1>All areas</h1>
+										<div class="spacer"></div>
+										<button class="icon-btn" type="button" aria-label="New project" style="background:var(--color-primary-element);color:var(--color-primary-element-text)"><svg class="i"><use href="#i-plus"/></svg></button>
+									</div>
+									<div class="scroll">
+										<div class="column">
+											<div class="area-head"><h2>Home</h2><span class="meta">4 projects</span></div>
+											<div class="proj">
+												<div class="proj-head"><span class="grip"></span><button class="chev" type="button" aria-label="Collapse Kitchen refresh"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="proj-title"><span class="t">Kitchen refresh</span></span><span class="proj-sum"><span class="prog"><span class="bar"><i style="width:43%"></i></span>3/7</span></span><button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button></div>
+												<ul class="tree">
+													<li><div class="row"><span class="grip"></span><span></span><span class="cb p-high"></span><span class="title">Choose worktop sample</span><span class="meta"><span class="due soon">31 Oct</span></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+													<li><div class="row"><span class="grip"></span><span></span><span class="cb p-medium"></span><span class="title">Book electrician for under-cabinet lights</span><span class="meta"><span class="due">4 Nov</span></span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+													<li><div class="row"><span class="grip"></span><button class="chev closed" type="button" aria-label="Expand subtasks"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="title">Order hinges</span><span class="meta">3</span><button class="icon-btn more" type="button" aria-label="Task actions"><svg class="i"><use href="#i-dots"/></svg></button></div></li>
+													<li><div class="ghost"><span></span><span></span><span class="plus"><svg class="i s16"><use href="#i-plus"/></svg></span><span class="lbl">Add task</span><span class="right"><a href="#f">3 done</a></span></div></li>
+												</ul>
+											</div>
+											<div class="proj collapsed">
+												<div class="proj-head"><span class="grip"></span><button class="chev" type="button" aria-label="Expand Garden shed"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="proj-title"><span class="t">Garden shed</span><span class="badge blocked">blocked</span></span><span class="proj-sum"><span class="prog">5/9</span></span><button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button></div>
+											</div>
+											<div class="proj collapsed">
+												<div class="proj-head"><span class="grip"></span><button class="chev" type="button" aria-label="Expand Bike service"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="proj-title"><span class="t">Bike service</span></span><span class="proj-sum"><span class="prog">1/3</span></span><button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button></div>
+											</div>
+											<div class="group-cap">Someday</div>
+											<div class="proj someday collapsed">
+												<div class="proj-head"><span class="grip"></span><button class="chev" type="button" aria-label="Expand Repaint hallway"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="proj-title"><span class="t">Repaint hallway</span></span><span class="proj-sum"></span><button class="icon-btn more" type="button" aria-label="Project actions"><svg class="i"><use href="#i-dots"/></svg></button></div>
+											</div>
+											<div class="done-strip"><button class="done-toggle" type="button" aria-expanded="false"><span></span><span class="chev closed"><svg class="i s16"><use href="#i-chev"/></svg></span><span style="display:grid;place-items:center"><svg class="i s16"><use href="#i-checkall"/></svg></span><span>4 done projects</span></button></div>
+											<div class="area-head"><h2>Work</h2><span class="meta">6 projects</span></div>
+										</div>
+									</div>
+								</main>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div>
+				<div class="frame-label"><b>Long press to drag</b></div>
+				<div class="stage fixed-w" data-w="414" data-h="868" data-max="414">
+					<div class="stage-inner">
+						<div class="phone-shell">
+							<div class="nc phone themable" data-theme="light">
+								<div class="os-bar"><span>9:41</span><span>5G ▮</span></div>
+								<div class="nc-header">
+									<div class="nc-logo" style="width:48px"><span style="width:34px;height:16px"></span></div>
+									<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+									<div class="spacer"></div>
+									<div class="nc-avatar">A</div>
+								</div>
+								<main class="content">
+									<div class="topbar">
+										<button class="icon-btn" type="button" aria-label="Open navigation"><svg class="i"><use href="#i-menu"/></svg></button>
+										<h1>All areas</h1>
+									</div>
+									<div class="coach" style="top:60px"><svg class="i s16"><use href="#i-grip"/></svg><span>Drag to reorder, or onto another project to move it</span></div>
+									<div class="scroll">
+										<div class="column" style="padding-top:78px">
+											<div class="proj">
+												<div class="proj-head"><span class="grip"></span><button class="chev" type="button" aria-label="Collapse Kitchen refresh"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="proj-title"><span class="t">Kitchen refresh</span></span><span class="proj-sum"><span class="prog">3/7</span></span><span></span></div>
+												<ul class="tree" style="position:relative">
+													<li><div class="row"><span class="grip"></span><span></span><span class="cb p-high"></span><span class="title">Choose worktop sample</span><span class="meta"><span class="due soon">31 Oct</span></span><span></span></div></li>
+													<li style="height:56px;position:relative"><div class="drop-line" style="position:absolute;left:-40px;right:0;bottom:2px"></div></li>
+													<li><div class="row"><span class="grip"></span><span></span><span class="cb p-medium"></span><span class="title">Book electrician for under-cabinet lights</span><span class="meta"><span class="due">4 Nov</span></span><span></span></div></li>
+																										<li style="position:absolute;left:-30px;right:-2px;top:50px;z-index:6">
+														<div class="row lifted" style="margin-left:0"><span></span><span style="display:grid;place-items:center;color:var(--color-main-text)"><svg class="i s16"><use href="#i-grip"/></svg></span><span class="cb"></span><span class="title">Pick a tap finish</span><span class="meta"></span><span></span></div>
+														<span class="longpress-ring" style="left:150px;top:-4px;z-index:7"></span>
+													</li>
+													<li><div class="row"><span class="grip"></span><span></span><span class="cb"></span><span class="title">Order hinges</span><span class="meta">3</span><span></span></div></li>
+												</ul>
+											</div>
+											<div class="proj collapsed">
+												<div class="proj-head"><span class="grip"></span><button class="chev" type="button" aria-label="Expand Garden shed"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="proj-title"><span class="t">Garden shed</span><span class="badge blocked">blocked</span></span><span class="proj-sum"><span class="prog">5/9</span></span><span></span></div>
+											</div>
+											<div class="proj collapsed">
+												<div class="proj-head"><span class="grip"></span><button class="chev" type="button" aria-label="Expand Bike service"><svg class="i s16"><use href="#i-chev"/></svg></button><span class="cb"></span><span class="proj-title"><span class="t">Bike service</span></span><span class="proj-sum"><span class="prog">1/3</span></span><span></span></div>
+											</div>
+										</div>
+									</div>
+								</main>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div>
+				<div class="frame-label"><b>Navigation drawer, and the row menu as a sheet</b></div>
+				<div class="stage fixed-w" data-w="414" data-h="868" data-max="414">
+					<div class="stage-inner">
+						<div class="phone-shell">
+							<div class="nc phone themable" data-theme="light">
+								<div class="os-bar"><span>9:41</span><span>5G ▮</span></div>
+								<div class="nc-header">
+									<div class="nc-logo" style="width:48px"><span style="width:34px;height:16px"></span></div>
+									<div class="nc-app active"><svg class="i"><use href="#i-proj"/></svg></div>
+									<div class="spacer"></div>
+									<div class="nc-avatar">A</div>
+								</div>
+								<main class="content">
+									<div class="topbar"><button class="icon-btn" type="button" aria-label="Open navigation"><svg class="i"><use href="#i-menu"/></svg></button><h1>All areas</h1></div>
+									<div class="scroll"><div class="column"><div class="area-head"><h2>Home</h2></div></div></div>
+								</main>
+								<div class="scrim"></div>
+								<nav class="nav" style="bottom:300px;border-radius:0 0 12px 0">
+									<a class="nav-item active" href="#f"><svg class="i"><use href="#i-layers"/></svg><span class="label">All areas</span></a>
+									<div class="nav-caption">Areas</div>
+									<a class="nav-item" href="#f"><span class="dot" style="background:#3d8c40"></span><span class="label">Home</span><span class="counter">4</span></a>
+									<a class="nav-item" href="#f"><span class="dot" style="background:#2f6fb5"></span><span class="label">Work</span><span class="counter">6</span></a>
+									<a class="nav-item" href="#f"><span class="dot" style="background:#b4572f"></span><span class="label">Studio</span><span class="counter">3</span></a>
+									<div class="nav-caption">Tidy up</div>
+									<a class="nav-item" href="#f"><svg class="i"><use href="#i-tray"/></svg><span class="label">Needs filing</span><span class="counter hl">3</span></a>
+								</nav>
+								<div class="sheet">
+									<div class="grab"></div>
+									<div class="s-title">Choose worktop sample</div>
+									<div class="mi"><svg class="i"><use href="#i-cal"/></svg>Due date<span style="margin-left:auto;color:var(--color-text-maxcontrast);font-size:14px">Fri 31 Oct</span></div>
+									<div class="mi"><svg class="i"><use href="#i-flag"/></svg>Priority<span style="margin-left:auto;color:var(--prio-high);font-size:14px;font-weight:600">High</span></div>
+									<div class="mi"><svg class="i"><use href="#i-move"/></svg>Move to project…</div>
+									<div class="mi"><svg class="i"><use href="#i-ext"/></svg>Open in Tasks</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<ul class="notes">
+			<li><span class="n">No more wrapping rows.</span> Today a task's date field, priority menu and "Open in Tasks" wrap under the title, so one task takes three lines. Now a row is the checkbox, the title and a short date ("31 Oct"), with "⋯" always visible because phones have no hover.</li>
+			<li><span class="n">Long press (500 ms, Sortable's current setting) lifts the row:</span> it scales up slightly with a shadow, the rows below part to make room, and a blue line marks where it will land. A one-line hint appears at the top the first few times. The "⋯" menu is the no-drag route to the same move.</li>
+			<li><span class="n">The navigation becomes Nextcloud's standard drawer</span>, opened from the top-left. On phones, menus open as bottom sheets with 48 px rows.</li>
+			<li><span class="n">Collapsed projects show "5/9"</span>; the bar drops out below 400 px to keep titles readable.</li>
+		</ul>
+	</section>
+
+	<!-- =========================================================
+	     (g) EMPTY + ERROR STATES
+	========================================================== -->
+	<section class="review-section" id="g" data-screen-label="g Empty states">
+		<h2>g · Empty and error states</h2>
+		<p class="sub">An area with no projects stays in the panel with one line and an action. The tray and a load failure use Nextcloud's empty-content pattern.</p>
+		<div class="row-frames">
+			<div style="flex:1 1 380px">
+				<div class="frame-label"><b>An area with no open projects</b></div>
+				<div class="stage" data-w="620" data-h="360">
+					<div class="stage-inner">
+						<div class="nc themable" data-theme="light" style="width:620px;height:360px;background:var(--color-main-background);padding:12px 20px;border-radius:12px;overflow:hidden">
+							<div class="area-head"><h2>Studio</h2><span class="meta">no open projects</span></div>
+							<div class="empty small" style="align-items:flex-start;text-align:left;padding:12px 4px 12px 48px">
+								<p style="margin:0">Nothing open in Studio. Start a project, or tag an existing task as a project in Tasks.</p>
+								<button class="btn plain" type="button" style="margin-top:4px"><svg class="i s16"><use href="#i-plus"/></svg>New project in Studio</button>
+							</div>
+							<div class="done-strip"><button class="done-toggle" type="button" aria-expanded="false"><span></span><span class="chev closed"><svg class="i s16"><use href="#i-chev"/></svg></span><span style="display:grid;place-items:center"><svg class="i s16"><use href="#i-checkall"/></svg></span><span>2 done projects</span></button></div>
+							<div class="area-head" style="margin-top:16px"><h2>Work</h2><span class="meta">6 projects</span></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div style="flex:1 1 380px">
+				<div class="frame-label"><b>Nothing needs filing</b></div>
+				<div class="stage" data-w="620" data-h="360">
+					<div class="stage-inner">
+						<div class="nc themable" data-theme="light" style="width:620px;height:360px;background:var(--color-main-background);border-radius:12px;overflow:hidden">
+							<div class="empty" style="padding-top:64px">
+								<div class="ic"><svg class="i"><use href="#i-checkall"/></svg></div>
+								<h3>Everything is filed</h3>
+								<p>Every task sits under a project.</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div style="flex:1 1 380px">
+				<div class="frame-label"><b>Can't load task lists</b></div>
+				<div class="stage" data-w="620" data-h="360">
+					<div class="stage-inner">
+						<div class="nc themable" data-theme="light" style="width:620px;height:360px;background:var(--color-main-background);border-radius:12px;overflow:hidden">
+							<div class="empty" style="padding-top:48px">
+								<div class="ic"><svg class="i"><use href="#i-cloud"/></svg></div>
+								<h3>Couldn't load your task lists</h3>
+								<p>The server didn't answer. Your tasks are safe; nothing was changed.</p>
+								<button class="btn plain" type="button"><svg class="i s16"><use href="#i-refresh"/></svg>Try again</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<ul class="notes">
+			<li><span class="n">An empty area isn't hidden</span>: you picked it, so it stays, with one line saying what to do and its Done strip if it has one. The "tag an existing task" hint points to the no-code route.</li>
+			<li><span class="n">The load error replaces today's bare error text</span> with a reason, reassurance and a "Try again" button that calls the same load the page runs on open.</li>
+			<li><span class="n">Loading</span> (not drawn): three grey placeholder rows under each area heading instead of a centred spinner, so the page doesn't jump when data arrives.</li>
+		</ul>
+	</section>
+</div>
+
+<div class="theme-switch" role="group" aria-label="Theme for proposed frames">
+	<button type="button" data-set-theme="light" aria-pressed="true">Light</button>
+	<button type="button" data-set-theme="dark" aria-pressed="false">Dark</button>
+</div>
+
+<script>
+(function () {
+	// Scale fixed-size frames to fit the review column.
+	function fit() {
+		document.querySelectorAll('.stage').forEach(function (stage) {
+			var w = Number(stage.dataset.w), h = Number(stage.dataset.h);
+			var max = Number(stage.dataset.max) || Infinity;
+			var parent = stage.parentElement;
+			var avail = Math.min(parent.clientWidth, max);
+			var s = Math.min(1, avail / w);
+			stage.style.width = (w * s) + 'px';
+			stage.style.height = (h * s) + 'px';
+			var inner = stage.firstElementChild;
+			inner.style.width = w + 'px';
+			inner.style.transform = 'scale(' + s + ')';
+		});
+	}
+	window.addEventListener('resize', fit);
+	fit();
+
+	// Flip every proposed (themable) frame between light and dark.
+	var buttons = document.querySelectorAll('[data-set-theme]');
+	buttons.forEach(function (b) {
+		b.addEventListener('click', function () {
+			var t = b.dataset.setTheme;
+			document.querySelectorAll('.themable').forEach(function (el) { el.dataset.theme = t; });
+			buttons.forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+		});
+	});
+})();
+</script>
+</body>
+</html>
