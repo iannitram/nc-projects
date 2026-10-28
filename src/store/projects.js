@@ -213,76 +213,43 @@ export const useProjectsStore = defineStore('projects', {
 				return
 			}
 
-			// Keep a copy of original values for rollback
-			const originalValues = {}
-			for (const { uid } of toUpdate) {
-				const task = this.tasksByUid[uid]
-				if (task) {
-					originalValues[uid] = {
-						sortOrder: task.sortOrder,
-						etag: task.etag,
-					}
-				}
+			const rebuild = () => {
+				const tree = buildTree(this.areas.map((area) => ({
+					name: area.name,
+					calendar: { url: area.calendarUrl },
+				})), Object.values(this.tasksByUid))
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
 			}
 
-			try {
-				// Apply the new sort orders to the tasks
-				for (const { uid, sortOrder } of toUpdate) {
-					const task = this.tasksByUid[uid]
-					if (task) {
-						toRaw(task).sortOrder = sortOrder
-					}
+			// Optimistic: keep each task's original resource, then apply the new
+			// sort orders and rebuild the tree before the first write is awaited
+			const before = new Map()
+			for (const { uid, sortOrder } of toUpdate) {
+				const task = this.tasksByUid[uid]
+				if (task) {
+					before.set(uid, { ics: toRaw(task).toIcs(), where: toRaw(task).where })
+					toRaw(task).sortOrder = sortOrder
 				}
+			}
+			rebuild()
 
-				// Write each task to the server
-				const etags = {}
+			// A landed write keeps its new sort order and new etag; only the failed
+			// write and the ones not yet sent are rolled back
+			const landed = new Set()
+			try {
 				for (const { uid } of toUpdate) {
 					const task = this.tasksByUid[uid]
 					if (task) {
-						const etag = await putTodo(task.url, task.toIcs(), task.etag)
-						etags[uid] = etag.etag
+						const stored = await putTodo(task.url, task.toIcs(), task.etag)
+						toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
+						landed.add(uid)
 					}
 				}
-
-				// Update etags in tasks
-				for (const [uid, etag] of Object.entries(etags)) {
-					const task = this.tasksByUid[uid]
-					if (task) {
-						toRaw(task).where = { ...task.where, etag }
-					}
-				}
-
-				// Rebuild the tree after successful write
-				const allTasks = Object.values(this.tasksByUid)
-				const tree = buildTree(this.areas.map((area) => ({
-					name: area.name,
-					calendar: { url: area.calendarUrl },
-				})), allTasks)
-				this.areas = tree.areas
-				this.orphans = tree.orphans
-				this.untaggedParents = tree.untaggedParents
 			} catch (error) {
-				// Restore original values on any error (including ConflictError)
-				for (const [uid, original] of Object.entries(originalValues)) {
-					const task = this.tasksByUid[uid]
-					if (task) {
-						toRaw(task).sortOrder = original.sortOrder
-					}
-				}
-
-				// Rebuild the tree after rollback
-				const allTasks = Object.values(this.tasksByUid)
-				const tree = buildTree(this.areas.map((area) => ({
-					name: area.name,
-					calendar: { url: area.calendarUrl },
-				})), allTasks)
-				this.areas = tree.areas
-				this.orphans = tree.orphans
-				this.untaggedParents = tree.untaggedParents
-
-				// Handle ConflictError differently
+				// Handle ConflictError differently: reload every task of the change
 				if (error instanceof ConflictError) {
-					// Handle ConflictError - reload the tasks
 					try {
 						for (const { uid } of toUpdate) {
 							const task = this.tasksByUid[uid]
@@ -297,25 +264,22 @@ export const useProjectsStore = defineStore('projects', {
 							}
 						}
 
-						// Rebuild the tree after reload
-						const allTasks = Object.values(this.tasksByUid)
-						const tree = buildTree(this.areas.map((area) => ({
-							name: area.name,
-							calendar: { url: area.calendarUrl },
-						})), allTasks)
-						this.areas = tree.areas
-						this.orphans = tree.orphans
-						this.untaggedParents = tree.untaggedParents
-
+						rebuild()
 						showInfo('Someone else changed this; reloaded')
 					} catch {
 						// If reload fails, show error
 						showError('Could not save the new order')
 					}
-				} else {
-					// Show error for all other errors
-					showError('Could not save the new order')
+					return
 				}
+
+				for (const [uid, original] of before) {
+					if (!landed.has(uid)) {
+						this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
+					}
+				}
+				rebuild()
+				showError('Could not save the new order')
 			}
 		},
 		/**
