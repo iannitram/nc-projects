@@ -6,8 +6,8 @@ import { attachVueErrorHandler, installCrashLog } from './services/crashLog.js' 
 
 import './styles/projects.css'
 
-installErrorBuffer()
 installCrashLog(document.getElementById('cc_projects')?.dataset) // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+installErrorBuffer()
 
 const app = createApp(App) // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 app.use(createPinia()) // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)

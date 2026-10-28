@@ -226,6 +226,28 @@ final class ClientLogControllerTest extends TestCase {
 		$this->assertSame('#/project/:id', ClientLogController::sanitizeView('#/project/7'));
 	}
 
+	public function testControlCharactersAndTrailingNewlinesCannotSplitALogLine(): void {
+		$controller = $this->controller();
+		$lines = [];
+		$this->logger->method('error')->willReturnCallback(static function (string $line) use (&$lines): void {
+			$lines[] = $line;
+		});
+		$this->request->method('getParam')->with('events')->willReturn([
+			$this->event([
+				'message' => "Error: boom\r\n2026-10-28 FAKE entry\x00\x1b[31m\u{85}x\u{2028}y\u{2029}z\u{9B}",
+				'pageId' => "abc123\n",
+				'appVersion' => "1.0.0\n",
+				'userAgent' => "UA\nFAKE",
+				'time' => "2026-10-28T10:00:00Z\n",
+			]),
+		]);
+
+		$controller->receive();
+
+		$this->assertCount(1, $lines);
+		$this->assertSame(0, preg_match('/[\x00-\x1F\x7F-\x{9F}\x{2028}\x{2029}]/u', $lines[0]));
+	}
+
 	public function testServerExceptionIsLoggedAtErrorLevelWithTheAppTag(): void {
 		$logger = $this->createMock(LoggerInterface::class);
 		$logger->expects($this->once())->method('error')
