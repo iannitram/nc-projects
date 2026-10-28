@@ -6,7 +6,7 @@ Terms used in the spec's Musts, with the meaning the app gives them.
 |---|---|
 | **Agent** | An automated helper that files and edits tasks through CalDAV. Its tasks appear in the panel like any other. |
 | **Agent queue** | A task list an agent shares with the owner (display name ends `_shared_by_*`). Never an area. |
-| **Area** | One of the owner's own eight task lists: Personal, The Channel, Van, Barnum, Cheltenham, DCIS, DPS, System. Matched by display name. |
+| **Area** | One of the owner's own eight task lists: Area A, Area B, Area C, Area D, Area E, Area F, Area G, Area H. Matched by display name. |
 | **Badge** | A label on a project card: `blocked` (red) or `someday` (greyed, sunk to the bottom of its area). Read from the task's categories. |
 | **Card** | How a project shows in the panel: header (title, badges, progress bar, show-done toggle, + Add task) and its tasks. |
 | **"+ Add task"** | The field under a project card that creates a task at the project's top level, on the project's own list. |
