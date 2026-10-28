@@ -14,17 +14,35 @@
 	box-sizing: border-box;
 }
 
-.cc-projects {
-	max-width: 920px;
+/* One reading column: top bar, list and status line share it. */
+.cc-column {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+	height: 100%;
 	width: 100%;
+	max-width: 920px;
 	margin: 0 auto;
-	padding: calc(var(--default-grid-baseline, 4px) * 2) calc(var(--default-grid-baseline, 4px) * 6) calc(var(--default-grid-baseline, 4px) * 6) calc(var(--default-grid-baseline, 4px) * 5);
+	padding: 0 calc(var(--default-grid-baseline, 4px) * 5);
+	box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+	.cc-column {
+		padding: 0 calc(var(--default-grid-baseline, 4px) * 2);
+	}
+}
+
+.cc-projects {
+	width: 100%;
+	padding: calc(var(--default-grid-baseline, 4px) * 2) 0 calc(var(--default-grid-baseline, 4px) * 6);
 	box-sizing: border-box;
 }
 
 @media (max-width: 600px) {
 	.cc-projects {
-		padding: calc(var(--default-grid-baseline, 4px) * 2);
+		padding: calc(var(--default-grid-baseline, 4px) * 2) 0;
 		max-width: 100%;
 		box-sizing: border-box;
 	}
