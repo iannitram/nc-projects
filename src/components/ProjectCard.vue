@@ -84,15 +84,40 @@ const showDone = computed({
 		}
 	},
 })
+
+const categories = computed(() => {
+	const cats = props.project?.task?.categories
+	return Array.isArray(cats) ? cats : []
+})
+
+const isBlocked = computed(() => {
+	return categories.value.some((cat) => typeof cat === 'string' && cat.toLowerCase() === 'blocked')
+})
+
+const isSomeday = computed(() => {
+	return categories.value.some((cat) => typeof cat === 'string' && cat.toLowerCase() === 'someday')
+})
+
 </script>
 
 <template>
 	<div
-		class="cc-project-card">
+		class="cc-project-card"
+		:class="{ 'cc-project-card--someday': isSomeday }">
 		<header class="cc-project-card__header">
 			<h4 class="cc-project-card__title">
 				{{ project.task?.summary }}
 			</h4>
+			<span
+				v-if="isBlocked"
+				class="cc-project-card__badge cc-project-card__badge--blocked">
+				blocked
+			</span>
+			<span
+				v-if="isSomeday"
+				class="cc-project-card__badge cc-project-card__badge--someday">
+				someday
+			</span>
 			<div class="cc-project-card__header-actions">
 				<div class="cc-project-card__progress">
 					<NcProgressBar
@@ -125,6 +150,10 @@ const showDone = computed({
 	border: 1px solid var(--color-border, #ededed);
 	border-radius: var(--border-radius-large, 8px);
 	padding: calc(var(--default-grid-baseline, 4px) * 3);
+}
+
+.cc-project-card--someday {
+	opacity: 0.6;
 }
 
 .cc-project-card__header {
@@ -169,4 +198,24 @@ const showDone = computed({
 .cc-project-card__show-done {
 	margin: 0;
 }
+
+.cc-project-card__badge {
+	font-size: 0.75rem;
+	padding: calc(var(--default-grid-baseline, 4px) * 0.5) calc(var(--default-grid-baseline, 4px) * 1.5);
+	border-radius: var(--border-radius-pill, 10px);
+	font-weight: 500;
+	display: inline-flex;
+	align-items: center;
+}
+
+.cc-project-card__badge--blocked {
+	background-color: var(--color-error);
+	color: var(--color-main-background, #fff);
+}
+
+.cc-project-card__badge--someday {
+	background-color: var(--color-background-dark, var(--color-background-hover, #ededed));
+	color: var(--color-text-maxcontrast, #777);
+}
+
 </style>

@@ -1,7 +1,7 @@
 import { getRequestToken } from '@nextcloud/auth'
 import DavClient from '@nextcloud/cdav-library'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fetchTodo, listTaskCalendars } from '../../src/services/dav.js'
+import { createDavSession, fetchTodo, listTaskCalendars } from '../../src/services/dav.js'
 
 vi.mock('@nextcloud/auth', () => ({
 	getRequestToken: vi.fn(),
@@ -48,18 +48,19 @@ beforeEach(() => {
 
 describe('dav client root URL', () => {
 	it('builds the client with an absolute http(s) rootUrl', async () => {
-		await listTaskCalendars()
+		await listTaskCalendars(createDavSession())
 
 		expect(DavClient).toHaveBeenCalledTimes(1)
 		expect(DavClient.mock.calls[0][0].rootUrl).toMatch(/^https?:\/\//)
 		expect(new URL(DavClient.mock.calls[0][0].rootUrl).pathname).toContain('/remote.php/dav')
 	})
 
-	it('never hands the library a relative rootUrl, whichever function builds the client', async () => {
-		await listTaskCalendars()
-		await fetchTodo(`${calendarUrl}a.ics`)
+	it('reuses one client for multiple operations, with an absolute rootUrl', async () => {
+		const session = createDavSession()
+		await listTaskCalendars(session)
+		await fetchTodo(`${calendarUrl}a.ics`, session)
 
-		expect(DavClient).toHaveBeenCalledTimes(2)
+		expect(DavClient).toHaveBeenCalledTimes(1)
 		for (const [options] of DavClient.mock.calls) {
 			expect(options.rootUrl).not.toMatch(/^\//)
 			expect(options.rootUrl).toMatch(/^https?:\/\//)
@@ -67,7 +68,7 @@ describe('dav client root URL', () => {
 	})
 
 	it('lists the calendars when the library rejects a relative rootUrl as the real one does', async () => {
-		const calendars = await listTaskCalendars()
+		const calendars = await listTaskCalendars(createDavSession())
 
 		expect(calendars.map((calendar) => calendar.displayName)).toEqual(['Projects'])
 	})

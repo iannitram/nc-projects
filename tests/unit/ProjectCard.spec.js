@@ -40,6 +40,82 @@ describe('ProjectCard', () => {
 
 		expect(wrapper.find('.cc-project-card__title').text()).toBe('My Project')
 		expect(wrapper.text()).toContain('Task 1')
+		expect(wrapper.find('.cc-project-card__badge--blocked').exists()).toBe(false)
+		expect(wrapper.find('.cc-project-card__badge--someday').exists()).toBe(false)
+		expect(wrapper.classes()).not.toContain('cc-project-card--someday')
+	})
+
+	it('shows a red badge "blocked" after its title when categories include blocked', () => {
+		const project = {
+			task: {
+				uid: 'p-blocked',
+				summary: 'Blocked Project',
+				categories: ['project', 'blocked'],
+				url: '/p-blocked.ics',
+				calendarUrl: '/personal/',
+			},
+			children: [],
+			progress: { done: 0, total: 2 },
+		}
+
+		const wrapper = mount(ProjectCard, {
+			props: { project },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
+		})
+
+		const badge = wrapper.find('.cc-project-card__badge--blocked')
+		expect(badge.exists()).toBe(true)
+		expect(badge.text()).toBe('blocked')
+		expect(wrapper.find('.cc-project-card__badge--someday').exists()).toBe(false)
+		expect(wrapper.classes()).not.toContain('cc-project-card--someday')
+	})
+
+	it('shows a grey badge "someday" and greys the card when categories include someday', () => {
+		const project = {
+			task: {
+				uid: 'p-someday',
+				summary: 'Someday Project',
+				categories: ['project', 'someday'],
+				url: '/p-someday.ics',
+				calendarUrl: '/personal/',
+			},
+			children: [],
+			progress: { done: 0, total: 1 },
+		}
+
+		const wrapper = mount(ProjectCard, {
+			props: { project },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
+		})
+
+		const badge = wrapper.find('.cc-project-card__badge--someday')
+		expect(badge.exists()).toBe(true)
+		expect(badge.text()).toBe('someday')
+		expect(wrapper.classes()).toContain('cc-project-card--someday')
+		expect(wrapper.find('.cc-project-card__badge--blocked').exists()).toBe(false)
+	})
+
+	it('shows both badges and greys the card when categories include blocked and someday', () => {
+		const project = {
+			task: {
+				uid: 'p-both',
+				summary: 'Both Badges Project',
+				categories: ['project', 'blocked', 'someday'],
+				url: '/p-both.ics',
+				calendarUrl: '/personal/',
+			},
+			children: [],
+			progress: { done: 0, total: 0 },
+		}
+
+		const wrapper = mount(ProjectCard, {
+			props: { project },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
+		})
+
+		expect(wrapper.find('.cc-project-card__badge--blocked').exists()).toBe(true)
+		expect(wrapper.find('.cc-project-card__badge--someday').exists()).toBe(true)
+		expect(wrapper.classes()).toContain('cc-project-card--someday')
 	})
 
 	describe('progress bar', () => {

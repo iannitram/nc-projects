@@ -1,6 +1,7 @@
 <script setup>
 import { NcTextField } from '@nextcloud/vue'
 import { ref } from 'vue'
+import DoneStrip from './DoneStrip.vue'
 import ProjectCard from './ProjectCard.vue'
 import { useProjectsStore } from '../store/projects.js'
 
@@ -46,6 +47,7 @@ function clearProject() {
 				:key="project.task?.uid || project.task?.summary"
 				:project="project" />
 		</div>
+		<DoneStrip :projects="area.done || []" />
 		<NcTextField
 			v-model="newProject"
 			placeholder="+ New project"
