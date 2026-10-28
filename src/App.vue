@@ -1,5 +1,6 @@
 <script setup>
-import { NcAppContent, NcButton, NcContent, NcLoadingIcon } from '@nextcloud/vue'
+import { mdiLayersOutline } from '@mdi/js'
+import { NcAppContent, NcButton, NcContent, NcEmptyContent, NcIconSvgWrapper, NcLoadingIcon } from '@nextcloud/vue'
 import { getActivePinia } from 'pinia'
 import { computed, onMounted } from 'vue'
 import AppNav from './components/AppNav.vue'
@@ -44,10 +45,18 @@ onMounted(() => {
 							{{ error }}
 						</div>
 						<div v-else-if="areaLists && areaLists.length === 0" class="cc-projects__empty">
-							<p>Choose your areas</p>
-							<NcButton variant="primary" @click="store.settingsOpen = true">
-								Choose your areas
-							</NcButton>
+							<NcEmptyContent
+								name="Choose your areas"
+								description="Areas are the task lists you plan in, such as Home or Work. Pick the ones to show here. Projects reads them as they are, and you can change your choice later.">
+								<template #icon>
+									<NcIconSvgWrapper :path="mdiLayersOutline" :size="48" />
+								</template>
+								<template #action>
+									<NcButton variant="primary" @click="store.settingsOpen = true">
+										Choose areas
+									</NcButton>
+								</template>
+							</NcEmptyContent>
 						</div>
 						<div v-else-if="view === 'needs-filing'" class="cc-projects__needs-filing">
 							<NeedsFilingTray

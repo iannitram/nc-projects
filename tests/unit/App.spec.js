@@ -85,6 +85,12 @@ describe('App', () => {
 		const wrapper = mount(App, { global: { plugins: [pinia] } })
 		await wrapper.vm.$nextTick()
 		expect(wrapper.text()).toContain('Choose your areas')
+		expect(wrapper.text()).toContain('Areas are the task lists you plan in, such as Home or Work.')
+		const button = wrapper.find('.cc-projects__empty button')
+		expect(button.exists()).toBe(true)
+		expect(button.text()).toBe('Choose areas')
+		await button.trigger('click')
+		expect(store.settingsOpen).toBe(true)
 	})
 
 	it('calls store.refresh() when window receives focus', async () => {
