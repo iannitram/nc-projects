@@ -161,6 +161,7 @@ const excludedNote = computed(() => {
 				class="cc-area-settings__checkbox-row">
 				<NcCheckboxRadioSwitch
 					v-model="selected"
+					wrapperElement="label"
 					:value="calendar.url">
 					<div class="cc-area-settings__item">
 						<span
@@ -207,7 +208,6 @@ const excludedNote = computed(() => {
 	display: flex;
 	align-items: center;
 	min-height: 40px;
-	padding: 0 calc(var(--default-grid-baseline, 4px) * 2);
 	border-radius: var(--border-radius-element, 8px);
 }
 
@@ -215,8 +215,14 @@ const excludedNote = computed(() => {
 	background: var(--color-background-hover);
 }
 
+/* The wrapper is the <label> itself, so the padding lives inside it:
+ * clicks anywhere on the row then reach the label and toggle the input. */
 .cc-area-settings__checkbox-row :deep(.checkbox-radio-switch) {
 	width: 100%;
+	min-height: 40px;
+	box-sizing: border-box;
+	padding: 0 calc(var(--default-grid-baseline, 4px) * 2);
+	cursor: pointer;
 }
 
 .cc-area-settings__item {

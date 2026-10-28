@@ -176,4 +176,37 @@ describe('AreaSettings', () => {
 		// Should preserve store.availableLists order: '/home/', then '/work/'
 		expect(store.saveAreaLists).toHaveBeenCalledWith(['/home/', '/work/'])
 	})
+
+	it('names each checkbox after its area and toggles it from the name', async () => {
+		store.settingsOpen = true
+		store.availableLists = [
+			{ url: '/home/', displayName: 'Home', color: '#3d8c40' },
+			{ url: '/work/', displayName: 'Work', color: '#2f6fb5' },
+		]
+		store.areaLists = ['/home/']
+		listTaskCalendars.mockResolvedValue([])
+
+		const wrapper = mount(AreaSettings, {
+			props: { container: null },
+			global: { plugins: [pinia] },
+		})
+		await wrapper.vm.$nextTick()
+
+		const inputs = wrapper.findAll('input[type="checkbox"]')
+		expect(inputs).toHaveLength(2)
+		// The accessible name comes from a label that contains the area name
+		expect(inputs[0].element.labels).toHaveLength(1)
+		expect(inputs[0].element.labels[0].textContent).toContain('Home')
+		expect(inputs[1].element.labels[0].textContent).toContain('Work')
+		expect(inputs[1].element.checked).toBe(false)
+
+		// Clicking the name (not the input) toggles the checkbox
+		await wrapper.findAll('.cc-area-settings__lbl')[1].trigger('click')
+		await wrapper.vm.$nextTick()
+		expect(inputs[1].element.checked).toBe(true)
+
+		await wrapper.findAll('.cc-area-settings__lbl')[0].trigger('click')
+		await wrapper.vm.$nextTick()
+		expect(inputs[0].element.checked).toBe(false)
+	})
 })
