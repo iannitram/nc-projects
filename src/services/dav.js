@@ -6,7 +6,6 @@
 import { getRequestToken } from '@nextcloud/auth'
 import DavClient from '@nextcloud/cdav-library'
 import { generateRemoteUrl } from '@nextcloud/router'
-import { notImplemented } from '../notImplemented.js'
 
 const CALENDAR_SERVER_NAMESPACE = 'http://calendarserver.org/ns/'
 
@@ -304,10 +303,38 @@ export async function createTodo(calendar, ics, session = getDavSession()) {
  *
  * @param {string} url the task's URL
  * @param {string} etag its current etag
- * @param {TaskCalendar} target the list to move to
+ * @param {TaskCalendar|string} target the list to move to
+ * @param {ReturnType<typeof createDavSession>} [session] the shared session
  * @return {Promise<StoredTodo>} the task as stored after the move
  * @throws {ConflictError} on HTTP 412
  */
-export async function moveTodo(url, etag, target) {
-	return notImplemented('moveTodo', url, etag, target)
+export async function moveTodo(url, etag, target, session = getDavSession()) {
+	return withReconnect(session, async () => {
+		const sourceCalendar = await findCalendarForTodo(session, url)
+		const targetUrl = typeof target === 'string' ? target : target.url
+		const calendars = await session.calendars()
+		const normTarget = targetUrl.replace(/\/+$/, '')
+		const targetCalendar = calendars.find((candidate) => {
+			const norm = candidate.url.replace(/\/+$/, '')
+			return norm === normTarget || normTarget.startsWith(norm)
+		})
+		if (!targetCalendar) {
+			throw new Error(`No target calendar found for ${targetUrl}`)
+		}
+		const path = url.slice(sourceCalendar.url.length)
+		const todo = await sourceCalendar.find(path)
+		const headers = {}
+		if (etag) {
+			headers['If-Match'] = etag
+		}
+		try {
+			await todo.move(targetCalendar, false, headers)
+		} catch (error) {
+			if (error.status === 412 || (error.status === -1 && await etagChanged(sourceCalendar, path, etag))) {
+				throw new ConflictError(url)
+			}
+			throw error
+		}
+		return fetchTodo(todo.url, session)
+	})
 }

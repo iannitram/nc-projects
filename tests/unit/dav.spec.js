@@ -2,7 +2,7 @@ import { getRequestToken } from '@nextcloud/auth'
 import DavClient from '@nextcloud/cdav-library'
 import { generateRemoteUrl } from '@nextcloud/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createDavSession, createTodo, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
+import { createDavSession, createTodo, fetchTodo, fetchTodos, listTaskCalendars, moveTodo, putTodo } from '../../src/services/dav.js'
 
 vi.mock('@nextcloud/auth', () => ({
 	getRequestToken: vi.fn(),
@@ -204,5 +204,71 @@ describe('todo writes', () => {
 			name: 'ConflictError',
 			url: `${calendarUrl}new-uuid.ics`,
 		})
+	})
+
+	it('moves a task to another calendar with If-Match and re-reads it', async () => {
+		const sourceCalendar = makeCalendar({ url: '/remote.php/dav/calendars/owner/source/' })
+		const targetCalendar = makeCalendar({ url: '/remote.php/dav/calendars/owner/target/' })
+		const sourceUrl = '/remote.php/dav/calendars/owner/source/first.ics'
+		const targetUrl = '/remote.php/dav/calendars/owner/target/first.ics'
+		const todo = {
+			url: sourceUrl,
+			etag: '"old"',
+			move: vi.fn(async function(dest) {
+				this.url = `${dest.url}first.ics`
+			}),
+		}
+		sourceCalendar.find.mockResolvedValue(todo)
+		targetCalendar.find.mockResolvedValue({
+			url: targetUrl,
+			etag: '"moved"',
+			data: 'MOVED DATA',
+		})
+		mockClient([sourceCalendar, targetCalendar])
+
+		const result = await moveTodo(sourceUrl, '"old"', targetCalendar, createDavSession())
+		expect(result).toEqual({
+			url: targetUrl,
+			etag: '"moved"',
+			ics: 'MOVED DATA',
+			calendarUrl: '/remote.php/dav/calendars/owner/target/',
+		})
+		expect(todo.move).toHaveBeenCalledWith(targetCalendar, false, { 'If-Match': '"old"' })
+	})
+
+	it('maps a stale move to ConflictError with the task URL', async () => {
+		const sourceCalendar = makeCalendar({ url: '/remote.php/dav/calendars/owner/source/' })
+		const targetCalendar = makeCalendar({ url: '/remote.php/dav/calendars/owner/target/' })
+		const sourceUrl = '/remote.php/dav/calendars/owner/source/first.ics'
+		const libraryError = Object.assign(new Error('Network request failed'), { status: -1, body: null, headers: {} })
+		const todo = {
+			url: sourceUrl,
+			etag: '"old"',
+			move: vi.fn().mockRejectedValue(libraryError),
+		}
+		const fresh = { url: sourceUrl, etag: '"changed"', data: 'CHANGED' }
+		sourceCalendar.find.mockResolvedValueOnce(todo).mockResolvedValueOnce(fresh)
+		mockClient([sourceCalendar, targetCalendar])
+
+		await expect(moveTodo(sourceUrl, '"old"', targetCalendar, createDavSession())).rejects.toMatchObject({
+			name: 'ConflictError',
+			url: sourceUrl,
+		})
+	})
+
+	it('rethrows a failed move when the etag did not change', async () => {
+		const sourceCalendar = makeCalendar({ url: '/remote.php/dav/calendars/owner/source/' })
+		const targetCalendar = makeCalendar({ url: '/remote.php/dav/calendars/owner/target/' })
+		const sourceUrl = '/remote.php/dav/calendars/owner/source/first.ics'
+		const libraryError = Object.assign(new Error('Network request failed'), { status: -1, body: null, headers: {} })
+		const todo = {
+			url: sourceUrl,
+			etag: '"old"',
+			move: vi.fn().mockRejectedValue(libraryError),
+		}
+		sourceCalendar.find.mockResolvedValue(todo)
+		mockClient([sourceCalendar, targetCalendar])
+
+		await expect(moveTodo(sourceUrl, '"old"', targetCalendar, createDavSession())).rejects.toBe(libraryError)
 	})
 })

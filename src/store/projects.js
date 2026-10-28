@@ -12,7 +12,7 @@ import { Task } from '../models/Task.js'
 import { buildTree, isSomeday } from '../models/tree.js'
 import { candidateLists, pickAreas } from '../services/areas.js'
 import { crashLogWarning } from '../services/crashLog.js' // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
+import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, moveTodo, putTodo } from '../services/dav.js'
 import { getAreaLists, saveAreaLists as persistAreaLists } from '../services/settings.js'
 
 let pendingConflictReloads = 0
@@ -760,7 +760,7 @@ export const useProjectsStore = defineStore('projects', {
 			// Find the target project in the tree
 			let targetProject = null
 			for (const area of this.areas) {
-				for (const project of area.projects) {
+				for (const project of [...(area.projects || []), ...(area.done || [])]) {
 					if (project.task.uid === projectUid) {
 						targetProject = project
 						break
@@ -775,6 +775,28 @@ export const useProjectsStore = defineStore('projects', {
 				showError('Could not move the task: target project not found')
 				return
 			}
+
+			const targetCalendar = this.calendarOf(targetProject.task)
+			const isCrossList = (moved.calendarUrl || '').replace(/\/+$/, '') !== (targetCalendar.url || '').replace(/\/+$/, '')
+
+			// Collect all descendants if cross-list move
+			const getDescendants = (rootUid) => {
+				const result = []
+				const queue = [rootUid]
+				const visited = new Set([rootUid])
+				while (queue.length > 0) {
+					const currentUid = queue.shift()
+					for (const task of Object.values(this.tasksByUid)) {
+						if (task.parentUid === currentUid && !visited.has(task.uid)) {
+							visited.add(task.uid)
+							queue.push(task.uid)
+							result.push(task)
+						}
+					}
+				}
+				return result
+			}
+			const descendants = isCrossList ? getDescendants(taskUid) : []
 
 			// Get all siblings in the destination project, including the moved task for calculation purposes
 			const siblings = (targetProject.children?.map((child) => child.task) || []).map((task) => ({
@@ -815,66 +837,190 @@ export const useProjectsStore = defineStore('projects', {
 			for (const { uid, sortOrder } of toUpdate) {
 				const task = this.tasksByUid[uid]
 				if (task) {
-					before.set(uid, { ics: toRaw(task).toIcs(), where: toRaw(task).where })
+					before.set(uid, { ics: toRaw(task).toIcs(), where: { ...toRaw(task).where } })
 					toRaw(task).sortOrder = sortOrder
 					// For the moved task, also update its parentUid to point to new project
 					if (uid === taskUid) {
 						toRaw(task).parentUid = projectUid
+						if (isCrossList) {
+							toRaw(task).where = {
+								...toRaw(task).where,
+								calendarUrl: targetCalendar.url,
+							}
+						}
+					}
+				}
+			}
+			if (isCrossList) {
+				for (const desc of descendants) {
+					if (!before.has(desc.uid)) {
+						before.set(desc.uid, { ics: toRaw(desc).toIcs(), where: { ...toRaw(desc).where } })
+					}
+					toRaw(desc).where = {
+						...toRaw(desc).where,
+						calendarUrl: targetCalendar.url,
 					}
 				}
 			}
 			rebuild()
 
-			// A landed write keeps its new sort order and new etag; only the failed write and the ones not yet sent are rolled back
-			const landed = new Set()
-			try {
-				for (const { uid } of toUpdate) {
-					const task = this.tasksByUid[uid]
-					if (task) {
-						const stored = await putTodo(task.url, task.toIcs(), task.etag)
-						toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
-						landed.add(uid)
+			if (!isCrossList) {
+				// Same-list move: keep existing path (one PUT, or bumped sibling PUTs)
+				const landed = new Set()
+				try {
+					for (const { uid } of toUpdate) {
+						const task = this.tasksByUid[uid]
+						if (task) {
+							const stored = await putTodo(task.url, task.toIcs(), task.etag)
+							toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
+							landed.add(uid)
+						}
 					}
-				}
-			} catch (error) {
-				for (const [uid, original] of before) {
-					if (!landed.has(uid)) {
-						this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
+				} catch (error) {
+					for (const [uid, original] of before) {
+						if (!landed.has(uid)) {
+							this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
+						}
 					}
-				}
-				// A write that already landed is undone on the server too: put the old copy back over the new etag, then keep the etag that returns. If that fails, take the server's copy.
-				for (const uid of landed) {
-					const original = before.get(uid)
-					const current = this.tasksByUid[uid]
-					try {
-						const stored = await putTodo(current.url, original.ics, current.etag)
-						this.tasksByUid[uid] = Task.fromIcs(original.ics, { ...original.where, etag: stored.etag })
-					} catch {
+					// A write that already landed is undone on the server too: put the old copy back over the new etag, then keep the etag that returns. If that fails, take the server's copy.
+					for (const uid of landed) {
+						const original = before.get(uid)
+						const current = this.tasksByUid[uid]
 						try {
-							const stored = await fetchTodo(current.url)
-							this.tasksByUid[uid] = Task.fromIcs(stored.ics, {
-								url: stored.url,
-								etag: stored.etag,
-								calendarUrl: stored.calendarUrl,
-							})
+							const stored = await putTodo(current.url, original.ics, current.etag)
+							this.tasksByUid[uid] = Task.fromIcs(original.ics, { ...original.where, etag: stored.etag })
 						} catch {
-							// Keep the local copy; the next refresh settles it
+							try {
+								const stored = await fetchTodo(current.url)
+								this.tasksByUid[uid] = Task.fromIcs(stored.ics, {
+									url: stored.url,
+									etag: stored.etag,
+									calendarUrl: stored.calendarUrl,
+								})
+							} catch {
+								// Keep the local copy; the next refresh settles it
+							}
+						}
+					}
+					rebuild()
+
+					// Handle ConflictError differently: reload the conflicted task
+					if (error instanceof ConflictError) {
+						const reloaded = await this.handleConflict([error.url])
+						if (!reloaded) {
+							crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+							showError('Could not save the move')
+						}
+						return
+					}
+
+					crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+					showError('Could not save the move')
+				}
+				return
+			}
+
+			// Cross-list move: move task and descendants to target calendar, then PUT relinked task and bumped siblings
+			const landedMoves = []
+			const landedPuts = []
+			try {
+				const toMove = [moved, ...descendants]
+				for (const task of toMove) {
+					const original = before.get(task.uid)
+					const stored = await moveTodo(original.where.url, original.where.etag, targetCalendar, this.davSession)
+					toRaw(task).where = {
+						...toRaw(task).where,
+						url: stored.url,
+						etag: stored.etag,
+						calendarUrl: stored.calendarUrl,
+					}
+					landedMoves.push({
+						uid: task.uid,
+						fromUrl: original.where.url,
+						fromCalendarUrl: original.where.calendarUrl,
+						toUrl: stored.url,
+						newEtag: stored.etag,
+					})
+				}
+
+				// PUT the moved task with updated RELATED-TO and sortOrder on target calendar
+				const storedMoved = await putTodo(moved.url, moved.toIcs(), moved.etag)
+				toRaw(moved).where = { ...toRaw(moved).where, etag: storedMoved.etag }
+				landedPuts.push(taskUid)
+
+				// PUT any bumped siblings
+				for (const { uid } of toUpdate) {
+					if (uid !== taskUid) {
+						const sib = this.tasksByUid[uid]
+						if (sib) {
+							const storedSib = await putTodo(sib.url, sib.toIcs(), sib.etag)
+							toRaw(sib).where = { ...toRaw(sib).where, etag: storedSib.etag }
+							landedPuts.push(uid)
 						}
 					}
 				}
+			} catch (error) {
+				// Rollback: nothing half-moved is left visible as moved
+				for (const [uid, original] of before) {
+					this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
+				}
 				rebuild()
 
-				// Handle ConflictError differently: reload the conflicted task
+				// Undo any landed PUTs
+				for (const uid of landedPuts) {
+					const original = before.get(uid)
+					const current = this.tasksByUid[uid]
+					if (current && original) {
+						try {
+							const stored = await putTodo(current.url, original.ics, current.etag)
+							toRaw(current).where = { ...toRaw(current).where, etag: stored.etag }
+						} catch {
+							// Settles on reload
+						}
+					}
+				}
+
+				// Move back any landed moves
+				for (const item of landedMoves) {
+					try {
+						const current = this.tasksByUid[item.uid]
+						const sourceCalendar = this.calendarOf({ calendarUrl: item.fromCalendarUrl })
+						const storedBack = await moveTodo(item.toUrl, current?.etag || item.newEtag, sourceCalendar, this.davSession)
+						if (current) {
+							toRaw(current).where = {
+								...toRaw(current).where,
+								url: storedBack.url,
+								etag: storedBack.etag,
+								calendarUrl: storedBack.calendarUrl,
+							}
+						}
+					} catch {
+						// Settles on reload
+					}
+				}
+
+				// Reload affected tasks
+				const affectedUrls = []
+				for (const [uid, original] of before) {
+					const current = this.tasksByUid[uid]
+					affectedUrls.push(current?.url || original.where.url)
+				}
+				try {
+					await this.reloadTasks(affectedUrls, true)
+				} catch {
+					// Settles on next refresh
+				}
+
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict([error.url])
 					if (!reloaded) {
-						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+						crashLogWarning('save failed')
 						showError('Could not save the move')
 					}
 					return
 				}
 
-				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+				crashLogWarning('save failed')
 				showError('Could not save the move')
 			}
 		},
