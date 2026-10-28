@@ -59,6 +59,7 @@ afterEach(() => {
 
 function mountPanel() {
 	const store = useProjectsStore()
+	store.areaLists = ['/list-a/']
 	store.areaInputs = [{ name: 'Area A', calendar: { url: '/list-a/' } }]
 	store.tasksByUid = {
 		P: task('P', ['CATEGORIES:project']),

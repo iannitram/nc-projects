@@ -18,16 +18,16 @@ describe('AreaSection', () => {
 
 	it('renders the area title and each project in area.projects in order', () => {
 		const area = {
-			name: 'Personal',
-			calendarUrl: '/personal/',
+			name: 'Home',
+			calendarUrl: '/list-a/',
 			projects: [
 				{
-					task: { uid: 'p1', summary: 'Project 1', categories: ['project'], url: '/p1.ics', calendarUrl: '/personal/' },
+					task: { uid: 'p1', summary: 'Project 1', categories: ['project'], url: '/p1.ics', calendarUrl: '/list-a/' },
 					children: [],
 					progress: { done: 1, total: 2 },
 				},
 				{
-					task: { uid: 'p2', summary: 'Project 2', categories: ['project'], url: '/p2.ics', calendarUrl: '/personal/' },
+					task: { uid: 'p2', summary: 'Project 2', categories: ['project'], url: '/p2.ics', calendarUrl: '/list-a/' },
 					children: [],
 					progress: { done: 0, total: 3 },
 				},
@@ -40,7 +40,7 @@ describe('AreaSection', () => {
 			global: { stubs: { AddTaskInput: AddTaskInputStub } },
 		})
 
-		expect(wrapper.find('h3').text()).toBe('Personal')
+		expect(wrapper.find('h3').text()).toBe('Home')
 		expect(wrapper.findAll('.cc-project-card')).toHaveLength(2)
 		expect(wrapper.text()).toContain('Project 1')
 		expect(wrapper.text()).toContain('Project 2')
@@ -48,18 +48,18 @@ describe('AreaSection', () => {
 
 	it('renders its ProjectCards then the DoneStrip', () => {
 		const area = {
-			name: 'Personal',
-			calendarUrl: '/personal/',
+			name: 'Home',
+			calendarUrl: '/list-a/',
 			projects: [
 				{
-					task: { uid: 'p1', summary: 'Active Project', categories: ['project'], url: '/p1.ics', calendarUrl: '/personal/' },
+					task: { uid: 'p1', summary: 'Active Project', categories: ['project'], url: '/p1.ics', calendarUrl: '/list-a/' },
 					children: [],
 					progress: { done: 0, total: 1 },
 				},
 			],
 			done: [
 				{
-					task: { uid: 'p-done', summary: 'Completed Project', categories: ['project'], url: '/p-done.ics', calendarUrl: '/personal/' },
+					task: { uid: 'p-done', summary: 'Completed Project', categories: ['project'], url: '/p-done.ics', calendarUrl: '/list-a/' },
 					children: [],
 					progress: { done: 1, total: 1 },
 				},
@@ -86,7 +86,7 @@ describe('AreaSection', () => {
 	})
 
 	describe('new project field', () => {
-		const area = { name: 'Personal', calendarUrl: '/personal/', projects: [], done: [] }
+		const area = { name: 'Home', calendarUrl: '/list-a/', projects: [], done: [] }
 
 		async function typeAndSubmit(wrapper, value) {
 			const input = wrapper.find('input')
@@ -103,7 +103,7 @@ describe('AreaSection', () => {
 
 			const input = await typeAndSubmit(wrapper, 'My project')
 
-			expect(store.createProject).toHaveBeenCalledWith('Personal', 'My project')
+			expect(store.createProject).toHaveBeenCalledWith('Home', 'My project')
 			expect(input.element.value).toBe('My project')
 			expect(input.element.disabled).toBe(false)
 		})
@@ -115,7 +115,7 @@ describe('AreaSection', () => {
 
 			const input = await typeAndSubmit(wrapper, 'My project')
 
-			expect(store.createProject).toHaveBeenCalledWith('Personal', 'My project')
+			expect(store.createProject).toHaveBeenCalledWith('Home', 'My project')
 			expect(input.element.value).toBe('')
 		})
 	})

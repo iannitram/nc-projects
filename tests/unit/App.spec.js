@@ -42,7 +42,7 @@ describe('App', () => {
 		const store = useProjectsStore()
 		const loadSpy = vi.spyOn(store, 'load').mockResolvedValue()
 		store.areas = [
-			{ name: 'Personal', calendarUrl: '/personal/', projects: [], done: [] },
+			{ name: 'Home', calendarUrl: '/list-a/', projects: [], done: [] },
 			{ name: 'Work', calendarUrl: '/work/', projects: [], done: [] },
 		]
 
@@ -51,8 +51,20 @@ describe('App', () => {
 		})
 
 		expect(loadSpy).toHaveBeenCalled()
-		expect(wrapper.text()).toContain('Personal')
+		expect(wrapper.text()).toContain('Home')
 		expect(wrapper.text()).toContain('Work')
+	})
+
+	it('shows the empty state when no areas are selected', async () => {
+		const pinia = createPinia()
+		setActivePinia(pinia)
+		const store = useProjectsStore()
+		vi.spyOn(store, 'load').mockImplementation(async () => {
+			store.areaLists = []
+		})
+		const wrapper = mount(App, { global: { plugins: [pinia] } })
+		await wrapper.vm.$nextTick()
+		expect(wrapper.text()).toContain('Choose your areas')
 	})
 
 	it('calls store.refresh() when window receives focus', async () => {
@@ -131,8 +143,8 @@ describe('App', () => {
 
 		store.areas = [
 			{
-				name: 'Personal',
-				calendarUrl: '/personal/',
+				name: 'Home',
+				calendarUrl: '/home/',
 				projects: [
 					{
 						task: { uid: 'p1', summary: 'Project One', categories: ['project'] },
@@ -182,8 +194,8 @@ describe('App', () => {
 
 		store.areas = [
 			{
-				name: 'Personal',
-				calendarUrl: '/personal/',
+				name: 'Home',
+				calendarUrl: '/home/',
 				projects: [
 					{
 						task: { uid: 'p1', summary: 'Project One', categories: ['project'] },
