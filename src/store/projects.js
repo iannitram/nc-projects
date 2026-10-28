@@ -698,15 +698,6 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 			} catch (error) {
-				// Handle ConflictError differently: reload every task of the change
-				if (error instanceof ConflictError) {
-					const reloaded = await this.handleConflict(toUpdate.map(({ uid }) => this.tasksByUid[uid]?.url).filter(Boolean))
-					if (!reloaded) {
-						showError('Could not save the new order')
-					}
-					return
-				}
-
 				for (const [uid, original] of before) {
 					if (!landed.has(uid)) {
 						this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
@@ -733,6 +724,16 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 				this.rebuildTree()
+
+				// Handle ConflictError differently: reload the conflicted task
+				if (error instanceof ConflictError) {
+					const reloaded = await this.handleConflict([error.url])
+					if (!reloaded) {
+						showError('Could not save the new order')
+					}
+					return
+				}
+
 				showError('Could not save the new order')
 			}
 		},
@@ -829,31 +830,6 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 			} catch (error) {
-				// Handle ConflictError differently: reload every task of the change
-				if (error instanceof ConflictError) {
-					try {
-						for (const { uid } of toUpdate) {
-							const task = this.tasksByUid[uid]
-							if (task) {
-								const stored = await fetchTodo(task.url)
-								const updatedTask = Task.fromIcs(stored.ics, {
-									url: stored.url,
-									etag: stored.etag,
-									calendarUrl: stored.calendarUrl,
-								})
-								this.tasksByUid[uid] = updatedTask
-							}
-						}
-
-						rebuild()
-						showInfo('Someone else changed this; reloaded')
-					} catch {
-						// If reload fails, show error
-						showError('Could not save the move')
-					}
-					return
-				}
-
 				for (const [uid, original] of before) {
 					if (!landed.has(uid)) {
 						this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
@@ -880,6 +856,16 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 				rebuild()
+
+				// Handle ConflictError differently: reload the conflicted task
+				if (error instanceof ConflictError) {
+					const reloaded = await this.handleConflict([error.url])
+					if (!reloaded) {
+						showError('Could not save the move')
+					}
+					return
+				}
+
 				showError('Could not save the move')
 			}
 		},
