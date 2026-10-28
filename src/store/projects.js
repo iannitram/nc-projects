@@ -474,7 +474,86 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {{summary?: string, due?: (Date|null), priority?: number}} changes quick edits
 		 */
 		async updateTask(uid, changes) {
-			return notImplemented('updateTask', uid, changes)
+			this.davSession ??= markRaw(getDavSession())
+			const task = this.tasksByUid[uid]
+			if (!task || !changes || Object.keys(changes).length === 0) {
+				return
+			}
+
+			// Store the original values for rollback
+			const originalIcs = task.toIcs()
+			const originalWhere = { ...task.where }
+
+			// Apply changes using the task's setters to ensure proper handling
+			// Apply other changes first
+			if ('summary' in changes) {
+				task.summary = changes.summary
+			}
+			if ('due' in changes) {
+				task.due = changes.due
+			}
+
+			// Handle priority: 0 removes the property, others set the value
+			if ('priority' in changes) {
+				task.priority = changes.priority
+			}
+
+			// Rebuild the tree with the updated task
+			const allTasks = Object.values(this.tasksByUid)
+			const tree = buildTree(this.areas.map((area) => ({
+				name: area.name,
+				calendar: { url: area.calendarUrl },
+			})), allTasks)
+			this.areas = tree.areas
+			this.orphans = tree.orphans
+			this.untaggedParents = tree.untaggedParents
+
+			try {
+				// Write the updated task to the server
+				const result = await putTodo(task.url, task.toIcs(), task.etag)
+				// Update the etag in the task
+				task.where = {
+					...task.where,
+					etag: result.etag,
+				}
+			} catch (error) {
+				if (error instanceof ConflictError) {
+					// Reload the task and show info
+					const stored = await fetchTodo(task.url)
+					const updatedTask = Task.fromIcs(stored.ics, {
+						url: stored.url,
+						etag: stored.etag,
+						calendarUrl: stored.calendarUrl,
+					})
+					this.tasksByUid[uid] = updatedTask
+
+					const allTasks = Object.values(this.tasksByUid)
+					const tree = buildTree(this.areas.map((area) => ({
+						name: area.name,
+						calendar: { url: area.calendarUrl },
+					})), allTasks)
+					this.areas = tree.areas
+					this.orphans = tree.orphans
+					this.untaggedParents = tree.untaggedParents
+
+					showInfo('Someone else changed this; reloaded')
+				} else {
+					// Restore original values and show error
+					const restoredTask = Task.fromIcs(originalIcs, originalWhere)
+					this.tasksByUid[uid] = restoredTask
+
+					const allTasks = Object.values(this.tasksByUid)
+					const tree = buildTree(this.areas.map((area) => ({
+						name: area.name,
+						calendar: { url: area.calendarUrl },
+					})), allTasks)
+					this.areas = tree.areas
+					this.orphans = tree.orphans
+					this.untaggedParents = tree.untaggedParents
+
+					showError('Could not save the change')
+				}
+			}
 		},
 		/**
 		 * @param {string} areaName the area

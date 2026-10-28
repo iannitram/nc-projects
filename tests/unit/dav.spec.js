@@ -144,16 +144,29 @@ describe('todo writes', () => {
 		expect(todo.update).toHaveBeenCalledOnce()
 	})
 
-	it('maps HTTP 412 to ConflictError with the task URL', async () => {
+	it('maps a stale write to ConflictError with the task URL', async () => {
 		const calendar = makeCalendar()
-		const todo = { etag: '"old"', data: 'OLD', update: vi.fn().mockRejectedValue({ status: 412 }) }
-		calendar.find.mockResolvedValue(todo)
+		const libraryError = Object.assign(new Error('Network request failed'), { status: -1, body: null, headers: {} })
+		const todo = { url: todoUrl, etag: '"old"', data: 'OLD', update: vi.fn().mockRejectedValue(libraryError) }
+		const fresh = { url: todoUrl, etag: '"changed"', data: 'CHANGED' }
+		calendar.find.mockResolvedValueOnce(todo).mockResolvedValueOnce(fresh)
 		mockClient([calendar])
 
 		await expect(putTodo(todoUrl, 'FULL ICALENDAR', '"old"', createDavSession())).rejects.toMatchObject({
 			name: 'ConflictError',
 			url: todoUrl,
 		})
+		expect(calendar.find).toHaveBeenCalledTimes(2)
+	})
+
+	it('rethrows a failed write when the etag did not change', async () => {
+		const calendar = makeCalendar()
+		const libraryError = Object.assign(new Error('Network request failed'), { status: -1, body: null, headers: {} })
+		const todo = { url: todoUrl, etag: '"old"', data: 'OLD', update: vi.fn().mockRejectedValue(libraryError) }
+		calendar.find.mockResolvedValue(todo)
+		mockClient([calendar])
+
+		await expect(putTodo(todoUrl, 'FULL ICALENDAR', '"old"', createDavSession())).rejects.toBe(libraryError)
 	})
 
 	it('creates an iCalendar object on the requested list', async () => {
