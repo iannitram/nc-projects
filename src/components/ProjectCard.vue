@@ -8,6 +8,7 @@ import { useProjectsStore } from '../store/projects.js'
 const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').ProjectNode>} */
 	project: { type: Object, required: true },
+	areaName: { type: String, default: null },
 })
 const isCompleted = computed(() => Boolean(props.project?.task?.completed) || props.project?.task?.status?.toUpperCase() === 'COMPLETED')
 
@@ -152,7 +153,9 @@ const isSomeday = computed(() => {
 		<div class="cc-project-card__content">
 			<TaskTree
 				:nodes="project.children || []"
-				:showDone="showDone" />
+				:showDone="showDone"
+				:areaName="areaName"
+				:projectUid="project.task?.uid" />
 			<AddTaskInput :projectUid="project.task?.uid" />
 		</div>
 	</div>

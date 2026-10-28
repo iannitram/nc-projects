@@ -121,13 +121,15 @@ function clearProject() {
 				<template #item="{ element: project }">
 					<ProjectCard
 						:key="project.task?.uid || project.task?.summary"
-						:project="project" />
+						:project="project"
+						:areaName="area.name" />
 				</template>
 			</Sortable>
 			<ProjectCard
 				v-for="project in somedayProjects"
 				:key="project.task?.uid || project.task?.summary"
-				:project="project" />
+				:project="project"
+				:areaName="area.name" />
 		</div>
 		<DoneStrip :projects="area.done || []" />
 		<NcTextField
