@@ -5,6 +5,7 @@
  */
 import { showError } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
+import { toRaw } from 'vue'
 import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
 import { notImplemented } from '../notImplemented.js'
@@ -55,7 +56,44 @@ export const useProjectsStore = defineStore('projects', {
 		},
 		/** Re-read only lists whose ctag changed (P10). */
 		async refresh() {
-			return notImplemented('refresh')
+			try {
+				const calendars = await listTaskCalendars()
+				const areas = pickAreas(calendars)
+				const changedAreas = areas.filter((area) => this.ctags[area.calendar.url] !== area.calendar.ctag)
+				if (changedAreas.length === 0) {
+					return
+				}
+
+				const todosByArea = await Promise.all(changedAreas.map((area) => fetchTodos(area.calendar)))
+				const tasksByUid = { ...this.tasksByUid }
+				for (const [index, area] of changedAreas.entries()) {
+					for (const [uid, task] of Object.entries(tasksByUid)) {
+						if (toRaw(task).calendarUrl === area.calendar.url) {
+							delete tasksByUid[uid]
+						}
+					}
+					const tasks = todosByArea[index].map((todo) => Task.fromIcs(todo.ics, {
+						url: todo.url,
+						etag: todo.etag,
+						calendarUrl: todo.calendarUrl,
+					}))
+					for (const task of tasks.filter((item) => item.uid)) {
+						tasksByUid[task.uid] = task
+					}
+				}
+
+				const tree = buildTree(areas, Object.values(tasksByUid).map((task) => toRaw(task)))
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
+				this.tasksByUid = tasksByUid
+				this.ctags = {
+					...this.ctags,
+					...Object.fromEntries(changedAreas.map((area) => [area.calendar.url, area.calendar.ctag])),
+				}
+			} catch {
+				// Keep the current state when a list cannot be refreshed.
+			}
 		},
 		/**
 		 * @param {string} projectUid the project
