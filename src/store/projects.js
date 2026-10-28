@@ -6,6 +6,7 @@
 import { showError, showInfo } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
 import { markRaw, toRaw } from 'vue'
+import { planCompletion } from '../models/completion.js'
 import { placeMoved } from '../models/sortOrder.js'
 import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
@@ -330,7 +331,59 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {boolean} done check off or reopen, with Tasks' cascades
 		 */
 		async setCompleted(uid, done) {
-			return notImplemented('setCompleted', uid, done)
+			const plan = planCompletion(this.tasksByUid, uid, done)
+			if (plan.length === 0) {
+				return
+			}
+
+			const rebuild = () => {
+				const tree = buildTree(this.areas.map((area) => ({
+					name: area.name,
+					calendar: { url: area.calendarUrl },
+				})), Object.values(this.tasksByUid))
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
+			}
+
+			const before = plan.map((planUid) => {
+				const task = this.tasksByUid[planUid]
+				return { uid: planUid, ics: toRaw(task).toIcs(), where: toRaw(task).where }
+			})
+
+			for (const planUid of plan) {
+				toRaw(this.tasksByUid[planUid]).completed = done
+			}
+			rebuild()
+
+			try {
+				for (const planUid of plan) {
+					const task = this.tasksByUid[planUid]
+					const stored = await putTodo(task.url, task.toIcs(), task.etag)
+					toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
+				}
+			} catch (error) {
+				if (error instanceof ConflictError) {
+					const stored = await Promise.all(plan.map((planUid) => fetchTodo(this.tasksByUid[planUid].url)))
+					for (const todo of stored) {
+						const reloaded = Task.fromIcs(todo.ics, {
+							url: todo.url,
+							etag: todo.etag,
+							calendarUrl: todo.calendarUrl,
+						})
+						this.tasksByUid[reloaded.uid] = reloaded
+					}
+					rebuild()
+					showInfo('Someone else changed this; reloaded')
+					return
+				}
+
+				for (const saved of before) {
+					this.tasksByUid[saved.uid] = Task.fromIcs(saved.ics, saved.where)
+				}
+				rebuild()
+				showError('Could not save the change')
+			}
 		},
 		/**
 		 * @param {string} uid the task
