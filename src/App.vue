@@ -34,7 +34,7 @@ onMounted(() => {
 		<AppNav />
 		<NcAppContent>
 			<div class="cc-column">
-				<TopBar />
+				<TopBar v-if="view === 'areas'" />
 				<div class="cc-projects-scroll">
 					<div class="cc-projects">
 						<div v-if="loading && areas.length === 0" class="cc-projects__loading">

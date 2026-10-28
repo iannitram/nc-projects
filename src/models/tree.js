@@ -285,6 +285,57 @@ export function buildTree(areas, tasks, options = {}) {
 		&& !task.parentUid
 		&& (childrenByParentUid.get(task.uid) || []).length > 0
 		&& !orphanUids.has(task.uid))
+
+	const areaNameByUrl = new Map()
+	for (const area of areas || []) {
+		const url = area.calendar?.url || area.calendarUrl
+		if (url) {
+			areaNameByUrl.set(url.replace(/\/+$/, ''), area.name)
+		}
+	}
+
+	for (const task of orphans) {
+		const parent = tasksByUid.get(task.parentUid)
+		const reason = !parent
+			? 'Parent no longer exists'
+			: `Parent '${parent.summary || ''}' is done`
+		try {
+			task.reason = reason
+		} catch {
+			// In case task is frozen
+		}
+		if (task.calendarUrl && !task.listName) {
+			const name = areaNameByUrl.get(task.calendarUrl.replace(/\/+$/, ''))
+			if (name) {
+				try {
+					task.listName = name
+				} catch {
+					// In case task is frozen
+				}
+			}
+		}
+	}
+
+	for (const task of untaggedParents) {
+		const count = (childrenByParentUid.get(task.uid) || []).length
+		const reason = `${count} ${count === 1 ? 'subtask' : 'subtasks'}`
+		try {
+			task.reason = reason
+		} catch {
+			// In case task is frozen
+		}
+		if (task.calendarUrl && !task.listName) {
+			const name = areaNameByUrl.get(task.calendarUrl.replace(/\/+$/, ''))
+			if (name) {
+				try {
+					task.listName = name
+				} catch {
+					// In case task is frozen
+				}
+			}
+		}
+	}
+
 	const trayUids = new Set([...orphans, ...untaggedParents].map((task) => task.uid).filter(Boolean))
 	const treeChildrenByParentUid = new Map()
 	for (const [parentUid, children] of childrenByParentUid) {
