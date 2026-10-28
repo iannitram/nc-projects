@@ -35,7 +35,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
+const GARDEN = { url: '/list-b/', displayName: 'Garden', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created, categories, parent, sort, status }) {
 	return [
@@ -56,11 +56,11 @@ function vtodo({ uid, created, categories, parent, sort, status }) {
 }
 
 function stored(uid, fields) {
-	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/list-b/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/list-b/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }]))
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN }]))
 	fetchTodos.mockResolvedValue(deepFreeze(todos))
 	const store = useProjectsStore()
 	await store.load()
@@ -87,11 +87,11 @@ describe('projects store reorder (projects in an area)', () => {
 		const store = await loadStore(spaced())
 		putTodo.mockResolvedValue({ etag: '"C-e2"' })
 
-		await store.reorder(null, 'Van', 'C', 0)
+		await store.reorder(null, 'Garden', 'C', 0)
 
 		expect(putTodo).toHaveBeenCalledTimes(1)
 		const [url, ics, etag] = putTodo.mock.calls[0]
-		expect(url).toBe('/van/C.ics')
+		expect(url).toBe('/list-b/C.ics')
 		expect(etag).toBe('"C-e1"')
 		expect(sortOf(ics)).toBe(9)
 		expect(store.areas[0].projects.map((node) => node.task.uid)).toEqual(['C', 'A', 'B'])
@@ -105,14 +105,14 @@ describe('projects store reorder (projects in an area)', () => {
 			stored('B', { created: '20200101T000000Z', categories: 'project', sort: 11 }),
 			stored('C', { created: '20200101T000000Z', categories: 'project', sort: 12 }),
 		])
-		putTodo.mockImplementation(async (url) => ({ etag: url === '/van/C.ics' ? '"C-e2"' : '"B-e2"' }))
+		putTodo.mockImplementation(async (url) => ({ etag: url === '/list-b/C.ics' ? '"C-e2"' : '"B-e2"' }))
 
-		await store.reorder(null, 'Van', 'C', 1)
+		await store.reorder(null, 'Garden', 'C', 1)
 
 		expect(putTodo).toHaveBeenCalledTimes(2)
 		const [[urlC, icsC, etagC], [urlB, icsB, etagB]] = putTodo.mock.calls
-		expect([urlC, sortOf(icsC), etagC]).toEqual(['/van/C.ics', 11, '"C-e1"'])
-		expect([urlB, sortOf(icsB), etagB]).toEqual(['/van/B.ics', 12, '"B-e1"'])
+		expect([urlC, sortOf(icsC), etagC]).toEqual(['/list-b/C.ics', 11, '"C-e1"'])
+		expect([urlB, sortOf(icsB), etagB]).toEqual(['/list-b/B.ics', 12, '"B-e1"'])
 		expect(store.areas[0].projects.map((node) => node.task.uid)).toEqual(['A', 'C', 'B'])
 		expect(store.tasksByUid.B.etag).toBe('"B-e2"')
 		expect(store.tasksByUid.A.sortOrder).toBe(10)
@@ -122,7 +122,7 @@ describe('projects store reorder (projects in an area)', () => {
 		const store = await loadStore(spaced())
 		putTodo.mockRejectedValue(new Error('network down'))
 
-		await store.reorder(null, 'Van', 'C', 0).catch(() => {})
+		await store.reorder(null, 'Garden', 'C', 0).catch(() => {})
 
 		expect(showError).toHaveBeenCalledWith('Could not save the new order')
 		expect(store.tasksByUid.C.sortOrder).toBe(30)
@@ -132,17 +132,17 @@ describe('projects store reorder (projects in an area)', () => {
 
 	it('reloads the task and shows "Someone else changed this; reloaded" on a conflict', async () => {
 		const store = await loadStore(spaced())
-		putTodo.mockRejectedValue(new ConflictError('/van/C.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-b/C.ics'))
 		fetchTodo.mockResolvedValue({
-			url: '/van/C.ics',
+			url: '/list-b/C.ics',
 			etag: '"C-fresh"',
-			calendarUrl: '/van/',
+			calendarUrl: '/list-b/',
 			ics: vtodo({ uid: 'C', created: '20200101T000000Z', categories: 'project', sort: 25 }),
 		})
 
-		await store.reorder(null, 'Van', 'C', 0).catch(() => {})
+		await store.reorder(null, 'Garden', 'C', 0).catch(() => {})
 
-		expect(fetchTodo).toHaveBeenCalledWith('/van/C.ics')
+		expect(fetchTodo).toHaveBeenCalledWith('/list-b/C.ics')
 		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 		expect(showError).not.toHaveBeenCalled()
 		expect(store.tasksByUid.C.etag).toBe('"C-fresh"')
