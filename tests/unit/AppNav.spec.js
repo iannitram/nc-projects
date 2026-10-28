@@ -130,6 +130,50 @@ describe('AppNav', () => {
 		}
 	})
 
+	it('scrolls each nav item to its own section when two areas normalise to the same slug', async () => {
+		store.areas = [
+			{ name: 'Home/Garden', calendarUrl: '/home-slash-garden/', projects: [], done: [] },
+			{ name: 'Home & Garden', calendarUrl: '/home-and-garden/', projects: [], done: [] },
+		]
+
+		const section1 = document.createElement('section')
+		section1.id = 'area-home-garden'
+		const scrollSpy1 = vi.fn()
+		section1.scrollIntoView = scrollSpy1
+		document.body.appendChild(section1)
+
+		const section2 = document.createElement('section')
+		section2.id = 'area-home-garden-2'
+		const scrollSpy2 = vi.fn()
+		section2.scrollIntoView = scrollSpy2
+		document.body.appendChild(section2)
+
+		try {
+			const wrapper = mount(AppNav, {
+				global: { plugins: [pinia] },
+			})
+
+			const items = wrapper.findAllComponents(NcAppNavigationItem)
+			const item1 = items.find((entry) => entry.props('name') === 'Home/Garden')
+			const item2 = items.find((entry) => entry.props('name') === 'Home & Garden')
+
+			expect(item1).toBeDefined()
+			expect(item2).toBeDefined()
+
+			await item1.find('a.app-navigation-entry-link').trigger('click')
+			await flushPromises()
+			expect(scrollSpy1).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+			expect(scrollSpy2).not.toHaveBeenCalled()
+
+			await item2.find('a.app-navigation-entry-link').trigger('click')
+			await flushPromises()
+			expect(scrollSpy2).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+		} finally {
+			section1.remove()
+			section2.remove()
+		}
+	})
+
 	it('closes the navigation drawer when an area is tapped at phone width', async () => {
 		mobile.value = true
 		store.areas = [{ name: 'Home', calendarUrl: '/home/', projects: [], done: [] }]

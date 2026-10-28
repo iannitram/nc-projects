@@ -56,14 +56,62 @@ export function isSomeday(task) {
  * Convert an area name into a DOM-safe slug for section IDs and navigation anchors.
  *
  * @param {string} name area name
+ * @param {number} [index] area index fallback when name has no letters/digits
+ * @param {(string|{name?: string})[]} [allAreas] list of all areas to ensure uniqueness
  * @return {string} slug
  */
-export function areaSlug(name) {
-	return String(name || '')
+export function areaSlug(name, index, allAreas = []) {
+	let slug = String(name || '')
+		.normalize('NFC')
 		.toLowerCase()
 		.trim()
-		.replace(/[^\p{L}\p{N}]+/gu, '-')
+		.replace(/[^\p{L}\p{M}\p{N}]+/gu, '-')
 		.replace(/^-+|-+$/g, '')
+
+	if (!slug) {
+		slug = index !== undefined && index !== null ? String(index) : ''
+	}
+
+	if (Array.isArray(allAreas) && allAreas.length > 0 && typeof index === 'number') {
+		let occurrences = 0
+		for (let i = 0; i < allAreas.length; i++) {
+			const item = allAreas[i]
+			const itemName = typeof item === 'string' ? item : item?.name
+			let itemSlug = String(itemName || '')
+				.normalize('NFC')
+				.toLowerCase()
+				.trim()
+				.replace(/[^\p{L}\p{M}\p{N}]+/gu, '-')
+				.replace(/^-+|-+$/g, '')
+			if (!itemSlug) {
+				itemSlug = String(i)
+			}
+			if (itemSlug === slug) {
+				occurrences++
+				if (i === index) {
+					break
+				}
+			}
+		}
+		if (occurrences > 1) {
+			slug = `${slug}-${occurrences}`
+		}
+	}
+
+	return slug
+}
+
+/**
+ * Convert an area name into a unique DOM-safe element id for section IDs and navigation anchors.
+ *
+ * @param {string} name area name
+ * @param {number} [index] area index fallback
+ * @param {(string|{name?: string})[]} [allAreas] list of all areas
+ * @return {string} element id
+ */
+export function areaId(name, index = 0, allAreas = []) {
+	const slug = areaSlug(name, index, allAreas)
+	return `area-${slug || (index !== undefined && index !== null ? index : 0)}`
 }
 
 /**
