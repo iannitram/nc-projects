@@ -79,7 +79,8 @@
 		margin-left: calc(var(--default-grid-baseline, 4px) * 4);
 	}
 
-	.cc-task-tree__collapse-toggle {
+	.cc-task-tree__collapse-toggle,
+	button.cc-task-tree__collapse-toggle {
 		min-height: 44px;
 		min-width: 44px;
 		display: inline-flex;
@@ -132,10 +133,18 @@
 	}
 
 	.cc-task-row__date,
-	.cc-task-row__date input {
+	.cc-task-row__date input,
+	.cc-task-row__date .input-field__input,
+	.cc-task-row__date input.input-field__input,
+	input.input-field__input,
+	.input-field__input {
 		min-height: 44px;
 		display: inline-flex;
 		align-items: center;
+	}
+
+	.cc-task-row__date .input-field__main-wrapper {
+		min-height: 44px;
 	}
 
 	.cc-task-row__date {

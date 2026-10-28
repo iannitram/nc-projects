@@ -116,5 +116,26 @@ describe('phone layout and touch interaction (issue #22)', () => {
 		// Ensure panel is one column and controls wrap under title
 		expect(css).toContain('flex-direction: column')
 		expect(css).toContain('flex-wrap: wrap')
+
+		// Round 2 tap targets: native date input and subtask collapse toggle
+		expect(css).toContain('.input-field__input')
+		expect(css).toContain('button.cc-task-tree__collapse-toggle')
+		expect(css).toMatch(/\.input-field__input[\s\S]*?min-height:\s*44px/)
+		expect(css).toMatch(/button\.cc-task-tree__collapse-toggle[\s\S]*?min-height:\s*44px/)
+		expect(css).toMatch(/button\.cc-task-tree__collapse-toggle[\s\S]*?min-width:\s*44px/)
+	})
+
+	it('makes native date input and subtask collapse toggle at least 44 px in phone media query', () => {
+		const cssPath = path.resolve(__dirname, '../../src/styles/projects.css')
+		const css = fs.readFileSync(cssPath, 'utf8')
+
+		// Native input inside NcDateTimePickerNative is styled with min-height 44px
+		expect(css).toContain('.input-field__input')
+		expect(css).toMatch(/\.input-field__input[\s\S]*?min-height:\s*44px/)
+
+		// Subtask collapse toggle has min-height and min-width of 44px
+		expect(css).toContain('button.cc-task-tree__collapse-toggle')
+		expect(css).toMatch(/button\.cc-task-tree__collapse-toggle[\s\S]*?min-height:\s*44px/)
+		expect(css).toMatch(/button\.cc-task-tree__collapse-toggle[\s\S]*?min-width:\s*44px/)
 	})
 })
