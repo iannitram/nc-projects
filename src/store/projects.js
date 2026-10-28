@@ -14,6 +14,26 @@ import { notImplemented } from '../notImplemented.js'
 import { pickAreas } from '../services/areas.js'
 import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
 
+/**
+ * Depth-first search of a tree of task nodes for the node whose task has a uid.
+ *
+ * @param {import('../models/tree.js').TaskNode[]} nodes the nodes to search, with their children
+ * @param {string} uid the task's uid
+ * @return {import('../models/tree.js').TaskNode|null} the node, or null when it is not in the tree
+ */
+function findNode(nodes, uid) {
+	for (const node of nodes || []) {
+		if (node.task.uid === uid) {
+			return node
+		}
+		const found = findNode(node.children, uid)
+		if (found) {
+			return found
+		}
+	}
+	return null
+}
+
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
 		/** @type {import('../models/tree.js').AreaNode[]} */
@@ -163,21 +183,13 @@ export const useProjectsStore = defineStore('projects', {
 				return notImplemented('reorder', parentUid, areaName, movedUid, newIndex)
 			}
 
-			// Find the parent node in the tree
+			// Find the parent node at any depth of the tree
 			let parentNode = null
 			for (const area of this.areas) {
 				for (const project of area.projects) {
-					if (project.task.uid === parentUid) {
-						parentNode = project
+					parentNode = project.task.uid === parentUid ? project : findNode(project.children, parentUid)
+					if (parentNode) {
 						break
-					}
-					// Check if parentUid matches a task in children
-					if (project.children) {
-						const found = project.children.find((child) => child.task.uid === parentUid)
-						if (found) {
-							parentNode = found
-							break
-						}
 					}
 				}
 				if (parentNode) {
