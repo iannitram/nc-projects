@@ -1,4 +1,199 @@
 /* Panel layout (P05) and the phone breakpoint, 390 px wide (P11). Nextcloud theme variables only. */
 .cc-projects {
 	padding: calc(var(--default-grid-baseline, 4px) * 4);
+	box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+	.cc-projects {
+		padding: calc(var(--default-grid-baseline, 4px) * 2);
+		max-width: 100%;
+		box-sizing: border-box;
+	}
+
+	.cc-projects__areas {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		box-sizing: border-box;
+	}
+
+	.cc-area-section {
+		width: 100%;
+		box-sizing: border-box;
+		margin-bottom: calc(var(--default-grid-baseline, 4px) * 4);
+	}
+
+	.cc-area-section__projects {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		box-sizing: border-box;
+		gap: calc(var(--default-grid-baseline, 4px) * 2);
+	}
+
+	.cc-project-card {
+		width: 100%;
+		max-width: 100%;
+		box-sizing: border-box;
+		padding: calc(var(--default-grid-baseline, 4px) * 2);
+	}
+
+	.cc-project-card__title {
+		max-width: 100%;
+		word-break: break-word;
+		overflow-wrap: anywhere;
+		white-space: normal;
+	}
+
+	.cc-project-card__header {
+		flex-wrap: wrap;
+		gap: calc(var(--default-grid-baseline, 4px) * 2);
+	}
+
+	.cc-project-card__header-actions {
+		flex-wrap: wrap;
+		gap: calc(var(--default-grid-baseline, 4px) * 2);
+	}
+
+	.cc-task-tree {
+		width: 100%;
+		max-width: 100%;
+		box-sizing: border-box;
+	}
+
+	.cc-task-tree__item {
+		width: 100%;
+		max-width: 100%;
+		box-sizing: border-box;
+	}
+
+	.cc-task-tree__row-wrapper {
+		width: 100%;
+		max-width: 100%;
+		box-sizing: border-box;
+		align-items: flex-start;
+	}
+
+	.cc-task-tree__children {
+		margin-left: calc(var(--default-grid-baseline, 4px) * 4);
+	}
+
+	.cc-task-tree__collapse-toggle,
+	button.cc-task-tree__collapse-toggle {
+		min-height: 44px;
+		min-width: 44px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.cc-task-tree__collapse-placeholder {
+		min-height: 44px;
+	}
+
+	.cc-task-row {
+		flex-wrap: wrap;
+		width: 100%;
+		max-width: 100%;
+		box-sizing: border-box;
+		gap: calc(var(--default-grid-baseline, 4px) * 1) calc(var(--default-grid-baseline, 4px) * 2);
+	}
+
+	/* Tap target height: 44 px minimum */
+	.cc-task-row__checkbox,
+	.cc-task-row__checkbox label {
+		min-height: 44px;
+		min-width: 44px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.cc-task-row__title {
+		flex: 1 1 calc(100% - 60px);
+		min-width: 0;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		word-break: break-word;
+		overflow-wrap: anywhere;
+		white-space: normal;
+	}
+
+	.cc-task-row__title-input,
+	.cc-task-row__title-input input {
+		min-height: 44px;
+	}
+
+	.cc-task-row__title-input {
+		flex: 1 1 calc(100% - 60px);
+		min-width: 0;
+	}
+
+	.cc-task-row__date,
+	.cc-task-row__date input,
+	.cc-task-row__date .input-field__input,
+	.cc-task-row__date input.input-field__input {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+	}
+
+	.cc-task-row__date .input-field__main-wrapper {
+		min-height: 44px;
+	}
+
+	.cc-task-row__date {
+		max-width: 100%;
+	}
+
+	.cc-task-row__priority-menu,
+	.cc-task-row__priority-menu button,
+	.cc-task-row__priority-menu .action-item__menutoggle {
+		min-height: 44px;
+		min-width: 44px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.cc-task-open-in-tasks {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		white-space: normal;
+		word-break: break-word;
+	}
+
+	.cc-task-deeper {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+	}
+
+	.cc-project-card__show-done,
+	.cc-project-card__show-done label {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+	}
+
+	.cc-add-task-input,
+	.cc-add-task-input input {
+		min-height: 44px;
+	}
+
+	.cc-area-section__new-project,
+	.cc-area-section__new-project input,
+	.cc-area-section input {
+		min-height: 44px;
+	}
+
+	.cc-done-strip__toggle {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+	}
 }

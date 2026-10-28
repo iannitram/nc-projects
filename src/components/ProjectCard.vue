@@ -110,7 +110,9 @@ const isSomeday = computed(() => {
 	<div
 		class="cc-project-card"
 		:class="{ 'cc-project-card--someday': isSomeday }">
-		<header class="cc-project-card__header">
+		<header
+			class="cc-project-card__header drag-handle"
+			:data-uid="project.task?.uid">
 			<h4 class="cc-project-card__title">
 				{{ project.task?.summary }}
 			</h4>
