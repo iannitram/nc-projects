@@ -23,8 +23,11 @@ export function isTaskClosed(task) {
 </script>
 
 <script setup>
+import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import TaskRow from './TaskRow.vue'
+import { DRAG_OPTIONS, onSiblingDrop } from '../composables/useDrag.js'
+import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').TaskNode[]>} */
@@ -107,41 +110,105 @@ const visibleNodes = computed(() => {
 	}
 	return list.filter((node) => !isTaskClosed(node?.task))
 })
+
+/** The project or task whose children these are: every child carries it as its parent. */
+const parentUid = computed(() => props.nodes?.[0]?.task?.parentUid || null)
+
+/** Sortable options: Tasks' options, and a group unique to this parent so drops stay among its siblings. */
+const sortOptions = computed(() => ({
+	...DRAG_OPTIONS,
+	group: { name: `cc-tasks-${parentUid.value ?? 'none'}` },
+}))
+
+/**
+ * Row key for the sortable list (the same key the rows had before).
+ *
+ * @param {import('../models/tree.js').TaskNode} node The task node
+ * @return {string | import('../models/tree.js').TaskNode} Unique key
+ */
+function rowKey(node) {
+	return getNodeKey(node) || node
+}
+
+/**
+ * Put a dropped row back where Vue has it, so the store's list (after reorder,
+ * or after a rollback) is what the DOM shows.
+ *
+ * @param {{item: HTMLElement, from: HTMLElement, oldIndex: number}} evt The sortable end event
+ */
+function restoreDomPosition(evt) {
+	const { item, from, oldIndex } = evt
+	if (!item || !from) {
+		return
+	}
+	item.remove()
+	from.insertBefore(item, from.children[oldIndex] ?? null)
+}
+
+/**
+ * Turn a finished drag into a reorder of this list's parent (the store decides what to write).
+ *
+ * @param {object} evt The sortable end event
+ * @return {Promise<void> | undefined} The store's reorder, when the drop changed the order
+ */
+function onDrop(evt) {
+	restoreDomPosition(evt)
+	if (!parentUid.value) {
+		return undefined
+	}
+	return onSiblingDrop(
+		useProjectsStore(),
+		{
+			parentUid: parentUid.value,
+			allUids: (props.nodes || []).map((node) => node.task?.uid),
+			visibleUids: visibleNodes.value.map((node) => node.task?.uid),
+		},
+		evt,
+	)
+}
 </script>
 
 <template>
-	<ul class="cc-task-tree" :class="`cc-task-tree--level-${depth}`">
-		<li
-			v-for="node in visibleNodes"
-			:key="getNodeKey(node) || node"
-			class="cc-task-tree__item"
-			:class="{ 'is-closed': isTaskClosed(node?.task), 'cc-task-tree__item--closed': isTaskClosed(node?.task) }"
-			:style="isTaskClosed(node?.task) ? { opacity: 0.6 } : undefined">
-			<div
-				class="cc-task-tree__row-wrapper"
-				:class="{ 'is-closed': isTaskClosed(node?.task) }">
-				<button
-					v-if="hasVisibleChildren(node)"
-					type="button"
-					class="cc-task-tree__collapse-toggle"
-					:aria-expanded="!isCollapsed(node)"
-					:aria-label="isCollapsed(node) ? 'Expand subtasks' : 'Collapse subtasks'"
-					@click="toggleCollapse(node)">
-					<span class="cc-task-tree__collapse-icon">{{ isCollapsed(node) ? '▶' : '▼' }}</span>
-				</button>
-				<span v-else class="cc-task-tree__collapse-placeholder" />
-				<TaskRow :node="node" />
-			</div>
-			<div
-				v-if="hasVisibleChildren(node) && !isCollapsed(node)"
-				class="cc-task-tree__children">
-				<TaskTree
-					:nodes="node.children"
-					:depth="depth + 1"
-					:showDone="showDone" />
-			</div>
-		</li>
-	</ul>
+	<Sortable
+		tag="ul"
+		class="cc-task-tree"
+		:class="`cc-task-tree--level-${depth}`"
+		:list="visibleNodes"
+		:itemKey="rowKey"
+		:options="sortOptions"
+		@end="onDrop">
+		<template #item="{ element: node }">
+			<li
+				class="cc-task-tree__item"
+				:class="{ 'is-closed': isTaskClosed(node?.task), 'cc-task-tree__item--closed': isTaskClosed(node?.task) }"
+				:style="isTaskClosed(node?.task) ? { opacity: 0.6 } : undefined">
+				<div
+					class="cc-task-tree__row-wrapper drag-handle"
+					:class="{ 'is-closed': isTaskClosed(node?.task) }"
+					:data-uid="node.task?.uid">
+					<button
+						v-if="hasVisibleChildren(node)"
+						type="button"
+						class="cc-task-tree__collapse-toggle"
+						:aria-expanded="!isCollapsed(node)"
+						:aria-label="isCollapsed(node) ? 'Expand subtasks' : 'Collapse subtasks'"
+						@click="toggleCollapse(node)">
+						<span class="cc-task-tree__collapse-icon">{{ isCollapsed(node) ? '▶' : '▼' }}</span>
+					</button>
+					<span v-else class="cc-task-tree__collapse-placeholder" />
+					<TaskRow :node="node" />
+				</div>
+				<div
+					v-if="hasVisibleChildren(node) && !isCollapsed(node)"
+					class="cc-task-tree__children">
+					<TaskTree
+						:nodes="node.children"
+						:depth="depth + 1"
+						:showDone="showDone" />
+				</div>
+			</li>
+		</template>
+	</Sortable>
 </template>
 
 <style scoped>
