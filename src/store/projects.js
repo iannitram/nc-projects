@@ -267,7 +267,48 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {string} uid a parent task with children but no `project` tag
 		 */
 		async makeProject(uid) {
-			return notImplemented('makeProject', uid)
+			const task = this.tasksByUid[uid]
+			if (!task || task.isProject) {
+				return
+			}
+
+			const raw = toRaw(task)
+			const before = { uid, ics: raw.toIcs(), where: raw.where }
+
+			const rebuild = () => {
+				const tree = buildTree(this.areas.map((area) => ({
+					name: area.name,
+					calendar: { url: area.calendarUrl },
+				})), Object.values(this.tasksByUid))
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
+			}
+
+			raw.categories = [...raw.categories, 'project']
+			rebuild()
+
+			try {
+				const stored = await putTodo(raw.url, raw.toIcs(), raw.etag)
+				toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
+			} catch (error) {
+				if (error instanceof ConflictError) {
+					const stored = await fetchTodo(raw.url)
+					const reloaded = Task.fromIcs(stored.ics, {
+						url: stored.url,
+						etag: stored.etag,
+						calendarUrl: stored.calendarUrl,
+					})
+					this.tasksByUid[reloaded.uid] = reloaded
+					rebuild()
+					showInfo('Someone else changed this; reloaded')
+					return
+				}
+
+				this.tasksByUid[uid] = Task.fromIcs(before.ics, before.where)
+				rebuild()
+				showError('Could not make the project')
+			}
 		},
 	},
 })
