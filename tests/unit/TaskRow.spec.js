@@ -1,6 +1,8 @@
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { describe, expect, it, vi } from 'vitest'
 import TaskRow, { getTasksDeepLink } from '../../src/components/TaskRow.vue'
+import { useProjectsStore } from '../../src/store/projects.js'
 
 vi.mock('@nextcloud/router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -8,6 +10,15 @@ vi.mock('@nextcloud/router', async (importOriginal) => ({
 }))
 
 describe('TaskRow', () => {
+	it('checks off and reopens the task through the store', async () => {
+		setActivePinia(createPinia())
+		const store = useProjectsStore()
+		const setCompleted = vi.spyOn(store, 'setCompleted').mockResolvedValue()
+		const wrapper = mount(TaskRow, { props: { node: { task: { uid: 't1', completed: false } } } })
+		await wrapper.findComponent({ name: 'NcCheckboxRadioSwitch' }).vm.$emit('update:modelValue', true)
+		expect(setCompleted).toHaveBeenCalledWith('t1', true)
+	})
+
 	it('renders the task summary', () => {
 		const node = {
 			task: {

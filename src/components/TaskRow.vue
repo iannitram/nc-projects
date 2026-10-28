@@ -48,11 +48,15 @@ export function getTasksDeepLink(task) {
 <script setup>
 import { NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import { computed } from 'vue'
+import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').TaskNode>} */
 	node: { type: Object, required: true },
 })
+function onCompletionChange() {
+	useProjectsStore().setCompleted(props.node?.task?.uid, !isCompleted.value)
+}
 
 const isCompleted = computed(() => {
 	const task = props.node?.task
@@ -79,8 +83,8 @@ const tasksDeepLink = computed(() => getTasksDeepLink(props.node?.task))
 			class="cc-task-row__checkbox"
 			:isChecked="isCompleted"
 			:modelValue="isCompleted"
-			:disabled="true"
-			aria-label="Task completed" />
+			aria-label="Task completed"
+			@update:modelValue="onCompletionChange" />
 		<span class="cc-task-row__title">
 			{{ node.task?.summary }}
 		</span>

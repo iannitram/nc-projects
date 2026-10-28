@@ -3,11 +3,17 @@ import { NcCheckboxRadioSwitch, NcProgressBar } from '@nextcloud/vue'
 import { computed, ref, watch } from 'vue'
 import AddTaskInput from './AddTaskInput.vue'
 import TaskTree from './TaskTree.vue'
+import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').ProjectNode>} */
 	project: { type: Object, required: true },
 })
+const isCompleted = computed(() => Boolean(props.project?.task?.completed) || props.project?.task?.status?.toUpperCase() === 'COMPLETED')
+
+function onCompletionChange() {
+	useProjectsStore().setCompleted(props.project?.task?.uid, !isCompleted.value)
+}
 
 const progressDone = computed(() => Number(props.project?.progress?.done) || 0)
 const progressTotal = computed(() => Number(props.project?.progress?.total) || 0)
@@ -133,6 +139,12 @@ const isSomeday = computed(() => {
 					class="cc-project-card__show-done">
 					Show done
 				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					class="cc-project-card__completion"
+					:isChecked="isCompleted"
+					:modelValue="isCompleted"
+					aria-label="Project completed"
+					@update:modelValue="onCompletionChange" />
 			</div>
 		</header>
 		<div class="cc-project-card__content">

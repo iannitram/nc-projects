@@ -498,15 +498,8 @@ export const useProjectsStore = defineStore('projects', {
 				task.priority = changes.priority
 			}
 
-			// Rebuild the tree with the updated task
-			const allTasks = Object.values(this.tasksByUid)
-			const tree = buildTree(this.areas.map((area) => ({
-				name: area.name,
-				calendar: { url: area.calendarUrl },
-			})), allTasks)
-			this.areas = tree.areas
-			this.orphans = tree.orphans
-			this.untaggedParents = tree.untaggedParents
+			// Rebuild the tree with the updated task, preserving collapse state.
+			this.rebuildTree()
 
 			try {
 				// Write the updated task to the server
@@ -518,38 +511,13 @@ export const useProjectsStore = defineStore('projects', {
 				}
 			} catch (error) {
 				if (error instanceof ConflictError) {
-					// Reload the task and show info
-					const stored = await fetchTodo(task.url)
-					const updatedTask = Task.fromIcs(stored.ics, {
-						url: stored.url,
-						etag: stored.etag,
-						calendarUrl: stored.calendarUrl,
-					})
-					this.tasksByUid[uid] = updatedTask
-
-					const allTasks = Object.values(this.tasksByUid)
-					const tree = buildTree(this.areas.map((area) => ({
-						name: area.name,
-						calendar: { url: area.calendarUrl },
-					})), allTasks)
-					this.areas = tree.areas
-					this.orphans = tree.orphans
-					this.untaggedParents = tree.untaggedParents
-
-					showInfo('Someone else changed this; reloaded')
+					await this.handleConflict([task.url])
 				} else {
 					// Restore original values and show error
 					const restoredTask = Task.fromIcs(originalIcs, originalWhere)
 					this.tasksByUid[uid] = restoredTask
 
-					const allTasks = Object.values(this.tasksByUid)
-					const tree = buildTree(this.areas.map((area) => ({
-						name: area.name,
-						calendar: { url: area.calendarUrl },
-					})), allTasks)
-					this.areas = tree.areas
-					this.orphans = tree.orphans
-					this.untaggedParents = tree.untaggedParents
+					this.rebuildTree()
 
 					showError('Could not save the change')
 				}

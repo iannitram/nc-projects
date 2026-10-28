@@ -152,6 +152,36 @@ describe('projects store updateTask', () => {
 		expect(putTodo).not.toHaveBeenCalled()
 	})
 
+	it('keeps another task collapsed after an inline edit', async () => {
+		const store = await loadStore([
+			stored('P', { categories: 'project', sort: 10 }),
+			stored('t1', { parent: 'P', sort: 10 }),
+			stored('t2', { parent: 'P', sort: 20 }),
+		])
+		const collapsedTask = store.areas[0].projects[0].children.find((node) => node.task.uid === 't1')
+		collapsedTask.collapsed = true
+
+		await store.updateTask('t2', { summary: 'Edited task' })
+
+		expect(store.areas[0].projects[0].children.find((node) => node.task.uid === 't1').collapsed).toBe(true)
+	})
+
+	it('keeps another task collapsed after an inline edit rolls back', async () => {
+		const store = await loadStore([
+			stored('P', { categories: 'project', sort: 10 }),
+			stored('t1', { parent: 'P', sort: 10 }),
+			stored('t2', { parent: 'P', sort: 20 }),
+		])
+		const collapsedTask = store.areas[0].projects[0].children.find((node) => node.task.uid === 't1')
+		collapsedTask.collapsed = true
+		putTodo.mockRejectedValue(new Error('network down'))
+
+		await store.updateTask('t2', { summary: 'Edited task' })
+
+		expect(store.areas[0].projects[0].children.find((node) => node.task.uid === 't1').collapsed).toBe(true)
+		expect(store.tasksByUid.t2.summary).toBe('t2')
+	})
+
 	it('shows the change at once, before the write finishes', async () => {
 		const store = await loadStore(todos())
 		const gate = Promise.withResolvers()
