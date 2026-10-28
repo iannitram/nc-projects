@@ -125,7 +125,7 @@ const progressValue = computed(() => {
 	return Math.round((100 * progressDone.value) / progressTotal.value)
 })
 
-const progressText = computed(() => `${progressDone.value} of ${progressTotal.value}`)
+const progressText = computed(() => progressTotal.value ? `${progressDone.value} of ${progressTotal.value}` : 'No tasks yet')
 
 /**
  * Read the show-done preference for a project from localStorage.
@@ -286,6 +286,7 @@ function toggleCollapsed() {
 			</div>
 			<div class="cc-project-card__progress">
 				<NcProgressBar
+					v-if="progressTotal > 0"
 					class="cc-project-card__progress-bar"
 					:value="progressValue"
 					ariaLabel="Project progress"
@@ -348,6 +349,14 @@ function toggleCollapsed() {
 	padding: 4px 8px;
 	border-radius: var(--border-radius-large);
 	background: var(--color-background-hover);
+}
+
+.cc-project-card--someday .cc-project-card__header {
+	background: transparent;
+}
+
+.cc-project-card--someday .cc-project-card__title {
+	color: var(--color-text-maxcontrast);
 }
 
 .cc-project-card__heading {

@@ -47,6 +47,19 @@ describe('AreaSection', () => {
 		expect(wrapper.text()).toContain('Project 2')
 	})
 
+	it('labels the someday group after open projects, hiding the caption when empty', async () => {
+		const node = (uid, categories) => ({ task: { uid, summary: uid, categories }, children: [] })
+		const wrapper = mount(AreaSection, { props: { area: { name: 'Home', projects: [node('later', ['project', 'someday']), node('now', ['project'])] } } })
+		const caption = wrapper.get('.cc-area-section__someday-caption')
+		expect(caption.text()).toBe('Someday')
+		const cards = wrapper.findAllComponents(ProjectCard)
+		expect(cards.map((card) => card.props('project').task.uid)).toEqual(['now', 'later'])
+		expect(cards[0].element.compareDocumentPosition(caption.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+		expect(caption.element.compareDocumentPosition(cards[1].element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+		await wrapper.setProps({ area: { name: 'Home', projects: [node('now', ['project'])] } })
+		expect(wrapper.find('.cc-area-section__someday-caption').exists()).toBe(false)
+	})
+
 	it('renders its ProjectCards then the DoneStrip', () => {
 		const area = {
 			name: 'Home',

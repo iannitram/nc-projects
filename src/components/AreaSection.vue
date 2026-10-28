@@ -118,6 +118,7 @@ async function createProject(area) {
 						:areaName="area.name" />
 				</template>
 			</Sortable>
+			<h4 v-if="somedayProjects.length" class="cc-area-section__someday-caption">Someday</h4>
 			<ProjectCard
 				v-for="project in somedayProjects"
 				:key="project.task?.uid || project.task?.summary"
@@ -149,6 +150,11 @@ async function createProject(area) {
 	display: flex;
 	flex-direction: column;
 	gap: calc(var(--default-grid-baseline, 4px) * 3);
+}
+
+.cc-area-section__someday-caption {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
 }
 
 .cc-area-section__sortable {

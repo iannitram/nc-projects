@@ -196,7 +196,7 @@ describe('ProjectCard', () => {
 			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('3 of 7')
 		})
 
-		it('shows 0 of 0 and value 0 when total is 0', () => {
+		it('shows No tasks yet without a progress bar when total is 0', () => {
 			const project = {
 				task: { uid: 'p-empty', summary: 'Empty Project' },
 				children: [],
@@ -209,11 +209,11 @@ describe('ProjectCard', () => {
 			})
 
 			const progressBar = wrapper.findComponent(NcProgressBar)
-			expect(progressBar.props('value')).toBe(0)
-			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('0 of 0')
+			expect(progressBar.exists()).toBe(false)
+			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('No tasks yet')
 		})
 
-		it('handles missing progress gracefully by displaying 0 of 0 and value 0', () => {
+		it('handles missing progress by showing No tasks yet', () => {
 			const project = {
 				task: { uid: 'p-none', summary: 'No Progress Project' },
 				children: [],
@@ -225,8 +225,8 @@ describe('ProjectCard', () => {
 			})
 
 			const progressBar = wrapper.findComponent(NcProgressBar)
-			expect(progressBar.props('value')).toBe(0)
-			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('0 of 0')
+			expect(progressBar.exists()).toBe(false)
+			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('No tasks yet')
 		})
 	})
 

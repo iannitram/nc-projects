@@ -117,7 +117,7 @@ describe('TaskTree', () => {
 			expect(wrapper.text()).not.toContain('Closed Level 3 Subtask')
 		})
 
-		it('shows closed tasks at every level greyed (opacity 0.6) and in sort position when showDone=true', () => {
+		it('shows closed tasks at every level muted without reducing opacity and in sort position when showDone=true', () => {
 			const wrapper = mount(TaskTree, {
 				props: {
 					nodes: sampleNodes,
@@ -142,12 +142,12 @@ describe('TaskTree', () => {
 			expect(level1Items[2].text()).toContain('Cancelled Task 1')
 			expect(level1Items[3].text()).toContain('Open Task 2')
 
-			// Check closed tasks have is-closed class and opacity 0.6
+			// Closed tasks retain their status class without fading descendants.
 			expect(level1Items[1].classes()).toContain('is-closed')
-			expect(level1Items[1].attributes('style')).toContain('opacity: 0.6')
+			expect(level1Items[1].element.style.opacity).toBe('')
 
 			expect(level1Items[2].classes()).toContain('is-closed')
-			expect(level1Items[2].attributes('style')).toContain('opacity: 0.6')
+			expect(level1Items[2].element.style.opacity).toBe('')
 
 			// Open task does not have is-closed class or opacity style
 			expect(level1Items[0].classes()).not.toContain('is-closed')

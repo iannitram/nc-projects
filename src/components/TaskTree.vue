@@ -255,8 +255,7 @@ function onDrop(evt) {
 		<template #item="{ element: node }">
 			<li
 				class="cc-task-tree__item"
-				:class="{ 'is-closed': isTaskClosed(node?.task), 'cc-task-tree__item--closed': isTaskClosed(node?.task) }"
-				:style="isTaskClosed(node?.task) ? { opacity: 0.6 } : undefined">
+				:class="{ 'is-closed': isTaskClosed(node?.task), 'cc-task-tree__item--closed': isTaskClosed(node?.task) }">
 				<div
 					class="cc-task-tree__row-wrapper drag-handle"
 					:class="{ 'is-closed': isTaskClosed(node?.task) }"
@@ -297,11 +296,6 @@ function onDrop(evt) {
 
 .cc-task-tree__item {
 	margin: calc(var(--default-grid-baseline, 4px) * 1) 0;
-}
-
-.cc-task-tree__item.is-closed,
-.cc-task-tree__item--closed {
-	opacity: 0.6;
 }
 
 .cc-task-tree__row-wrapper {
