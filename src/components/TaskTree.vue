@@ -256,4 +256,12 @@ function onDrop(evt) {
 .cc-task-tree__children {
 	margin-left: calc(var(--default-grid-baseline, 4px) * 5);
 }
+
+@media (max-width: 600px) {
+	.cc-task-tree__collapse-toggle,
+	button.cc-task-tree__collapse-toggle {
+		min-height: 44px;
+		min-width: 44px;
+	}
+}
 </style>
