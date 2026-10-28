@@ -24,7 +24,7 @@ import { JSDOM } from 'jsdom'
 const BASE_URL = process.env.NC_TEST_URL ?? 'http://127.0.0.1:8089'
 const USER = 'owner'
 const PASSWORD = 'owner-test-only'
-const LIST_URI = 'personal-1'
+const LIST_URI = 'area-a-1'
 const EXISTING_FILE = 'f-mix-old.ics'
 
 function installDom() {
