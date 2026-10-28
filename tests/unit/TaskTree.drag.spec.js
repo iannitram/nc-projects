@@ -197,7 +197,7 @@ describe('TaskTree drag to reorder', () => {
 			expect(store.moveToProject).not.toHaveBeenCalled()
 		})
 
-		it('restores the dropped element back to its source list on cross-project drop before store update', () => {
+		it('takes the dropped element out of the target list on cross-project drop, leaving rendering to Vue', () => {
 			const wrapperA = mount(TaskTree, {
 				props: { projectUid: 'pA', areaName: 'Personal', nodes: [node('a1', 'pA'), node('a2', 'pA')] },
 			})
@@ -219,8 +219,8 @@ describe('TaskTree drag to reorder', () => {
 				newIndex: 2,
 			})
 
-			// item should be restored back into listA at oldIndex 0
-			expect(wrapperA.findAll('.drag-handle').map((h) => h.attributes('data-uid'))).toEqual(['a1', 'a2'])
+			// the item is gone from both lists: Vue renders the move from the store
+			expect(wrapperA.findAll('.drag-handle').map((h) => h.attributes('data-uid'))).toEqual(['a2'])
 			expect(wrapperB.findAll('.drag-handle').map((h) => h.attributes('data-uid'))).toEqual(['b1', 'b2'])
 		})
 	})

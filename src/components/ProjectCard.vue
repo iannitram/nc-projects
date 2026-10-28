@@ -11,21 +11,6 @@ const props = defineProps({
 	areaName: { type: String, default: null },
 })
 
-const effectiveAreaName = computed(() => {
-	if (props.areaName) {
-		return props.areaName
-	}
-	const store = useProjectsStore()
-	if (store?.areas && props.project?.task?.uid) {
-		for (const area of store.areas) {
-			if (area.projects?.some((p) => p.task?.uid === props.project.task?.uid)
-				|| area.done?.some((p) => p.task?.uid === props.project.task?.uid)) {
-				return area.name
-			}
-		}
-	}
-	return null
-})
 const isCompleted = computed(() => Boolean(props.project?.task?.completed) || props.project?.task?.status?.toUpperCase() === 'COMPLETED')
 
 /**
@@ -173,7 +158,7 @@ const isSomeday = computed(() => {
 			<TaskTree
 				:nodes="project.children || []"
 				:showDone="showDone"
-				:areaName="effectiveAreaName"
+				:areaName="areaName"
 				:projectUid="project.task?.uid" />
 			<AddTaskInput :projectUid="project.task?.uid" />
 		</div>

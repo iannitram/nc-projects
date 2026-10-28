@@ -117,37 +117,13 @@ const visibleNodes = computed(() => {
 const parentUid = computed(() => props.nodes?.[0]?.task?.parentUid || null)
 const effectiveProjectUid = computed(() => props.projectUid || parentUid.value)
 
-const effectiveAreaName = computed(() => {
-	if (props.areaName) {
-		return props.areaName
-	}
-	const uid = effectiveProjectUid.value
-	if (!uid) {
-		return null
-	}
-	try {
-		const store = useProjectsStore()
-		if (store?.areas) {
-			for (const area of store.areas) {
-				if (area.projects?.some((p) => p.task?.uid === uid)
-					|| area.done?.some((p) => p.task?.uid === uid)) {
-					return area.name
-				}
-			}
-		}
-	} catch {
-		// store not available
-	}
-	return null
-})
-
 /** Sortable options: Tasks' options, and group configuration (shared across same-area projects for top-level tasks). */
 const sortOptions = computed(() => {
-	if (props.depth === 1 && effectiveAreaName.value) {
+	if (props.depth === 1 && props.areaName) {
 		return {
 			...DRAG_OPTIONS,
 			group: {
-				name: `cc-tasks-area-${effectiveAreaName.value}`,
+				name: `cc-tasks-area-${props.areaName}`,
 				pull: true,
 				put: true,
 			},
@@ -185,69 +161,14 @@ function restoreDomPosition(evt) {
 }
 
 /**
- * Retrieve the full and visible task UIDs for a target project list.
+ * Read a comma-separated uid list off a list element's data attribute.
  *
- * @param {HTMLElement} toElement The target Sortable container element
- * @param {string} targetProjectUid The target project UID
- * @param {object} store The projects store
- * @return {{allUids: string[], visibleUids: string[]}} Target project's all and visible UIDs
+ * @param {HTMLElement} element The list element
+ * @param {string} name The dataset key
+ * @return {string[]} The uids
  */
-function getTargetUids(toElement, targetProjectUid, store) {
-	let allUids = null
-	let visibleUids = null
-
-	const rawAll = toElement?.dataset?.allUids ?? toElement?.getAttribute?.('data-all-uids')
-	if (typeof rawAll === 'string') {
-		allUids = rawAll ? rawAll.split(',').filter(Boolean) : []
-	}
-	const rawVisible = toElement?.dataset?.visibleUids ?? toElement?.getAttribute?.('data-visible-uids')
-	if (typeof rawVisible === 'string') {
-		visibleUids = rawVisible ? rawVisible.split(',').filter(Boolean) : []
-	}
-
-	if (allUids === null || visibleUids === null) {
-		let targetProject = null
-		if (store?.areas) {
-			for (const area of store.areas) {
-				for (const project of area.projects || []) {
-					if (project?.task?.uid === targetProjectUid) {
-						targetProject = project
-						break
-					}
-				}
-				if (targetProject) {
-					break
-				}
-			}
-		}
-
-		if (targetProject) {
-			if (allUids === null) {
-				allUids = (targetProject.children || []).map((c) => c.task?.uid).filter(Boolean)
-			}
-			if (visibleUids === null) {
-				const showDone = typeof window !== 'undefined' && window.localStorage?.getItem(`cc_projects:showDone:${targetProjectUid}`) === '1'
-				const list = targetProject.children || []
-				const visible = showDone ? list : list.filter((node) => !isTaskClosed(node?.task))
-				visibleUids = visible.map((c) => c.task?.uid).filter(Boolean)
-			}
-		}
-	}
-
-	if (visibleUids === null) {
-		if (toElement?.children) {
-			visibleUids = Array.from(toElement.children)
-				.map((li) => li.querySelector?.('.drag-handle')?.getAttribute?.('data-uid') || li.getAttribute?.('data-uid'))
-				.filter(Boolean)
-		} else {
-			visibleUids = []
-		}
-	}
-	if (allUids === null) {
-		allUids = [...visibleUids]
-	}
-
-	return { allUids, visibleUids }
+function uidsOf(element, name) {
+	return (element.dataset[name] || '').split(',').filter(Boolean)
 }
 
 /**
@@ -257,11 +178,8 @@ function getTargetUids(toElement, targetProjectUid, store) {
  * @return {Promise<void> | undefined} The store's reorder or moveToProject
  */
 function onDrop(evt) {
-	restoreDomPosition(evt)
-
-	const isCrossProject = Boolean(evt?.from && evt?.to && evt.from !== evt.to)
-
-	if (!isCrossProject) {
+	if (!evt.to || evt.from === evt.to) {
+		restoreDomPosition(evt)
 		const targetParent = parentUid.value || effectiveProjectUid.value
 		if (!targetParent) {
 			return undefined
@@ -277,32 +195,23 @@ function onDrop(evt) {
 		)
 	}
 
-	const targetProjectUid = evt.to?.dataset?.projectUid
-		|| evt.to?.getAttribute?.('data-project-uid')
-		|| evt.to?.closest?.('.cc-project-card')?.querySelector?.('.cc-project-card__header')?.getAttribute?.('data-uid')
-
-	if (!targetProjectUid) {
-		return undefined
-	}
+	// Cross-list: Sortable moved the row's element into the target list. Take it out again and
+	// let Vue render the moved task in the target from the store. (Putting it back in the source
+	// list does not work: Vue keeps each row between two anchor nodes, and an element re-inserted
+	// by index lands outside the anchors of its own row, so Vue never removes it and the row
+	// stays in the source list until a reload. Without the element in the source DOM, Vue's
+	// removal of the row is a no-op.)
+	evt.item.remove()
 
 	const movedUid = visibleNodes.value[evt.oldIndex]?.task?.uid
-		|| evt.item?.querySelector?.('.drag-handle')?.getAttribute?.('data-uid')
-		|| evt.item?.getAttribute?.('data-uid')
-
-	if (!movedUid) {
+	const targetProjectUid = evt.to.dataset.projectUid
+	if (!movedUid || !targetProjectUid) {
 		return undefined
 	}
-
-	const { newIndex } = evt || {}
-	if (typeof newIndex !== 'number') {
-		return undefined
-	}
-
-	const store = useProjectsStore()
-	const { allUids, visibleUids } = getTargetUids(evt.to, targetProjectUid, store)
-	const fullIndex = fullIndexForDrop(allUids, visibleUids, movedUid, newIndex)
-
-	return store.moveToProject(movedUid, targetProjectUid, fullIndex)
+	const allUids = uidsOf(evt.to, 'allUids')
+	const visibleUids = uidsOf(evt.to, 'visibleUids')
+	const fullIndex = fullIndexForDrop(allUids, visibleUids, movedUid, evt.newIndex)
+	return useProjectsStore().moveToProject(movedUid, targetProjectUid, fullIndex)
 }
 </script>
 
@@ -315,7 +224,6 @@ function onDrop(evt) {
 		:itemKey="rowKey"
 		:options="sortOptions"
 		:data-project-uid="effectiveProjectUid"
-		:data-area-name="effectiveAreaName"
 		:data-all-uids="(nodes || []).map((node) => node.task?.uid).filter(Boolean).join(',')"
 		:data-visible-uids="visibleNodes.map((node) => node.task?.uid).filter(Boolean).join(',')"
 		@end="onDrop">
