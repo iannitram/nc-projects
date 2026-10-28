@@ -152,6 +152,36 @@ describe('projects store updateTask', () => {
 		expect(putTodo).not.toHaveBeenCalled()
 	})
 
+	it('keeps another task collapsed after an inline edit', async () => {
+		const store = await loadStore([
+			stored('P', { categories: 'project', sort: 10 }),
+			stored('t1', { parent: 'P', sort: 10 }),
+			stored('t2', { parent: 'P', sort: 20 }),
+		])
+		const collapsedTask = store.areas[0].projects[0].children.find((node) => node.task.uid === 't1')
+		collapsedTask.collapsed = true
+
+		await store.updateTask('t2', { summary: 'Edited task' })
+
+		expect(store.areas[0].projects[0].children.find((node) => node.task.uid === 't1').collapsed).toBe(true)
+	})
+
+	it('keeps another task collapsed after an inline edit rolls back', async () => {
+		const store = await loadStore([
+			stored('P', { categories: 'project', sort: 10 }),
+			stored('t1', { parent: 'P', sort: 10 }),
+			stored('t2', { parent: 'P', sort: 20 }),
+		])
+		const collapsedTask = store.areas[0].projects[0].children.find((node) => node.task.uid === 't1')
+		collapsedTask.collapsed = true
+		putTodo.mockRejectedValue(new Error('network down'))
+
+		await store.updateTask('t2', { summary: 'Edited task' })
+
+		expect(store.areas[0].projects[0].children.find((node) => node.task.uid === 't1').collapsed).toBe(true)
+		expect(store.tasksByUid.t2.summary).toBe('t2')
+	})
+
 	it('shows the change at once, before the write finishes', async () => {
 		const store = await loadStore(todos())
 		const gate = Promise.withResolvers()
@@ -191,5 +221,17 @@ describe('projects store updateTask', () => {
 		expect(showError).not.toHaveBeenCalled()
 		expect(store.tasksByUid.t1.etag).toBe('"t1-fresh"')
 		expect(store.tasksByUid.t1.priority).toBe(1)
+	})
+
+	it('shows "Could not save the change" when the conflict reload fails', async () => {
+		const store = await loadStore(todos())
+		putTodo.mockRejectedValue(new ConflictError('/van/t1.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		await store.updateTask('t1', { summary: 'New title' }).catch(() => {})
+
+		expect(fetchTodo).toHaveBeenCalledWith('/van/t1.ics')
+		expect(showError).toHaveBeenCalledWith('Could not save the change')
+		expect(showInfo).not.toHaveBeenCalled()
 	})
 })
