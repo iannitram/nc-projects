@@ -55,8 +55,8 @@ function getNodeKey(node) {
  * @return {boolean} True if collapsed
  */
 function isCollapsed(node) {
-	if (node.collapsed === true) {
-		return true
+	if (typeof node.collapsed === 'boolean') {
+		return node.collapsed
 	}
 	const key = getNodeKey(node)
 	return key ? collapsedKeys.value.has(key) : false
@@ -68,18 +68,21 @@ function isCollapsed(node) {
  * @param {import('../models/tree.js').TaskNode} node The task node
  */
 function toggleCollapse(node) {
-	if (typeof node.collapsed === 'boolean') {
-		node.collapsed = !node.collapsed
+	const collapsing = !isCollapsed(node)
+	try {
+		node.collapsed = collapsing
+	} catch {
+		// In case node is frozen
 	}
 	const key = getNodeKey(node)
 	if (!key) {
 		return
 	}
 	const next = new Set(collapsedKeys.value)
-	if (next.has(key)) {
-		next.delete(key)
-	} else {
+	if (collapsing) {
 		next.add(key)
+	} else {
+		next.delete(key)
 	}
 	collapsedKeys.value = next
 }
