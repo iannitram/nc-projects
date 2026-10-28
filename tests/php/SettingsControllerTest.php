@@ -9,6 +9,7 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\IConfig;
 use OCP\IRequest;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface; // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 
 final class SettingsControllerTest extends TestCase {
 	private function controller(IConfig $config, ?string $userId = 'user-a'): SettingsController {
@@ -71,4 +72,17 @@ final class SettingsControllerTest extends TestCase {
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame(['areaLists' => $areaLists], $response->getData());
 	}
+
+	// TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+	public function testAnExceptionIsLoggedAndRethrownAndTheResponseIsUnchanged(): void { // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$config = $this->createMock(IConfig::class); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$config->method('getUserValue')->willThrowException(new \RuntimeException('boom')); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$logger = $this->createMock(LoggerInterface::class); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$logger->expects($this->once())->method('error') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+			->with($this->stringContains('server exception in OCA\CcProjects\Controller\SettingsController::getAreas: RuntimeException: boom'), ['app' => 'cc_projects']); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$controller = new SettingsController($this->createMock(IRequest::class), $config, 'user-a', $logger); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+
+		$this->expectException(\RuntimeException::class); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$controller->getAreas(); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+	} // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 }

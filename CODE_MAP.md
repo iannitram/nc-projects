@@ -28,9 +28,12 @@ Server (PHP): serves the page only. No data endpoints.
 |---|---|
 | `appinfo/info.xml` | App id `cc_projects`, name "Projects", nav entry, Nextcloud 33–35 |
 | `appinfo/routes.php` | One route: the page (`GET /`) |
+| **TEMPORARY** `POST /api/clientlog` (in `appinfo/routes.php`) | `{events}`: up to 20 crash events. `200 {logged}` · `400` when `events` is not a list · `401` without a signed-in user · `403` when app config `crash_log` is `0` (nothing logged). Events go to Nextcloud's log with `app=cc_projects`. Remove after the crash-rate review (owner, 2026-10-28). Issue #108 |
 | `lib/AppInfo/Application.php` | App bootstrap |
-| `lib/Controller/PageController.php` | Renders `templates/main.php`. Nothing else: no data API |
-| `templates/main.php` | Mount point `#cc_projects`; loads `js/cc_projects-main.mjs` and `css/cc_projects-style.css` |
+| `lib/Controller/PageController.php` | Renders `templates/main.php`. Nothing else: no data API. **TEMPORARY** (#108): passes the mount element's `crash_log`, app and Nextcloud versions, and logs exceptions |
+| `lib/Controller/SettingsController.php` | **TEMPORARY** (#108): logs an exception that escapes an action, then rethrows it; responses unchanged |
+| **TEMPORARY** `lib/Controller/ClientLogController.php` | `POST /api/clientlog`: signed-in only, CSRF checked, 403 when `crash_log` is `0`; sanitizes each event (quoted text, file names, paths, URLs, queries) and logs it once at its level. Remove after the crash-rate review (owner, 2026-10-28). Issue #108 |
+| `templates/main.php` | Mount point `#cc_projects`; loads `js/cc_projects-main.mjs` and `css/cc_projects-style.css`. **TEMPORARY** (#108): data attributes `data-crash-log`, `data-app-version`, `data-nc-version` |
 | `img/app.svg`, `img/app-dark.svg` | Nav icon |
 
 ### Data layer (JS)
@@ -39,6 +42,7 @@ Server (PHP): serves the page only. No data endpoints.
 |---|---|---|
 | `src/services/dav.js` | **Present** (`listTaskCalendars`, `fetchTodos`, `fetchTodo`, `putTodo`, `createTodo`, `ConflictError`); **stub**: `moveTodo` (P12). `@nextcloud/cdav-library` client, made per call (`getClient`) with `rootUrl: generateRemoteUrl('dav')` (an absolute URL, #49) and the request token from `@nextcloud/auth`: discover calendars, REPORT VTODOs, PUT with If-Match, create with a random-UUID file name, MOVE between calendars (with If-Match; re-read after, since the etag is stale). A 412 on a PUT or create throws `ConflictError`. Known: `createTodo` uses `crypto.randomUUID()`, which fails over plain HTTP (#53); one connection per page is #54 | P02, P07, P10, P12 |
 | `src/services/areas.js` | **Present** (`AREA_NAMES`, `isExcluded`, `pickAreas`). Which calendars are areas: only lists that hold tasks (VTODO), then the 8 display names, plus the exclusions (lists shared by other people; `*_shared_by_*`, `app-generated--deck--*`) | P02 |
+| **TEMPORARY** `src/services/crashLog.js` (with `lib/Controller/ClientLogController.php`, the route, and the `crash_log` switch read through `data-crash-log` on `#cc_projects`) | Uncaught errors, unhandled rejections, Vue component errors and the app's save failures and conflicts (`crashLogWarning`, called in the store), sent batched (one POST at most every 2 s) and at most 20 a minute per page (the rest dropped), sanitized on both sides. `installCrashLog()` is the first call in `src/main.js`. Remove after the crash-rate review (owner, 2026-10-28). Issue #108 | #108 |
 | `src/models/Task.js` | **Present.** `ical.js` wrapper for one VTODO (`Task.fromIcs`, `Task.create`, `toIcs`): typed getters and setters for the fields the app uses; **keeps every other property and parameter untouched on write** | P03 |
 | `src/models/tree.js` | **Present** (`buildTree`). Pure function: tasks → areas → projects → task tree (follows RELATED-TO across lists, max depth 3, with a count of what lies deeper for "+N deeper"; progress counts every descendant). Also returns orphans and untagged parents for the tray | P04, P15 |
 | `src/models/completion.js` | **Present** (`planCompletion`). Pure: which tasks a check-off or reopen changes, following Tasks' cascades (checking off closes the task and its open descendants breadth-first; reopening opens the task and its closed ancestors up to the first project). Changes no task | P06, P13 |
@@ -71,7 +75,8 @@ Server (PHP): serves the page only. No data endpoints.
 |---|---|
 | `tests/unit/App.spec.js` | The app mounts and shows its heading |
 | `tests/unit/AreaSection.spec.js`, `ProjectCard.spec.js`, `TaskTree.spec.js`, `TaskRow.spec.js`, `TaskRow.inlineEdits.spec.js`, `AddTaskInput.spec.js` | The panel components render their props, depth and links; `AddTaskInput` submits through the store; `TaskRow` edits through `updateTask` and keeps edit controls out of the drag |
-| `tests/php/PageControllerTest.php` | Smoke test: the page route returns the `main` template (skeleton) |
+| `tests/php/PageControllerTest.php` | Smoke test: the page route returns the `main` template (skeleton). **TEMPORARY** (#108): the crash-log switch and versions reach the page; an exception is logged and rethrown |
+| **TEMPORARY** `tests/php/Controller/ClientLogControllerTest.php`, `tests/unit/crashLog.spec.js` | The crash log: each handler sends once; no user content (task, project, description, list, file with query, path, URL with query, display name) reaches the POST body or the log; rate limit 20 a minute; switch off sends nothing and gets 403; a failed POST does not recurse; anonymous requests are refused. Remove after the crash-rate review (owner, 2026-10-28). Issue #108 |
 | `tests/tools/php.mjs` | Runs PHP lint and phpunit with a local PHP 8.4+, else a throwaway `nextcloud:33.0.10-apache` container |
 | `tests/unit/areas.spec.js` | `isExcluded` and `pickAreas`: the eight areas by display name, the exclusions |
 | `tests/unit/dav.spec.js` | `dav.js` reads and writes against a fake `cdav-library`: `putTodo`, `createTodo`, `ConflictError` on 412 |
