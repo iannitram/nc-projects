@@ -38,11 +38,12 @@ describe('TaskRow', () => {
 
 		expect(wrapper.find('.cc-task-row__title').text()).toBe('Fix the engine')
 		expect(wrapper.find('.cc-task-row__due').exists()).toBe(false)
+		expect(wrapper.find('input[type="date"]').exists()).toBe(false)
 		expect(wrapper.find('.cc-task-row__priority').exists()).toBe(false)
 		expect(wrapper.find('.cc-task-row__open-in-tasks').exists()).toBe(false)
 	})
 
-	it('shows +N deeper link when node has deeper descendants', () => {
+	it('shows an N more levels in Tasks link when node has deeper descendants', () => {
 		const node = {
 			task: {
 				uid: 'level3-task',
@@ -61,7 +62,7 @@ describe('TaskRow', () => {
 
 		const deeperLink = wrapper.find('.cc-task-deeper')
 		expect(deeperLink.exists()).toBe(true)
-		expect(deeperLink.text()).toBe('+2 deeper')
+		expect(deeperLink.text()).toBe('2 more levels in Tasks')
 		expect(deeperLink.attributes('href')).toBe('/apps/tasks/calendars/work/tasks/level3.ics')
 	})
 
