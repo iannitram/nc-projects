@@ -35,7 +35,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
+const GARDEN = { url: '/list-b/', displayName: 'Garden', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
 	return [
@@ -58,11 +58,11 @@ function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, st
 }
 
 function stored(uid, fields) {
-	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/list-b/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/list-b/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }]))
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN }]))
 	fetchTodos.mockResolvedValue(deepFreeze(todos))
 	const store = useProjectsStore()
 	await store.load()
@@ -94,11 +94,11 @@ describe('projects store reorder (tasks under a parent)', () => {
 		const store = await loadStore(spaced())
 		putTodo.mockResolvedValue({ etag: '"c-e2"' })
 
-		await store.reorder('P', 'Van', 'c', 0)
+		await store.reorder('P', 'Garden', 'c', 0)
 
 		expect(putTodo).toHaveBeenCalledTimes(1)
 		const [url, ics, etag] = putTodo.mock.calls[0]
-		expect(url).toBe('/van/c.ics')
+		expect(url).toBe('/list-b/c.ics')
 		expect(etag).toBe('"c-e1"')
 		expect(sent(putTodo.mock.calls[0]).sortOrder).toBe(9)
 		expect(ics).toContain('RELATED-TO:P')
@@ -116,12 +116,12 @@ describe('projects store reorder (tasks under a parent)', () => {
 		])
 		putTodo.mockImplementation(async (url) => ({ etag: `"${uidOfUrl(url)}-e2"` }))
 
-		await store.reorder('P', 'Van', 'c', 1)
+		await store.reorder('P', 'Garden', 'c', 1)
 
 		expect(putTodo).toHaveBeenCalledTimes(2)
 		const [first, second] = putTodo.mock.calls
-		expect([first[0], sent(first).sortOrder, first[2]]).toEqual(['/van/c.ics', 11, '"c-e1"'])
-		expect([second[0], sent(second).sortOrder, second[2]]).toEqual(['/van/b.ics', 12, '"b-e1"'])
+		expect([first[0], sent(first).sortOrder, first[2]]).toEqual(['/list-b/c.ics', 11, '"c-e1"'])
+		expect([second[0], sent(second).sortOrder, second[2]]).toEqual(['/list-b/b.ics', 12, '"b-e1"'])
 		expect(taskUids(store)).toEqual(['a', 'c', 'b'])
 		expect(store.tasksByUid.b.etag).toBe('"b-e2"')
 		expect(store.tasksByUid.a.sortOrder).toBe(10)
@@ -135,10 +135,10 @@ describe('projects store reorder (tasks under a parent)', () => {
 		])
 		putTodo.mockResolvedValue({ etag: '"a2-e2"' })
 
-		await store.reorder('a', 'Van', 'a2', 0)
+		await store.reorder('a', 'Garden', 'a2', 0)
 
 		expect(putTodo).toHaveBeenCalledTimes(1)
-		expect(putTodo.mock.calls[0][0]).toBe('/van/a2.ics')
+		expect(putTodo.mock.calls[0][0]).toBe('/list-b/a2.ics')
 		expect(sent(putTodo.mock.calls[0]).sortOrder).toBe(9)
 		expect(store.tasksByUid.a2.sortOrder).toBe(9)
 	})
@@ -147,7 +147,7 @@ describe('projects store reorder (tasks under a parent)', () => {
 		const store = await loadStore(spaced())
 		putTodo.mockRejectedValue(new Error('network down'))
 
-		await store.reorder('P', 'Van', 'c', 0).catch(() => {})
+		await store.reorder('P', 'Garden', 'c', 0).catch(() => {})
 
 		expect(showError).toHaveBeenCalledWith('Could not save the new order')
 		expect(store.tasksByUid.c.sortOrder).toBe(30)
@@ -157,22 +157,33 @@ describe('projects store reorder (tasks under a parent)', () => {
 
 	it('reloads the task and shows "Someone else changed this; reloaded" on a conflict', async () => {
 		const store = await loadStore(spaced())
-		putTodo.mockRejectedValue(new ConflictError('/van/c.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-b/c.ics'))
 		fetchTodo.mockResolvedValue(fresh('c', { parent: 'P', sort: 25 }))
 
-		await store.reorder('P', 'Van', 'c', 0).catch(() => {})
+		await store.reorder('P', 'Garden', 'c', 0).catch(() => {})
 
-		expect(fetchTodo).toHaveBeenCalledWith('/van/c.ics')
+		expect(fetchTodo).toHaveBeenCalledWith('/list-b/c.ics')
 		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 		expect(showError).not.toHaveBeenCalled()
 		expect(store.tasksByUid.c.etag).toBe('"c-fresh"')
 		expect(store.tasksByUid.c.sortOrder).toBe(25)
 	})
 
+	it('shows "Could not save the new order" and no "reloaded" notice when the conflict reload fails', async () => {
+		const store = await loadStore(spaced())
+		putTodo.mockRejectedValue(new ConflictError('/garden/c.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		await store.reorder('P', 'Garden', 'c', 0).catch(() => {})
+
+		expect(showError).toHaveBeenCalledWith('Could not save the new order')
+		expect(showInfo).not.toHaveBeenCalled()
+	})
+
 	it('writes nothing when the moved uid is not among the parent\'s children', async () => {
 		const store = await loadStore(spaced())
 
-		await store.reorder('P', 'Van', 'nope', 0).catch(() => {})
+		await store.reorder('P', 'Garden', 'nope', 0).catch(() => {})
 
 		expect(putTodo).not.toHaveBeenCalled()
 	})

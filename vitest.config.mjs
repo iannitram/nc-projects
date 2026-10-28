@@ -9,6 +9,7 @@ export default defineConfig({
 		// Bound worker startup on shared CI runners while retaining file isolation.
 		maxWorkers: process.env.CI && process.platform === 'win32' ? 1 : (process.env.CI ? 2 : undefined),
 		environment: 'jsdom',
+		setupFiles: ['tests/setup.js', 'tests/unit/setup.js'],
 		include: ['tests/unit/**/*.spec.js'],
 		css: {
 			// @nextcloud/vue imports its own CSS; let Vite process it instead of Node.

@@ -1,8 +1,10 @@
 import { NcCheckboxRadioSwitch, NcProgressBar } from '@nextcloud/vue'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProjectCard from '../../src/components/ProjectCard.vue'
 import TaskTree from '../../src/components/TaskTree.vue'
+import { useProjectsStore } from '../../src/store/projects.js'
 
 const AddTaskInputStub = {
 	props: ['projectUid'],
@@ -10,6 +12,19 @@ const AddTaskInputStub = {
 }
 
 describe('ProjectCard', () => {
+	it('checks off and reopens the project through the store', async () => {
+		setActivePinia(createPinia())
+		const store = useProjectsStore()
+		const setCompleted = vi.spyOn(store, 'setCompleted').mockResolvedValue()
+		const wrapper = mount(ProjectCard, {
+			props: { project: { task: { uid: 'p1', completed: false }, children: [] } },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
+		})
+		const completion = wrapper.findComponent('.cc-project-card__completion')
+		await completion.vm.$emit('update:modelValue', true)
+		expect(setCompleted).toHaveBeenCalledWith('p1', true)
+	})
+
 	beforeEach(() => {
 		window.localStorage.clear()
 		vi.restoreAllMocks()
@@ -22,10 +37,10 @@ describe('ProjectCard', () => {
 
 	it('renders project summary and task tree', () => {
 		const project = {
-			task: { uid: 'p1', summary: 'My Project', categories: ['project'], url: '/p1.ics', calendarUrl: '/personal/' },
+			task: { uid: 'p1', summary: 'My Project', categories: ['project'], url: '/p1.ics', calendarUrl: '/list-a/' },
 			children: [
 				{
-					task: { uid: 't1', summary: 'Task 1', completed: false, url: '/t1.ics', calendarUrl: '/personal/' },
+					task: { uid: 't1', summary: 'Task 1', completed: false, url: '/t1.ics', calendarUrl: '/list-a/' },
 					children: [],
 					deeper: 0,
 				},
@@ -52,7 +67,7 @@ describe('ProjectCard', () => {
 				summary: 'Blocked Project',
 				categories: ['project', 'blocked'],
 				url: '/p-blocked.ics',
-				calendarUrl: '/personal/',
+				calendarUrl: '/list-a/',
 			},
 			children: [],
 			progress: { done: 0, total: 2 },
@@ -77,7 +92,7 @@ describe('ProjectCard', () => {
 				summary: 'Someday Project',
 				categories: ['project', 'someday'],
 				url: '/p-someday.ics',
-				calendarUrl: '/personal/',
+				calendarUrl: '/list-a/',
 			},
 			children: [],
 			progress: { done: 0, total: 1 },
@@ -102,7 +117,7 @@ describe('ProjectCard', () => {
 				summary: 'Both Badges Project',
 				categories: ['project', 'blocked', 'someday'],
 				url: '/p-both.ics',
-				calendarUrl: '/personal/',
+				calendarUrl: '/list-a/',
 			},
 			children: [],
 			progress: { done: 0, total: 0 },

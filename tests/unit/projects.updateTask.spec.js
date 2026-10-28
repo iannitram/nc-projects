@@ -35,7 +35,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
+const GARDEN = { url: '/list-b/', displayName: 'Garden', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
 	return [
@@ -58,11 +58,11 @@ function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, st
 }
 
 function stored(uid, fields) {
-	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/list-b/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/list-b/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }]))
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN }]))
 	fetchTodos.mockResolvedValue(deepFreeze(todos))
 	const store = useProjectsStore()
 	await store.load()
@@ -96,7 +96,7 @@ describe('projects store updateTask', () => {
 
 		expect(putTodo).toHaveBeenCalledTimes(1)
 		const [url, ics, etag] = putTodo.mock.calls[0]
-		expect([url, etag]).toEqual(['/van/t1.ics', '"t1-e1"'])
+		expect([url, etag]).toEqual(['/list-b/t1.ics', '"t1-e1"'])
 		expect(sent(putTodo.mock.calls[0]).summary).toBe('New title')
 		for (const line of ['PRIORITY:5', 'DUE:20260101T000000Z', 'X-CC-NOTE:keep', 'X-APPLE-SORT-ORDER:10', 'RELATED-TO:P']) {
 			expect(ics).toContain(line)
@@ -152,6 +152,36 @@ describe('projects store updateTask', () => {
 		expect(putTodo).not.toHaveBeenCalled()
 	})
 
+	it('keeps another task collapsed after an inline edit', async () => {
+		const store = await loadStore([
+			stored('P', { categories: 'project', sort: 10 }),
+			stored('t1', { parent: 'P', sort: 10 }),
+			stored('t2', { parent: 'P', sort: 20 }),
+		])
+		const collapsedTask = store.areas[0].projects[0].children.find((node) => node.task.uid === 't1')
+		collapsedTask.collapsed = true
+
+		await store.updateTask('t2', { summary: 'Edited task' })
+
+		expect(store.areas[0].projects[0].children.find((node) => node.task.uid === 't1').collapsed).toBe(true)
+	})
+
+	it('keeps another task collapsed after an inline edit rolls back', async () => {
+		const store = await loadStore([
+			stored('P', { categories: 'project', sort: 10 }),
+			stored('t1', { parent: 'P', sort: 10 }),
+			stored('t2', { parent: 'P', sort: 20 }),
+		])
+		const collapsedTask = store.areas[0].projects[0].children.find((node) => node.task.uid === 't1')
+		collapsedTask.collapsed = true
+		putTodo.mockRejectedValue(new Error('network down'))
+
+		await store.updateTask('t2', { summary: 'Edited task' })
+
+		expect(store.areas[0].projects[0].children.find((node) => node.task.uid === 't1').collapsed).toBe(true)
+		expect(store.tasksByUid.t2.summary).toBe('t2')
+	})
+
 	it('shows the change at once, before the write finishes', async () => {
 		const store = await loadStore(todos())
 		const gate = Promise.withResolvers()
@@ -181,15 +211,27 @@ describe('projects store updateTask', () => {
 
 	it('reloads the task and shows "Someone else changed this; reloaded" on a conflict', async () => {
 		const store = await loadStore(todos())
-		putTodo.mockRejectedValue(new ConflictError('/van/t1.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-b/t1.ics'))
 		fetchTodo.mockResolvedValue(fresh('t1', { parent: 'P', sort: 10, extra: ['PRIORITY:1'] }))
 
 		await store.updateTask('t1', { summary: 'New title' }).catch(() => {})
 
-		expect(fetchTodo).toHaveBeenCalledWith('/van/t1.ics')
+		expect(fetchTodo).toHaveBeenCalledWith('/list-b/t1.ics')
 		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 		expect(showError).not.toHaveBeenCalled()
 		expect(store.tasksByUid.t1.etag).toBe('"t1-fresh"')
 		expect(store.tasksByUid.t1.priority).toBe(1)
+	})
+
+	it('shows "Could not save the change" when the conflict reload fails', async () => {
+		const store = await loadStore(todos())
+		putTodo.mockRejectedValue(new ConflictError('/list-b/t1.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		await store.updateTask('t1', { summary: 'New title' }).catch(() => {})
+
+		expect(fetchTodo).toHaveBeenCalledWith('/list-b/t1.ics')
+		expect(showError).toHaveBeenCalledWith('Could not save the change')
+		expect(showInfo).not.toHaveBeenCalled()
 	})
 })

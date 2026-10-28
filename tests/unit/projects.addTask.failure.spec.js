@@ -22,8 +22,8 @@ vi.mock('@nextcloud/dialogs', () => ({
 	showSuccess: vi.fn(),
 }))
 
-import { showError } from '@nextcloud/dialogs'
-import { createTodo, fetchTodos, listTaskCalendars } from '../../src/services/dav.js'
+import { showError, showInfo } from '@nextcloud/dialogs'
+import { ConflictError, createTodo, fetchTodo, fetchTodos, listTaskCalendars } from '../../src/services/dav.js'
 import { useProjectsStore } from '../../src/store/projects.js'
 
 function deepFreeze(value) {
@@ -34,15 +34,15 @@ function deepFreeze(value) {
 	return value
 }
 
-const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
+const GARDEN = { url: '/list-b/', displayName: 'Garden', ownedByMe: true, writable: true, ctag: 'v1' }
 
-function vtodo({ uid, created, categories, parent, sort, status }) {
+function vtodo({ uid, summary, created = '20200101T000000Z', categories, parent, sort, status }) {
 	return [
 		'BEGIN:VCALENDAR',
 		'VERSION:2.0',
 		'BEGIN:VTODO',
 		`UID:${uid}`,
-		`SUMMARY:${uid}`,
+		`SUMMARY:${summary ?? uid}`,
 		`STATUS:${status ?? 'NEEDS-ACTION'}`,
 		`CREATED:${created}`,
 		categories ? `CATEGORIES:${categories}` : null,
@@ -55,11 +55,11 @@ function vtodo({ uid, created, categories, parent, sort, status }) {
 }
 
 function stored(uid, fields) {
-	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/list-b/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/list-b/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }]))
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN }]))
 	fetchTodos.mockResolvedValue(deepFreeze(todos))
 	const store = useProjectsStore()
 	await store.load()
@@ -96,5 +96,65 @@ describe('projects store addTask failures', () => {
 
 		expect(showError).toHaveBeenCalledWith('Could not add the task: project not found')
 		expect(createTodo).not.toHaveBeenCalled()
+	})
+
+	it('reloads the task with fetchTodo, calls showInfo once and does not call showError when createTodo rejects with ConflictError', async () => {
+		const store = await loadStore(todos())
+		createTodo.mockRejectedValue(new ConflictError('/list-b/conflict.ics'))
+		fetchTodo.mockResolvedValue(deepFreeze({
+			url: '/list-b/conflict.ics',
+			etag: '"c1-e2"',
+			calendarUrl: '/list-b/',
+			ics: vtodo({ uid: 'c1', parent: 'P', summary: 'Server task' }),
+		}))
+
+		const result = await store.addTask('P', 'Buy paint')
+
+		expect(result).toBeNull()
+		expect(fetchTodo).toHaveBeenCalledWith('/list-b/conflict.ics', expect.anything())
+		expect(store.tasksByUid.c1.summary).toBe('Server task')
+		expect(showInfo).toHaveBeenCalledTimes(1)
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
+		expect(showError).not.toHaveBeenCalled()
+	})
+
+	it('shows "Could not add the task" and no "reloaded" notice when the conflict reload fails', async () => {
+		const store = await loadStore(todos())
+		createTodo.mockRejectedValue(new ConflictError('/list-b/conflict.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		const result = await store.addTask('P', 'Buy paint')
+
+		expect(result).toBeNull()
+		expect(showError).toHaveBeenCalledWith('Could not add the task')
+		expect(showInfo).not.toHaveBeenCalled()
+	})
+
+	it('shows only a single notice when two ConflictErrors arrive together', async () => {
+		const store = await loadStore(todos())
+		createTodo
+			.mockRejectedValueOnce(new ConflictError('/list-b/c1.ics'))
+			.mockRejectedValueOnce(new ConflictError('/list-b/c2.ics'))
+
+		fetchTodo.mockImplementation(async (url) => deepFreeze({
+			url,
+			etag: '"new-etag"',
+			calendarUrl: '/list-b/',
+			ics: vtodo({ uid: url.includes('c1') ? 'c1' : 'c2', parent: 'P', summary: 'server' }),
+		}))
+
+		const [res1, res2] = await Promise.all([
+			store.addTask('P', 'Task 1'),
+			store.addTask('P', 'Task 2'),
+		])
+
+		expect(res1).toBeNull()
+		expect(res2).toBeNull()
+		expect(fetchTodo).toHaveBeenCalledTimes(2)
+		expect(fetchTodo).toHaveBeenCalledWith('/list-b/c1.ics', expect.anything())
+		expect(fetchTodo).toHaveBeenCalledWith('/list-b/c2.ics', expect.anything())
+		expect(showInfo).toHaveBeenCalledTimes(1)
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
+		expect(showError).not.toHaveBeenCalled()
 	})
 })
