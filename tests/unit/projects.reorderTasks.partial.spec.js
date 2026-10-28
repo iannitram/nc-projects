@@ -34,7 +34,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const PROJECT_A = { url: '/project-a/', displayName: 'Project A', ownedByMe: true, writable: true, ctag: 'v1' }
+const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
 	return [
@@ -57,11 +57,11 @@ function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, st
 }
 
 function stored(uid, fields) {
-	return { url: `/project-a/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/project-a/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...PROJECT_A }]))
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }]))
 	fetchTodos.mockResolvedValue(deepFreeze(todos))
 	const store = useProjectsStore()
 	await store.load()
@@ -96,7 +96,7 @@ describe('projects store reorder (partial failure and optimistic tree)', () => {
 			.mockResolvedValueOnce({ etag: '"c-e2"' })
 			.mockRejectedValueOnce(new Error('network down'))
 
-		await store.reorder('P', 'Project A', 'c', 1).catch(() => {})
+		await store.reorder('P', 'Van', 'c', 1).catch(() => {})
 
 		expect(putTodo).toHaveBeenCalledTimes(2)
 		expect(showError).toHaveBeenCalledWith('Could not save the new order')
@@ -113,7 +113,7 @@ describe('projects store reorder (partial failure and optimistic tree)', () => {
 			resolvePut = resolve
 		}))
 
-		const pending = store.reorder('P', 'Project A', 'c', 0)
+		const pending = store.reorder('P', 'Van', 'c', 0)
 
 		expect(taskUids(store)).toEqual(['c', 'a', 'b'])
 		expect(store.tasksByUid.c.sortOrder).toBe(9)

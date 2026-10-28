@@ -35,7 +35,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const PROJECT_A = { url: '/project-a/', displayName: 'Project A', ownedByMe: true, writable: true, ctag: 'v1' }
+const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created, categories, parent, sort, status }) {
 	return [
@@ -56,11 +56,11 @@ function vtodo({ uid, created, categories, parent, sort, status }) {
 }
 
 function stored(uid, fields) {
-	return { url: `/project-a/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/project-a/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...PROJECT_A }]))
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }]))
 	fetchTodos.mockResolvedValue(deepFreeze(todos))
 	const store = useProjectsStore()
 	await store.load()
@@ -82,14 +82,14 @@ describe('projects store createProject', () => {
 
 	it('creates a project on the area\'s list: project tag, no parent, no sort order', async () => {
 		const store = await loadStore(todos())
-		createTodo.mockImplementation(async (calendar, ics) => ({ url: '/project-a/new.ics', etag: '"n1"', ics, calendarUrl: '/project-a/' }))
+		createTodo.mockImplementation(async (calendar, ics) => ({ url: '/van/new.ics', etag: '"n1"', ics, calendarUrl: '/van/' }))
 
-		await store.createProject('Project A', 'Build deck')
+		await store.createProject('Van', 'Build deck')
 
 		expect(createTodo).toHaveBeenCalledTimes(1)
 		const [calendar, ics] = createTodo.mock.calls[0]
-		expect(calendar.url).toBe('/project-a/')
-		const sent = Task.fromIcs(ics, { url: '', etag: '', calendarUrl: '/project-a/' })
+		expect(calendar.url).toBe('/van/')
+		const sent = Task.fromIcs(ics, { url: '', etag: '', calendarUrl: '/van/' })
 		expect(sent.summary).toBe('Build deck')
 		expect(sent.categories).toEqual(['project'])
 		expect(sent.parentUid).toBeNull()
@@ -103,15 +103,15 @@ describe('projects store createProject', () => {
 		let newUid
 		createTodo.mockImplementation(async (calendar, ics) => {
 			newUid = Task.fromIcs(ics, {}).uid
-			return { url: '/project-a/new.ics', etag: '"n1"', ics, calendarUrl: '/project-a/' }
+			return { url: '/van/new.ics', etag: '"n1"', ics, calendarUrl: '/van/' }
 		})
 
-		await store.createProject('Project A', 'Build deck')
+		await store.createProject('Van', 'Build deck')
 
 		const created = store.tasksByUid[newUid]
-		expect(created.url).toBe('/project-a/new.ics')
+		expect(created.url).toBe('/van/new.ics')
 		expect(created.etag).toBe('"n1"')
-		expect(created.calendarUrl).toBe('/project-a/')
+		expect(created.calendarUrl).toBe('/van/')
 		expect(store.areas[0].projects.map((node) => node.task.summary)).toEqual(['A', 'B', 'Build deck'])
 	})
 
@@ -119,7 +119,7 @@ describe('projects store createProject', () => {
 		const store = await loadStore(todos())
 		createTodo.mockRejectedValue(new Error('network down'))
 
-		await store.createProject('Project A', 'Build deck').catch(() => {})
+		await store.createProject('Van', 'Build deck').catch(() => {})
 
 		expect(showError).toHaveBeenCalledWith('Could not create the project')
 		expect(Object.keys(store.tasksByUid).sort()).toEqual(['A', 'B'])

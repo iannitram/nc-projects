@@ -32,7 +32,7 @@ function makeCalendar() {
 	}
 	return {
 		url: calendarUrl,
-		displayname: 'Project A',
+		displayname: 'Van',
 		owner: '/principal/',
 		components: ['VTODO'],
 		ctag: 'c1',

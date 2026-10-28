@@ -21,16 +21,16 @@ describe('projects store load', () => {
 	it('loads areas, orphans and untagged parents, keeping loading true in flight', async () => {
 		const calendars = [
 			{ url: '/personal/', displayName: 'Personal', ownedByMe: true, ctag: 'p1' },
-			{ url: '/project-a/', displayName: 'Project A', ownedByMe: true, ctag: 'v1' },
+			{ url: '/van/', displayName: 'Van', ownedByMe: true, ctag: 'v1' },
 		]
 		listTaskCalendars.mockResolvedValue(calendars)
 		let finishFetch
 		fetchTodos.mockImplementation((calendar) => calendar.url === '/personal/'
 			? new Promise((resolve) => { finishFetch = resolve })
 			: Promise.resolve([
-					{ url: '/project-a/orphan.ics', etag: 'o1', calendarUrl: '/project-a/', ics: ics('orphan', '', 'missing') },
-					{ url: '/project-a/parent.ics', etag: 'u1', calendarUrl: '/project-a/', ics: ics('parent') },
-					{ url: '/project-a/child.ics', etag: 'c1', calendarUrl: '/project-a/', ics: ics('child', '', 'parent') },
+					{ url: '/van/orphan.ics', etag: 'o1', calendarUrl: '/van/', ics: ics('orphan', '', 'missing') },
+					{ url: '/van/parent.ics', etag: 'u1', calendarUrl: '/van/', ics: ics('parent') },
+					{ url: '/van/child.ics', etag: 'c1', calendarUrl: '/van/', ics: ics('child', '', 'parent') },
 				]))
 
 		const store = useProjectsStore()
@@ -45,7 +45,7 @@ describe('projects store load', () => {
 		expect(store.untaggedParents.map((task) => task.uid)).toEqual(['parent'])
 		expect(store.loading).toBe(false)
 		expect(store.error).toBeNull()
-		expect(store.ctags).toEqual({ '/personal/': 'p1', '/project-a/': 'v1' })
+		expect(store.ctags).toEqual({ '/personal/': 'p1', '/van/': 'v1' })
 		expect(store.tasksByUid.parent.uid).toBe('parent')
 	})
 
