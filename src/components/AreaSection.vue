@@ -50,6 +50,7 @@ function clearProject() {
 		<DoneStrip :projects="area.done || []" />
 		<NcTextField
 			v-model="newProject"
+			class="cc-area-section__new-project"
 			placeholder="+ New project"
 			:disabled="creating"
 			@keydown.enter.prevent="createProject(area)"
