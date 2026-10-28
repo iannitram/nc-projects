@@ -40,11 +40,13 @@ function isProject(task) {
 }
 
 /**
+ * Determine whether a task is tagged as someday.
  *
- * @param task
+ * @param {import('./Task.js').Task} task The task to check
+ * @return {boolean} True if someday
  */
-function isSomeday(task) {
-	if (Array.isArray(task.categories)) {
+export function isSomeday(task) {
+	if (Array.isArray(task?.categories)) {
 		return task.categories.some((cat) => typeof cat === 'string' && cat.toLowerCase() === 'someday')
 	}
 	return false

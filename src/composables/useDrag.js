@@ -41,7 +41,8 @@ export function fullIndexForDrop(allUids, visibleUids, movedUid, newIndex) {
  *
  * @param {object} store the projects store (its `reorder` action)
  * @param {object} drop where the drag happened
- * @param {string} drop.parentUid the project or task whose children were dragged
+ * @param {string|null} [drop.parentUid] the project or task whose children were dragged
+ * @param {string|null} [drop.areaName] the area name, when parentUid is null
  * @param {string[]} drop.allUids every sibling's uid, in sort order, before the drop
  * @param {string[]} drop.visibleUids the rendered siblings' uids, in order, before the drop
  * @param {{oldIndex?: number, newIndex?: number}} evt the sortable end event
@@ -54,5 +55,5 @@ export function onSiblingDrop(store, drop, evt) {
 	}
 	const movedUid = drop.visibleUids[oldIndex]
 	const fullIndex = fullIndexForDrop(drop.allUids, drop.visibleUids, movedUid, newIndex)
-	return store.reorder(drop.parentUid, null, movedUid, fullIndex)
+	return store.reorder(drop.parentUid ?? null, drop.areaName ?? null, movedUid, fullIndex)
 }
