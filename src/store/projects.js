@@ -587,6 +587,26 @@ export const useProjectsStore = defineStore('projects', {
 						this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
 					}
 				}
+				// A write that already landed is undone on the server too: put the old copy back over the new etag, then keep the etag that returns. If that fails, take the server's copy.
+				for (const uid of landed) {
+					const original = before.get(uid)
+					const current = this.tasksByUid[uid]
+					try {
+						const stored = await putTodo(current.url, original.ics, current.etag)
+						this.tasksByUid[uid] = Task.fromIcs(original.ics, { ...original.where, etag: stored.etag })
+					} catch {
+						try {
+							const stored = await fetchTodo(current.url)
+							this.tasksByUid[uid] = Task.fromIcs(stored.ics, {
+								url: stored.url,
+								etag: stored.etag,
+								calendarUrl: stored.calendarUrl,
+							})
+						} catch {
+							// Keep the local copy; the next refresh settles it
+						}
+					}
+				}
 				rebuild()
 				showError('Could not save the move')
 			}
