@@ -186,7 +186,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* One line, shown while a row is lifted, for the first three long presses (#123). */
+/* One line, shown while a row is lifted, for the first three long presses (issue 123). */
 .cc-longpress-hint {
 	position: fixed;
 	inset-inline: 0;

@@ -1,11 +1,11 @@
 import { ref } from 'vue'
 
-/** How long a finger rests on a row before the row lifts (#123). */
+/** How long a finger rests on a row before the row lifts (issue 123). */
 export const LONG_PRESS_MS = 300
 
 /**
  * `sortablejs-vue3` options shared by every drag list (P08, P09, P11, P12).
- * A mouse drags at once; a finger drags after a long press on the row (#123).
+ * A mouse drags at once; a finger drags after a long press on the row (issue 123).
  * The lifted row carries `chosenClass`, the landing spot `ghostClass` (styles in projects.css).
  */
 export const DRAG_OPTIONS = Object.freeze({

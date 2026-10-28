@@ -143,6 +143,21 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 6. **Order like Tasks does:** write the moved task, plus only the later siblings Tasks' rule bumps. Never renumber a whole project.
 7. **Task data stays in CalDAV.** The owner authorized the bug-report relay as an exception (ADR 0020); it forwards only reports explicitly sent by the user.
 
+## Shared measurements with nc-outliner
+
+Issue 126 (design pass, mockup b). Read from nc-outliner `origin/main` at `4d5b912` (its `OutlineTopBar.vue`, `StatusLine.vue`, `OutlineEditor.vue`, `OutlineRow.vue`). nc-projects keeps them as CSS variables on `.cc-column` in `src/styles/projects.css`. Change a value in both apps or in neither (nc-outliner#174 records the same table).
+
+| Measurement | nc-outliner | nc-projects | Variable |
+|---|---|---|---|
+| Top bar height | 52 px (`.outline-top-bar`) | 52 px | `--cc-top-bar-height` |
+| Status line | 30 px tall, 12.5 px, `--color-text-maxcontrast`, 1 px `--color-border` top rule | the same | `--cc-status-height`, `--cc-status-font-size` |
+| Reading column max width | 820 px (`.outline-column`) | 820 px (was 920 px) | `--cc-column-max-width` |
+| Row height (desktop) | 34 px gutter, the input's first line (line `min-height` 32 px) | 34 px; 48 px on phone and touch | `--cc-row-height` |
+| Hover controls | `opacity: 0`, revealed on row `:hover` / `:focus-within` with a 0.15 s fade; the drag handle rests at 0.6, 1 on its own hover; still focusable | the same (grip, row and band "⋯", Done-strip link); always shown on touch | `--cc-hover-reveal`, `--cc-grip-rest-opacity` |
+| Chevrons | text triangles ▸ / ▾ | `mdiChevronDown` / `mdiChevronRight` icons (the design pass asks for icons, not glyphs) | — not aligned yet |
+
+Colours come only from Nextcloud variables: `git grep -nE '#[0-9a-fA-F]{3,6}' -- src/` returns only fallbacks inside `var()` (issue numbers in comments are written "issue 123", not with a hash). Tints use `color-mix()` with `--color-main-background`, so they follow the dark and high-contrast themes.
+
 ## Facts (fill in at P00)
 
 | Question | Answer | Source |

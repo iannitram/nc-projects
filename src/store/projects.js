@@ -19,7 +19,7 @@ let pendingConflictReloads = 0
 let successfulConflictReloads = 0
 let noticeScheduled = false
 
-/** How long a row a conflict reloaded stays tinted (#125), in milliseconds. */
+/** How long a row a conflict reloaded stays tinted (issue 125), in milliseconds. */
 export const CONFLICT_HIGHLIGHT_MS = 4000
 
 /**
@@ -247,7 +247,7 @@ export const useProjectsStore = defineStore('projects', {
 		/** @type {Set<string>} */
 		collapsedProjects: new Set(),
 		/**
-		 * Rows a conflict reloaded (#125): uid -> the time it was marked. TaskRow and
+		 * Rows a conflict reloaded (issue 125): uid -> the time it was marked. TaskRow and
 		 * ProjectCard tint these for CONFLICT_HIGHLIGHT_MS.
 		 *
 		 * @type {Record<string, number>}
@@ -554,7 +554,7 @@ export const useProjectsStore = defineStore('projects', {
 			return uids
 		},
 		/**
-		 * Mark rows a conflict reloaded, so they are tinted for a few seconds (#125).
+		 * Mark rows a conflict reloaded, so they are tinted for a few seconds (issue 125).
 		 * Each mark clears itself after CONFLICT_HIGHLIGHT_MS unless a newer mark replaced it.
 		 *
 		 * @param {string[]} uids the reloaded tasks

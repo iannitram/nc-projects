@@ -229,7 +229,7 @@ watch(() => props.project.task.uid, (uid) => {
 	}
 }, { immediate: true })
 
-/** A conflict just reloaded the project task (#125): tint the band for a few seconds. */
+/** A conflict just reloaded the project task (issue 125): tint the band for a few seconds. */
 const isConflictReloaded = computed(() => Boolean(store?.conflictReloaded[props.project.task.uid]))
 
 const isCollapsed = computed(() => store?.collapsedProjects.has(props.project.task.uid) ?? false)
@@ -412,22 +412,29 @@ function toggleCollapsed() {
 	color: var(--color-text-maxcontrast);
 }
 
+/* Hover controls as in nc-outliner: faded out, the grip rests at 0.6 on hover or focus. */
 .cc-project-card__grip {
-	visibility: hidden;
+	opacity: 0;
+	transition: var(--cc-hover-reveal, opacity 0.15s);
 	cursor: grab;
 }
 
 /* Keep the menu button focusable while its icon waits for hover or focus. */
 .cc-project-card__menu :deep(.action-item__menutoggle > *) {
-	visibility: hidden;
+	opacity: 0;
+	transition: var(--cc-hover-reveal, opacity 0.15s);
 }
 
 .cc-project-card__header:hover .cc-project-card__grip,
-.cc-project-card__header:focus-within .cc-project-card__grip,
-.cc-project-card__header:hover .cc-project-card__menu :deep(.action-item__menutoggle > *),
-.cc-project-card__header:focus-within .cc-project-card__menu :deep(.action-item__menutoggle > *) {
-	visibility: visible;
+.cc-project-card__header:focus-within .cc-project-card__grip {
+	opacity: var(--cc-grip-rest-opacity, 0.6);
 }
 
-/* Phone and touch layout of the header: projects.css (#123). */
+.cc-project-card__grip:hover,
+.cc-project-card__header:hover .cc-project-card__menu :deep(.action-item__menutoggle > *),
+.cc-project-card__header:focus-within .cc-project-card__menu :deep(.action-item__menutoggle > *) {
+	opacity: 1;
+}
+
+/* Phone and touch layout of the header: projects.css (issue 123). */
 </style>

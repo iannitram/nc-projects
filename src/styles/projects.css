@@ -14,20 +14,31 @@
 	box-sizing: border-box;
 }
 
-/* One reading column: top bar, list and status line share it. */
+/*
+ * One reading column: top bar, list and status line share it.
+ * Shared measurements with nc-outliner (issue 126; the table is in CODE_MAP.md): top bar 52 px,
+ * status line 30 px at 12.5 px, column 820 px, row 34 px, hover controls fade in over 0.15 s
+ * (the grip rests at 0.6). Change them in both apps or not at all.
+ */
 .cc-column {
+	--cc-top-bar-height: 52px;
+	--cc-status-height: 30px;
+	--cc-status-font-size: 12.5px;
+	--cc-column-max-width: 820px;
+	--cc-hover-reveal: opacity 0.15s;
+	--cc-grip-rest-opacity: 0.6;
 	display: flex;
 	flex-direction: column;
 	flex: 1 1 auto;
 	min-height: 0;
 	height: 100%;
 	width: 100%;
-	max-width: 920px;
+	max-width: var(--cc-column-max-width);
 	margin: 0 auto;
 	padding: 0 calc(var(--default-grid-baseline, 4px) * 5);
 	box-sizing: border-box;
 	/* Row height and touch target: desktop values here, phone and touch values below. */
-	--cc-row-height: var(--default-clickable-area, 34px);
+	--cc-row-height: 34px;
 	--cc-target: var(--default-clickable-area, 34px);
 }
 
@@ -37,7 +48,7 @@
 	box-sizing: border-box;
 }
 
-/* Drag (#123): the lifted row is Sortable's chosen element, the landing spot its ghost. */
+/* Drag (issue 123): the lifted row is Sortable's chosen element, the landing spot its ghost. */
 .cc-drag-chosen > .cc-task-tree__row-wrapper,
 .cc-drag-chosen > .cc-project-card__header {
 	transform: scale(1.02);
@@ -68,7 +79,7 @@
 }
 
 /*
- * A row a conflict reloaded (#125, mockup a): warning tint and a left edge while the store
+ * A row a conflict reloaded (issue 125, mockup a): warning tint and a left edge while the store
  * marks it (about 4 s), then the tint fades out. The toast stays as it is.
  */
 .cc-task-row,
@@ -84,7 +95,7 @@
 }
 
 /*
- * Phone and touch (#123, mockup f): one block. It sets the row height (48 px) and the
+ * Phone and touch (issue 123, mockup f): one block. It sets the row height (48 px) and the
  * touch target (44 px); the rules below only read those two variables. Rows never wrap
  * their controls: long text is cut with an ellipsis. "⋯" is always visible and the drag
  * grip is hidden, because a long press on the row is the drag. NcActions opens its own
@@ -202,6 +213,7 @@
 	.cc-column .cc-task-row .cc-task-row__menu,
 	.cc-column .cc-project-card__header .cc-project-card__menu .action-item__menutoggle > * {
 		visibility: visible;
+		opacity: 1;
 	}
 
 	/* No grip: the long press is the drag. */

@@ -91,7 +91,7 @@ const isCompleted = computed(() => {
 	return Boolean(task.value.completed)
 })
 
-/** A conflict just reloaded this task (#125): tint the row for a few seconds. */
+/** A conflict just reloaded this task (issue 125): tint the row for a few seconds. */
 const isConflictReloaded = computed(() => {
 	const uid = task.value?.uid
 	return Boolean(uid && getActivePinia() && useProjectsStore().conflictReloaded[uid])
@@ -315,7 +315,7 @@ function setPriority(value) {
 				{{ option.label }}
 			</NcActionRadio>
 			<NcActionSeparator />
-			<!-- "Move to project…" goes here (the dialog is #120, cluster P3). -->
+			<!-- "Move to project…" goes here (the dialog is issue 120, cluster P3). -->
 			<NcActionLink
 				v-if="task"
 				class="cc-no-drag cc-task-open-in-tasks"
@@ -428,16 +428,17 @@ function setPriority(value) {
 	font-weight: 600;
 }
 
-/* The menu shows on hover or focus with a pointer; always on touch (projects.css, #123). */
+/* The menu shows on hover or focus with a pointer; always on touch (projects.css, issue 123). */
 .cc-task-row__menu {
 	flex-shrink: 0;
-	visibility: hidden;
+	opacity: 0;
+	transition: var(--cc-hover-reveal, opacity 0.15s);
 }
 
 .cc-task-row:hover .cc-task-row__menu,
 .cc-task-row:focus-within .cc-task-row__menu,
 .cc-task-row__menu:has([aria-expanded='true']) {
-	visibility: visible;
+	opacity: 1;
 }
 
 .cc-no-drag {

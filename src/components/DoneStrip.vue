@@ -169,17 +169,18 @@ function getProjectKey(project) {
 
 /* Keep the link reachable so keyboard focus reveals its icon. */
 .cc-done-strip__link :deep(svg) {
-	visibility: hidden;
+	opacity: 0;
+	transition: var(--cc-hover-reveal, opacity 0.15s);
 }
 
 .cc-done-strip__item:hover .cc-done-strip__link :deep(svg),
 .cc-done-strip__item:focus-within .cc-done-strip__link :deep(svg) {
-	visibility: visible;
+	opacity: 1;
 }
 
 @media (hover: none), (pointer: coarse) {
 	.cc-done-strip__link :deep(svg) {
-		visibility: visible;
+		opacity: 1;
 	}
 }
 </style>
