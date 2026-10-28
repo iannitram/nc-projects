@@ -7,16 +7,16 @@ describe('isExcluded', () => {
 	})
 
 	it('should return true when URL contains _shared_by_', () => {
-		expect(isExcluded({ url: '/remote.php/dav/calendars/owner/dps_shared_by_agent/' })).toBe(true)
+		expect(isExcluded({ url: '/remote.php/dav/calendars/owner/home_shared_by_agent/' })).toBe(true)
 	})
 
 	it('should return true when URL contains app-generated--deck--', () => {
 		expect(isExcluded({ url: '/remote.php/dav/calendars/owner/app-generated--deck--board-7/' })).toBe(true)
 	})
 
-	it('keeps a calendar whose ownedByMe is undefined (the brief\'s The Channel example)', () => {
-		expect(isExcluded({ displayName: 'The Channel', url: '/remote.php/dav/calendars/owner/3f2a9c10-uuid/' })).toBe(false)
-		expect(pickAreas([{ displayName: 'The Channel', url: '/remote.php/dav/calendars/owner/3f2a9c10-uuid/' }]).map((a) => a.name)).toEqual(['The Channel'])
+	it('keeps a calendar whose ownedByMe is undefined (the brief\'s Channel example)', () => {
+		expect(isExcluded({ displayName: 'Channel', url: '/remote.php/dav/calendars/owner/3f2a9c10-uuid/' })).toBe(false)
+		expect(pickAreas([{ displayName: 'Channel', url: '/remote.php/dav/calendars/owner/3f2a9c10-uuid/' }]).map((a) => a.name)).toEqual(['Channel'])
 	})
 
 	it('should return false for valid calendars', () => {
@@ -33,12 +33,12 @@ describe('pickAreas', () => {
 		const calendars = [
 			{ displayName: 'System', url: '/remote.php/dav/calendars/owner/system/', ownedByMe: true },
 			{ displayName: 'Personal', url: '/remote.php/dav/calendars/owner/personal-1/', ownedByMe: true },
-			{ displayName: 'Farm Boy', url: '/remote.php/dav/calendars/owner/farm-boy/', ownedByMe: false },
-			{ displayName: 'Van', url: '/remote.php/dav/calendars/owner/van/', ownedByMe: true },
+			{ displayName: 'Shared Person List', url: '/remote.php/dav/calendars/owner/shared-person-list/', ownedByMe: false },
+			{ displayName: 'Project A', url: '/remote.php/dav/calendars/owner/project-a/', ownedByMe: true },
 		]
 		expect(pickAreas(calendars)).toEqual([
 			{ name: 'Personal', calendar: calendars[1] },
-			{ name: 'Van', calendar: calendars[3] },
+			{ name: 'Project A', calendar: calendars[3] },
 			{ name: 'System', calendar: calendars[0] },
 		])
 	})
@@ -55,17 +55,17 @@ describe('pickAreas', () => {
 
 	it('should handle a calendar with displayName matching AREA_NAMES but excluded by URL', () => {
 		const calendars = [
-			{ displayName: 'DPS', url: '/remote.php/dav/calendars/owner/dps_shared_by_agent/', ownedByMe: true },
+			{ displayName: 'Home', url: '/remote.php/dav/calendars/owner/home_shared_by_agent/', ownedByMe: true },
 		]
 		expect(pickAreas(calendars)).toEqual([])
 	})
 
 	it('should keep a calendar with displayName matching AREA_NAMES and valid URL', () => {
 		const calendars = [
-			{ displayName: 'The Channel', url: '/remote.php/dav/calendars/owner/3f2a9c10-uuid/', ownedByMe: true },
+			{ displayName: 'Channel', url: '/remote.php/dav/calendars/owner/3f2a9c10-uuid/', ownedByMe: true },
 		]
 		expect(pickAreas(calendars)).toEqual([
-			{ name: 'The Channel', calendar: calendars[0] },
+			{ name: 'Channel', calendar: calendars[0] },
 		])
 	})
 
@@ -73,14 +73,14 @@ describe('pickAreas', () => {
 		const calendars = [
 			{ displayName: 'System', url: '/remote.php/dav/calendars/owner/system/', ownedByMe: true },
 			{ displayName: 'Personal', url: '/remote.php/dav/calendars/owner/personal-1/', ownedByMe: true },
-			{ displayName: 'DPS', url: '/remote.php/dav/calendars/owner/dps_shared_by_agent/', ownedByMe: true },
-			{ displayName: 'Van', url: '/remote.php/dav/calendars/owner/van/', ownedByMe: true },
-			{ displayName: 'Barnum', url: '/remote.php/dav/calendars/owner/barnum/', ownedByMe: true },
+			{ displayName: 'Home', url: '/remote.php/dav/calendars/owner/home_shared_by_agent/', ownedByMe: true },
+			{ displayName: 'Project A', url: '/remote.php/dav/calendars/owner/project-a/', ownedByMe: true },
+			{ displayName: 'Project B', url: '/remote.php/dav/calendars/owner/project-b/', ownedByMe: true },
 		]
 		expect(pickAreas(calendars)).toEqual([
 			{ name: 'Personal', calendar: calendars[1] },
-			{ name: 'Van', calendar: calendars[3] },
-			{ name: 'Barnum', calendar: calendars[4] },
+			{ name: 'Project A', calendar: calendars[3] },
+			{ name: 'Project B', calendar: calendars[4] },
 			{ name: 'System', calendar: calendars[0] },
 		])
 	})

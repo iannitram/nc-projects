@@ -17,7 +17,7 @@ function task(uid, { parent, categories, status } = {}) {
 		'END:VCALENDAR',
 		'',
 	].filter((line) => line !== null).join('\r\n')
-	return Task.fromIcs(ics, { url: `/van/${uid}.ics`, etag: '"e"', calendarUrl: '/van/' })
+	return Task.fromIcs(ics, { url: `/project-a/${uid}.ics`, etag: '"e"', calendarUrl: '/project-a/' })
 }
 
 // The map is frozen; the Tasks inside are not (ical.js caches on its own objects when read).

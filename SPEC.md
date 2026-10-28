@@ -38,7 +38,7 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 
 ### Phase 1: view, add, reorder
 
-**M1. Areas.** WHEN I open Projects, THE APP SHALL show one section per area (Personal, The Channel, Van, Barnum, Cheltenham, DCIS, DPS, System), matched by the list's display name, and no other list.
+**M1. Areas.** WHEN I open Projects, THE APP SHALL show one section per area (Personal, Channel, Project A, Project B, School 1, School 2, Home, System), matched by the list's display name, and no other list.
 - Done looks like: eight area sections; the shared list, the agent queue and the Deck board are absent.
 - Check: open Projects in the test container; count the sections and read their names.
 

@@ -25,12 +25,12 @@ APPLE_EPOCH = datetime(2001, 1, 1, tzinfo=timezone.utc)
 # live server), so code that matches by URI fails the checks.
 AREAS = {
     "personal-1": "Personal",
-    "8d3c6c1e-5b0a-4c55-9a51-0c7e1f3b2a10": "The Channel",
-    "van": "Van",
-    "barnum-2": "Barnum",
-    "cheltenham": "Cheltenham",
-    "dcis": "DCIS",
-    "dps": "DPS",
+    "8d3c6c1e-5b0a-4c55-9a51-0c7e1f3b2a10": "Channel",
+    "project-a": "Project A",
+    "project-b-2": "Project B",
+    "school-1": "School 1",
+    "school-2": "School 2",
+    "home": "Home",
     "system": "System",
 }
 
@@ -156,29 +156,29 @@ def fixtures():
             add("owner", cal, f"{name}: task {k + 1}", parent=proj, order=base + 10 + k)
 
     # 2. A project with a child on another area's list (M3, M17).
-    cross = add("owner", "van", "Cross-list project", uid="cross-proj", cats=P)
-    add("owner", "barnum-2", "Child living on Barnum", uid="cross-child", parent=cross)
+    cross = add("owner", "project-a", "Cross-list project", uid="cross-proj", cats=P)
+    add("owner", "project-b-2", "Child living on Project B", uid="cross-child", parent=cross)
 
     # 3. A four-level chain under a project (M3, M4): level 4 is "+1 deeper".
-    chain = add("owner", "cheltenham", "Deep chain project", uid="chain-proj", cats=P)
+    chain = add("owner", "school-1", "Deep chain project", uid="chain-proj", cats=P)
     parent = chain
     for lvl in range(1, 5):
-        parent = add("owner", "cheltenham", f"Chain level {lvl}", uid=f"chain-l{lvl}", parent=parent)
+        parent = add("owner", "school-1", f"Chain level {lvl}", uid=f"chain-l{lvl}", parent=parent)
 
     # 4. 10 tasks across two levels, 4 completed, plus one cancelled (M5, M6).
-    prog = add("owner", "dcis", "Progress project (4/10)", uid="prog-proj", cats=P)
+    prog = add("owner", "school-2", "Progress project (4/10)", uid="prog-proj", cats=P)
     tops = []
     for k in range(5):
-        tops.append(add("owner", "dcis", f"Progress top {k + 1}", parent=prog,
+        tops.append(add("owner", "school-2", f"Progress top {k + 1}", parent=prog,
                         state="done" if k < 2 else "open"))
     for k in range(5):
-        add("owner", "dcis", f"Progress sub {k + 1}", parent=tops[k % 2 + 2],
+        add("owner", "school-2", f"Progress sub {k + 1}", parent=tops[k % 2 + 2],
             state="done" if k < 2 else "open")
-    add("owner", "dcis", "Progress cancelled", uid="prog-cancelled", parent=prog, state="cancelled")
+    add("owner", "school-2", "Progress cancelled", uid="prog-cancelled", parent=prog, state="cancelled")
 
     # 5. Blocked and someday projects (M7).
-    add("owner", "dps", "Blocked project", uid="blocked-proj", cats=P + ["blocked"])
-    add("owner", "dps", "Someday project", uid="someday-proj", cats=P + ["someday"])
+    add("owner", "home", "Blocked project", uid="blocked-proj", cats=P + ["blocked"])
+    add("owner", "home", "Someday project", uid="someday-proj", cats=P + ["someday"])
 
     # 6. All tasks done, project still open (M8).
     full = add("owner", "system", "All done but open", uid="full-proj", cats=P)
@@ -199,16 +199,16 @@ def fixtures():
         created=mix_created + timedelta(days=11))
 
     # 8. Agent fields and an unknown parameter, to prove round-trip (M15).
-    agentp = add("owner", AREA_URI("The Channel"), "Agent fields project", uid="agentf-proj", cats=P)
-    add("owner", AREA_URI("The Channel"), "Task with agent fields", uid="agentf-task", parent=agentp,
+    agentp = add("owner", AREA_URI("Channel"), "Agent fields project", uid="agentf-proj", cats=P)
+    add("owner", AREA_URI("Channel"), "Task with agent fields", uid="agentf-task", parent=agentp,
         extra=["X-CC-SOURCE:test-agent", "X-CC-TICKET;X-TEST-PARAM=keep:abc-123",
                "X-FORK-REF:fixture/fork-1", "DESCRIPTION;LANGUAGE=en:Keep every field."])
 
     # 9. Move source and target projects on different lists (M17).
-    src = add("owner", "van", "Move source project", uid="move-src", cats=P)
-    mover = add("owner", "van", "Task to move", uid="move-task", parent=src)
-    add("owner", "van", "Subtask that moves with it", uid="move-sub", parent=mover)
-    add("owner", "barnum-2", "Move target project", uid="move-dst", cats=P)
+    src = add("owner", "project-a", "Move source project", uid="move-src", cats=P)
+    mover = add("owner", "project-a", "Task to move", uid="move-task", parent=src)
+    add("owner", "project-a", "Subtask that moves with it", uid="move-sub", parent=mover)
+    add("owner", "project-b-2", "Move target project", uid="move-dst", cats=P)
 
     # 10. An orphan and an untagged parent (M20).
     gone = add("owner", "system", "Closed parent", uid="orphan-parent", state="done")

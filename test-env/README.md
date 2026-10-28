@@ -29,7 +29,7 @@ Then open http://127.0.0.1:8089 (or your `NC_TEST_PORT`) and log in as `owner` /
 
 | Owner sees | URI | Why |
 |---|---|---|
-| The eight areas (Personal, The Channel, Van, Barnum, Cheltenham, DCIS, DPS, System) | `personal-1`, a UUID, `van`, `barnum-2`, … | URIs differ from names on purpose: areas match by display name |
+| The eight areas (Personal, Channel, Project A, Project B, School 1, School 2, Home, System) | `personal-1`, a UUID, `project-a`, `project-b-2`, … | URIs differ from names on purpose: areas match by display name |
 | "Personal", the account's default calendar | `personal` | **Events only.** A trap: area discovery must keep only lists that hold tasks (VTODO), as Tasks does |
 | "Shared by another person" | `shared-list_shared_by_other` | Must be ignored (shared by another account) |
 | "Agent queue" | `queue_shared_by_agent` | Must be ignored (agent queue) |

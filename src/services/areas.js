@@ -3,7 +3,7 @@
  */
 
 /** The eight areas, by display name, in panel order. */
-export const AREA_NAMES = Object.freeze(['Personal', 'The Channel', 'Van', 'Barnum', 'Cheltenham', 'DCIS', 'DPS', 'System'])
+export const AREA_NAMES = Object.freeze(['Personal', 'Channel', 'Project A', 'Project B', 'School 1', 'School 2', 'Home', 'System'])
 
 /**
  * True for a list that is never an area: shared by someone else, an agent queue
