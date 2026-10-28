@@ -15,6 +15,8 @@ import { computed, nextTick } from 'vue'
 import { areaId } from '../models/tree.js'
 import { useProjectsStore } from '../store/projects.js'
 
+const emitSelection = defineEmits(['selectArea'])
+
 const store = getActivePinia() ? useProjectsStore() : null
 const isMobile = useIsMobile()
 
@@ -38,6 +40,7 @@ function closeDrawerOnPhone() {
  * Switch back to the All areas view and scroll to top.
  */
 function selectAllAreas() {
+	emitSelection('selectArea', null)
 	closeDrawerOnPhone()
 	if (store) {
 		store.view = 'areas'
@@ -56,6 +59,7 @@ function selectAllAreas() {
  * @param {number} [index] the area's index in the list
  */
 function selectArea(areaName, index) {
+	emitSelection('selectArea', areaName)
 	closeDrawerOnPhone()
 	if (store) {
 		store.view = 'areas'
@@ -76,6 +80,7 @@ function selectArea(areaName, index) {
  * Switch content to the Needs filing tray view.
  */
 function selectNeedsFiling() {
+	emitSelection('selectArea', null)
 	closeDrawerOnPhone()
 	if (store) {
 		store.view = 'needs-filing'
@@ -141,7 +146,6 @@ function openSettings() {
 
 		<template #footer>
 			<div class="cc-app-nav__footer">
-				<!-- M21: ReportButton placeholder spot -->
 				<slot name="reportButton" />
 				<NcButton
 					class="cc-app-nav__choose-areas"
