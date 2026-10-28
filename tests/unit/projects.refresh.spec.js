@@ -22,7 +22,7 @@ vi.mock('@nextcloud/dialogs', () => ({
 	showSuccess: vi.fn(),
 }))
 
-import { showInfo } from '@nextcloud/dialogs'
+import { showError, showInfo } from '@nextcloud/dialogs'
 import { ConflictError, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
 import { useProjectsStore } from '../../src/store/projects.js'
 
@@ -254,6 +254,33 @@ describe('projects store refresh', () => {
 			store.reorder('P', 'Van', 't2', 0),
 		])
 
+		expect(showInfo).toHaveBeenCalledTimes(1)
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
+	})
+
+	it('shows the action error, not "reloaded", for the failed reload when two conflicts arrive and one reload fails', async () => {
+		const store = await loaded()
+		putTodo.mockImplementation(async (url) => {
+			throw new ConflictError(url)
+		})
+		fetchTodo.mockImplementation(async (url) => {
+			if (url.includes('t1')) {
+				throw new Error('reload failed')
+			}
+			return deepFreeze({
+				url,
+				etag: '"new-etag"',
+				calendarUrl: '/van/',
+				ics: vtodo({ uid: 't2', parent: 'P', summary: 'reloaded' }),
+			})
+		})
+
+		await Promise.all([
+			store.setCompleted('t1', true),
+			store.reorder('P', 'Van', 't2', 0),
+		])
+
+		expect(showError).toHaveBeenCalledWith('Could not save the change')
 		expect(showInfo).toHaveBeenCalledTimes(1)
 		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 	})

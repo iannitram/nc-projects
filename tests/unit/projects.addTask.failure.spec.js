@@ -118,6 +118,18 @@ describe('projects store addTask failures', () => {
 		expect(showError).not.toHaveBeenCalled()
 	})
 
+	it('shows "Could not add the task" and no "reloaded" notice when the conflict reload fails', async () => {
+		const store = await loadStore(todos())
+		createTodo.mockRejectedValue(new ConflictError('/van/conflict.ics'))
+		fetchTodo.mockRejectedValue(new Error('reload failed'))
+
+		const result = await store.addTask('P', 'Buy paint')
+
+		expect(result).toBeNull()
+		expect(showError).toHaveBeenCalledWith('Could not add the task')
+		expect(showInfo).not.toHaveBeenCalled()
+	})
+
 	it('shows only a single notice when two ConflictErrors arrive together', async () => {
 		const store = await loadStore(todos())
 		createTodo

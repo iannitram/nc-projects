@@ -15,25 +15,33 @@ import { pickAreas } from '../services/areas.js'
 import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
 
 let pendingConflictReloads = 0
+let successfulConflictReloads = 0
 let noticeScheduled = false
 
 /**
  * Queue a task reload caused by a ConflictError and show one quiet notice.
  *
  * @param {() => Promise<void>} reloadFn the reload callback
- * @return {Promise<void>}
+ * @return {Promise<boolean>} true when the reload succeeded, false when it failed
  */
 function queueConflictReload(reloadFn) {
 	pendingConflictReloads++
-	return reloadFn().finally(() => {
+	return reloadFn().then(
+		() => {
+			successfulConflictReloads++
+			return true
+		},
+		() => false,
+	).finally(() => {
 		pendingConflictReloads--
 		if (pendingConflictReloads === 0 && !noticeScheduled) {
 			noticeScheduled = true
 			Promise.resolve().then(() => {
 				noticeScheduled = false
-				if (pendingConflictReloads === 0) {
+				if (pendingConflictReloads === 0 && successfulConflictReloads > 0) {
 					showInfo('Someone else changed this; reloaded')
 				}
+				successfulConflictReloads = 0
 			})
 		}
 	})
@@ -106,6 +114,26 @@ function restoreCollapseState(areas, state) {
 			walk(project.children)
 		}
 	}
+}
+
+/**
+ * Depth-first search of a tree of task nodes for the node whose task has a uid.
+ *
+ * @param {import('../models/tree.js').TaskNode[]} nodes the nodes to search, with their children
+ * @param {string} uid the task's uid
+ * @return {import('../models/tree.js').TaskNode|null} the node, or null when it is not in the tree
+ */
+function findNode(nodes, uid) {
+	for (const node of nodes || []) {
+		if (node.task.uid === uid) {
+			return node
+		}
+		const found = findNode(node.children, uid)
+		if (found) {
+			return found
+		}
+	}
+	return null
 }
 
 export const useProjectsStore = defineStore('projects', {
@@ -228,22 +256,18 @@ export const useProjectsStore = defineStore('projects', {
 			if (useSession) {
 				this.davSession ??= markRaw(getDavSession())
 			}
-			try {
-				const storedList = await Promise.all(urlList.map((url) => (useSession ? fetchTodo(url, this.davSession) : fetchTodo(url))))
-				for (const stored of storedList) {
-					if (stored?.ics) {
-						const task = Task.fromIcs(stored.ics, {
-							url: stored.url,
-							etag: stored.etag,
-							calendarUrl: stored.calendarUrl,
-						})
-						this.tasksByUid[task.uid] = task
-					}
+			const storedList = await Promise.all(urlList.map((url) => (useSession ? fetchTodo(url, this.davSession) : fetchTodo(url))))
+			for (const stored of storedList) {
+				if (stored?.ics) {
+					const task = Task.fromIcs(stored.ics, {
+						url: stored.url,
+						etag: stored.etag,
+						calendarUrl: stored.calendarUrl,
+					})
+					this.tasksByUid[task.uid] = task
 				}
-				this.rebuildTree()
-			} catch {
-				// Keep current state when tasks cannot be refreshed.
 			}
+			this.rebuildTree()
 		},
 		/**
 		 * Reload a single task by URL and rebuild the tree.
@@ -305,7 +329,10 @@ export const useProjectsStore = defineStore('projects', {
 				return task.uid
 			} catch (error) {
 				if (error instanceof ConflictError) {
-					await this.handleConflict(error)
+					const reloaded = await this.handleConflict(error)
+					if (!reloaded) {
+						showError('Could not add the task')
+					}
 					return null
 				}
 				showError('Could not add the task')
@@ -332,21 +359,13 @@ export const useProjectsStore = defineStore('projects', {
 				return notImplemented('reorder', parentUid, areaName, movedUid, newIndex)
 			}
 
-			// Find the parent node in the tree
+			// Find the parent node at any depth of the tree
 			let parentNode = null
 			for (const area of this.areas) {
 				for (const project of area.projects) {
-					if (project.task.uid === parentUid) {
-						parentNode = project
+					parentNode = project.task.uid === parentUid ? project : findNode(project.children, parentUid)
+					if (parentNode) {
 						break
-					}
-					// Check if parentUid matches a task in children
-					if (project.children) {
-						const found = project.children.find((child) => child.task.uid === parentUid)
-						if (found) {
-							parentNode = found
-							break
-						}
 					}
 				}
 				if (parentNode) {
@@ -409,7 +428,10 @@ export const useProjectsStore = defineStore('projects', {
 			} catch (error) {
 				// Handle ConflictError differently: reload every task of the change
 				if (error instanceof ConflictError) {
-					await this.handleConflict(toUpdate.map(({ uid }) => this.tasksByUid[uid]?.url).filter(Boolean))
+					const reloaded = await this.handleConflict(toUpdate.map(({ uid }) => this.tasksByUid[uid]?.url).filter(Boolean))
+					if (!reloaded) {
+						showError('Could not save the new order')
+					}
 					return
 				}
 
@@ -458,7 +480,10 @@ export const useProjectsStore = defineStore('projects', {
 				}
 			} catch (error) {
 				if (error instanceof ConflictError) {
-					await this.handleConflict(plan.map((planUid) => this.tasksByUid[planUid]?.url).filter(Boolean))
+					const reloaded = await this.handleConflict(plan.map((planUid) => this.tasksByUid[planUid]?.url).filter(Boolean))
+					if (!reloaded) {
+						showError('Could not save the change')
+					}
 					return
 				}
 
@@ -546,7 +571,10 @@ export const useProjectsStore = defineStore('projects', {
 				this.rebuildTree()
 			} catch (error) {
 				if (error instanceof ConflictError) {
-					await this.handleConflict(error)
+					const reloaded = await this.handleConflict(error)
+					if (!reloaded) {
+						showError('Could not create the project')
+					}
 					return
 				}
 				showError('Could not create the project')
@@ -573,7 +601,10 @@ export const useProjectsStore = defineStore('projects', {
 				toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
 			} catch (error) {
 				if (error instanceof ConflictError) {
-					await this.handleConflict([raw.url])
+					const reloaded = await this.handleConflict([raw.url])
+					if (!reloaded) {
+						showError('Could not make the project')
+					}
 					return
 				}
 
