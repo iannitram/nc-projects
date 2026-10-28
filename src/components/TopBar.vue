@@ -195,7 +195,8 @@ async function submitNewProject() {
 	align-items: center;
 	gap: calc(var(--default-grid-baseline, 4px) * 2);
 	min-height: 52px;
-	padding: 0 calc(var(--default-grid-baseline, 4px) * 3) 0 calc(var(--default-grid-baseline, 4px) * 5);
+	/* clear the navigation toggle (absolutely positioned over the content's top-left) */
+	padding: 0 0 0 calc(var(--default-clickable-area, 34px) + var(--default-grid-baseline, 4px) * 2);
 	border-bottom: 1px solid var(--color-border);
 	flex: none;
 	box-sizing: border-box;

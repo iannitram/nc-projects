@@ -103,7 +103,7 @@ const updatedText = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: calc(var(--default-grid-baseline, 4px) * 2);
-	padding: calc(var(--default-grid-baseline, 4px) * 1.5) calc(var(--default-grid-baseline, 4px) * 5);
+	padding: calc(var(--default-grid-baseline, 4px) * 1.5) 0;
 	border-top: 1px solid var(--color-border);
 	color: var(--color-text-maxcontrast);
 	font-size: 13px;
@@ -117,7 +117,7 @@ const updatedText = computed(() => {
 
 @media (max-width: 600px) {
 	.cc-status-line {
-		padding: calc(var(--default-grid-baseline, 4px) * 1.5) calc(var(--default-grid-baseline, 4px) * 2);
+		padding: calc(var(--default-grid-baseline, 4px) * 1.5) 0;
 		flex-wrap: wrap;
 	}
 }
