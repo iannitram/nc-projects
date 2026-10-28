@@ -1,26 +1,55 @@
+<script>
+/**
+ * Determine whether a task is closed (completed or cancelled).
+ *
+ * @param {import('../models/Task.js').Task | object | null | undefined} task The task to check
+ * @return {boolean} True if completed or cancelled
+ */
+export function isTaskClosed(task) {
+	if (!task) {
+		return false
+	}
+	if (task.closed === true || task.completed === true) {
+		return true
+	}
+	if (typeof task.status === 'string') {
+		const status = task.status.toUpperCase()
+		if (status === 'COMPLETED' || status === 'CANCELLED') {
+			return true
+		}
+	}
+	return Boolean(task.completed)
+}
+</script>
+
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import TaskRow from './TaskRow.vue'
 
-defineProps({
+const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').TaskNode[]>} */
 	nodes: { type: Array, required: true },
 	depth: { type: Number, default: 1 },
+	showDone: { type: Boolean, default: false },
 })
 
 const collapsedKeys = ref(new Set())
 
 /**
+ * Return a stable key for a task node.
  *
- * @param {import('../models/tree.js').TaskNode} node
+ * @param {import('../models/tree.js').TaskNode} node The task node
+ * @return {string | null} Unique key
  */
 function getNodeKey(node) {
 	return node.task?.uid || node.task?.summary || null
 }
 
 /**
+ * Check if a task node's children are collapsed.
  *
- * @param {import('../models/tree.js').TaskNode} node
+ * @param {import('../models/tree.js').TaskNode} node The task node
+ * @return {boolean} True if collapsed
  */
 function isCollapsed(node) {
 	if (node.collapsed === true) {
@@ -31,8 +60,9 @@ function isCollapsed(node) {
 }
 
 /**
+ * Toggle the collapse state of a task node's subtasks.
  *
- * @param {import('../models/tree.js').TaskNode} node
+ * @param {import('../models/tree.js').TaskNode} node The task node
  */
 function toggleCollapse(node) {
 	if (typeof node.collapsed === 'boolean') {
@@ -52,24 +82,41 @@ function toggleCollapse(node) {
 }
 
 /**
+ * Check if a task node has visible children under the current showDone setting.
  *
- * @param {import('../models/tree.js').TaskNode} node
+ * @param {import('../models/tree.js').TaskNode} node The task node
+ * @return {boolean} True if there are visible children
  */
 function hasVisibleChildren(node) {
-	if (!node.children || node.children.length === 0) {
+	if (!node?.children || node.children.length === 0) {
 		return false
 	}
-	return true
+	if (props.showDone) {
+		return true
+	}
+	return node.children.some((child) => !isTaskClosed(child?.task))
 }
+
+const visibleNodes = computed(() => {
+	const list = props.nodes || []
+	if (props.showDone) {
+		return list
+	}
+	return list.filter((node) => !isTaskClosed(node?.task))
+})
 </script>
 
 <template>
 	<ul class="cc-task-tree" :class="`cc-task-tree--level-${depth}`">
 		<li
-			v-for="node in nodes"
+			v-for="node in visibleNodes"
 			:key="getNodeKey(node) || node"
-			class="cc-task-tree__item">
-			<div class="cc-task-tree__row-wrapper">
+			class="cc-task-tree__item"
+			:class="{ 'is-closed': isTaskClosed(node?.task), 'cc-task-tree__item--closed': isTaskClosed(node?.task) }"
+			:style="isTaskClosed(node?.task) ? { opacity: 0.6 } : undefined">
+			<div
+				class="cc-task-tree__row-wrapper"
+				:class="{ 'is-closed': isTaskClosed(node?.task) }">
 				<button
 					v-if="hasVisibleChildren(node)"
 					type="button"
@@ -87,7 +134,8 @@ function hasVisibleChildren(node) {
 				class="cc-task-tree__children">
 				<TaskTree
 					:nodes="node.children"
-					:depth="depth + 1" />
+					:depth="depth + 1"
+					:showDone="showDone" />
 			</div>
 		</li>
 	</ul>
@@ -102,6 +150,11 @@ function hasVisibleChildren(node) {
 
 .cc-task-tree__item {
 	margin: calc(var(--default-grid-baseline, 4px) * 1) 0;
+}
+
+.cc-task-tree__item.is-closed,
+.cc-task-tree__item--closed {
+	opacity: 0.6;
 }
 
 .cc-task-tree__row-wrapper {
