@@ -90,6 +90,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `.gitattributes` | LF line endings in every checkout |
 | `scripts/fetch-tasks-ref.sh` | Shallow-clone Nextcloud Tasks (default v0.18.1) into git-ignored `reference/tasks` for reading |
 | `scripts/dav-get.sh` | Print one stored task's raw iCalendar from the **test** container (CalDAV GET), for the spec's "read the stored task" checks |
+| `scripts/check-dav-real.mjs` | **Real-library check (#34):** against the test container it proves `fetchTodo`'s relative-path `find()`, `createTodo`'s `createObject(name, headers, data)`, and a stale-etag write; the library files every HTTP error as status -1, so `dav.js` re-reads the etag to throw `ConflictError` |
 | `test-env/` | The test container: `compose.yaml`, `setup.sh`, `reset.sh`, `seed.py` (fixture lists and tasks) |
 | `scripts/deploy-test.sh` (planned, #4) | Build and copy into the **test** container, then `occ app:enable cc_projects` there |
 | `.gitignore` | `node_modules/`, `vendor/`, `js/` and `css/` build output, `reference/` |
