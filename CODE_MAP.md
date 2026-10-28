@@ -17,7 +17,7 @@ Browser (the owner's session)
      store/projects.js  ◄── services/dav.js ── CalDAV (/remote.php/dav) ── same VTODOs the Tasks app and agents use
           ▲
      models/tree.js ◄── models/Task.js (ical.js)
-Server (PHP): serves the page only. No data endpoints.
+Server (PHP): serves the page and user settings; relays bug reports without exposing drop settings (ADR 0020).
 ```
 
 ## Files
@@ -27,9 +27,9 @@ Server (PHP): serves the page only. No data endpoints.
 | Path | Job |
 |---|---|
 | `appinfo/info.xml` | App id `cc_projects`, name "Projects", nav entry, Nextcloud 33–35 |
-| `appinfo/routes.php` | One route: the page (`GET /`) |
+| `appinfo/routes.php` | Page (`GET /`), user area settings, bug-report relay (`POST /api/bugreport`) and admin bug-report settings |
 | `lib/AppInfo/Application.php` | App bootstrap |
-| `lib/Controller/PageController.php` | Renders `templates/main.php`. Nothing else: no data API |
+| `lib/Controller/PageController.php` | Renders `templates/main.php`; initial state contains report version, commit, Nextcloud version and readiness only |
 | `templates/main.php` | Mount point `#cc_projects`; loads `js/cc_projects-main.mjs` and `css/cc_projects-style.css` |
 | `img/app.svg`, `img/app-dark.svg` | Nav icon |
 
@@ -50,7 +50,7 @@ Server (PHP): serves the page only. No data endpoints.
 
 | Path | Job | IDs |
 |---|---|---|
-| `src/main.js` | Creates the app, installs Pinia, mounts on `#cc_projects` | P01 |
+| `src/main.js` | Starts the error buffer first, creates the app, installs Pinia, mounts on `#cc_projects` | P01 |
 | `src/App.vue` | `NcContent` / `NcAppContent` shell; calls the store's `load` on mount, shows a spinner, the error text, or one `AreaSection` per area; calls `useRefresh(store.refresh)` (P10) | P01, P05, P10 |
 | `src/components/AreaSection.vue` | Present: one area with its project cards, rendered in order, and the "+ New project" field (Enter calls `store.createProject`, Esc clears) | P05, P14 |
 | `src/components/ProjectCard.vue` | Present: project title, completion checkbox (calls `setCompleted`), task tree and the `AddTaskInput` under it | P05, P07, P13 |
@@ -62,7 +62,10 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/composables/useDrag.js` | **Stub** (`DRAG_OPTIONS` present, with `handle: '.drag-handle'`; the drop wiring is not, and no component uses it yet). `sortablejs-vue3` wiring (Tasks' options: `delay: 500, delayOnTouchOnly: true, touchStartThreshold: 3`): drag handles, long-press on touch, drop → store action | P08, P09, P11, P12 |
 | `src/composables/useRefresh.js` | **Present** (`REFRESH_INTERVAL_MS`, `useRefresh`). Refresh on window focus and every ~2 min | P10 |
 | `src/styles/projects.css` | Layout, including the phone breakpoint | P05, P11 |
-| `src/main.js` + `src/App.vue` (Report a bug; planned) | `installErrorBuffer()` at startup; craft-bugreport-web's `ReportButton` in the app navigation, given `{ app, version, commit, ncVersion, dropBase, dropToken, userName }` and `getWorkingFile()` returning the open area's projects and tasks as JSON; drop base and token are an app config value (`occ config:app:set cc_projects bug_drop_base/bug_drop_token`) handed to the page as initial state by `PageController`, never committed | M21 (#39, #40) |
+| `src/main.js` + `src/App.vue` (Report a bug) | **Built.** craft-bugreport-web pinned at `4549b81`: error buffer first; navigation ReportButton with app/version/commit/ncVersion, same-origin relay URL and CSRF header only. `area.json` contains the selected area's project/task titles, status, order and links (including deeper descendants); null for All areas or Needs filing. Selection follows area navigation or interaction. No drop secrets in page state | M21 (#39, #40) |
+| `lib/Controller/BugReportController.php` | **Built.** Signed-in, CSRF-protected report relay; exact Projects zip name, 10 MB cap, five accepted attempts per user/hour, server-only IAppConfig drop settings, one PUT with redirects off, fixed responses | M21 (#39) |
+| `lib/Controller/AdminController.php`, `lib/Settings/*`, `templates/settings-admin.php` | **Built.** Admin-only settings section; base URL and blank token field, sensitive storage, explicit clear. Both values can also be set with occ | M21 (#39) |
+| `vite.config.mjs`, `appinfo/build.json` (generated, ignored) | **Built.** Stamps the current source revision into the build for report metadata | M21 (#39) |
 | `appinfo/info.xml` + `.github/workflows/release.yml` (updates from the admin panel; planned) | The release fields the merged feed reads (id, a.b.c version, Nextcloud range, PHP minimum; guarded by `tests/unit/release.infoxml.spec.js`, planned in #41) and the tag workflow that calls craft-nc-appstore's `build-app.yml@v1`; signing and publishing happen on the release-key machine (R35), never in CI | M22 (#41, #42, #44) |
 
 ### Tests and tooling
@@ -133,7 +136,7 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 4. **Areas by display name, never URI segment.**
 5. **Exclusions are fixed:** lists shared by other people (for example, a list a colleague shares), agent queues (`*_shared_by_*`), Deck boards (`app-generated--deck--*`).
 6. **Order like Tasks does:** write the moved task, plus only the later siblings Tasks' rule bumps. Never renumber a whole project.
-7. **No data on the server side.** If a feature seems to need a PHP endpoint, stop and ask.
+7. **Task data stays in CalDAV.** The owner authorized the bug-report relay as an exception (ADR 0020); it forwards only reports explicitly sent by the user.
 
 ## Facts (fill in at P00)
 
