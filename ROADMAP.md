@@ -42,7 +42,7 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 
 | ID | Feature | Complexity | Notes |
 |---|---|---|---|
-| P05 | **Panel view** | Medium | Needs P04, P00(b). Areas, project cards, open tasks, collapsible subtasks with a "+N deeper" note past level 3 (opens that task in Tasks), done/total progress bar over every task at every level under the project, "show done" toggle Store `load` merged 2026-10-26 (#12); the panel view is PR #43 (#13). Progress bar and show-done (#14) not started. |
+| P05 | **Panel view** | Medium | Needs P04, P00(b). Areas, project cards, open tasks, collapsible subtasks with a "+N deeper" note past level 3 (opens that task in Tasks), done/total progress bar over every task at every level under the project, "show done" toggle Store `load` merged 2026-10-26 (#12); the panel view is PR #43 (#13). Progress bar and show-done (#14) in PR. |
 | P06 | **Status badges and Done strip** | Low | Needs P05. `blocked` red, `someday` greyed and sunk to the bottom of its area; completed projects in a collapsed Done strip per area. Checking off a project also checks off its open tasks (as Tasks does) Badges, someday greying and the Done strip are PR #73 (#16); checking off a project's open tasks not started. |
 
 ## Unwritten
