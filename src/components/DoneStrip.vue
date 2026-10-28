@@ -1,5 +1,6 @@
 <script setup>
 import { mdiCheckboxMarkedOutline, mdiChevronDown, mdiChevronRight, mdiOpenInNew } from '@mdi/js'
+import { n } from '@nextcloud/l10n'
 import { NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
 import { computed, ref, toRaw } from 'vue'
 import { getTasksDeepLink } from './TaskRow.vue'
@@ -19,6 +20,7 @@ const completedProjects = computed(() => {
 })
 
 const count = computed(() => completedProjects.value.length)
+const title = computed(() => n('cc_projects', '%n done project', '%n done projects', count.value))
 
 /**
  * Toggle the expanded state.
@@ -95,7 +97,7 @@ function getProjectKey(project) {
 				<template #icon>
 					<NcIconSvgWrapper :path="expanded ? mdiChevronDown : mdiChevronRight" :size="20" />
 				</template>
-				<span class="cc-done-strip__title">{{ count }} done projects</span>
+				<span class="cc-done-strip__title">{{ title }}</span>
 			</NcButton>
 		</div>
 		<ul
