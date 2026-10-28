@@ -23,3 +23,4 @@ One file per decision. The numbers in brackets are the 2026-10-23 grilling's dec
 | [0017](0017-spec-lives-in-the-repo-checks-run-in-the-test-container.md) | Spec lives in the repo; checks run in the test container | new |
 | [0018](0018-checking-off-cascades-like-tasks.md) | Checking off cascades the way the Tasks app does | new |
 | [0019](0019-show-done-is-a-browser-setting.md) | "Show done" is remembered in this browser only | new |
+| [0020](0020-bug-reports-relay-through-the-app-server.md) | Bug reports relay through the app server | owner, 2026-10-28 |
