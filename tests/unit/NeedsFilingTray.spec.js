@@ -135,6 +135,8 @@ describe('NeedsFilingTray', () => {
 		await moveButtons[0].trigger('click')
 		expect(wrapper.emitted('openMoveDialog')).toBeTruthy()
 		expect(wrapper.emitted('openMoveDialog')[0]).toEqual([ORPHANS[0]])
+		expect(wrapper.findComponent({ name: 'MoveToProjectDialog' }).exists()).toBe(true)
+		expect(wrapper.findComponent({ name: 'MoveToProjectDialog' }).props('task')).toEqual(ORPHANS[0])
 	})
 
 	it('swallows a failed makeProject (the store already showed the error)', async () => {

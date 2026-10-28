@@ -46,9 +46,10 @@ export function getTasksDeepLink(task) {
 </script>
 
 <script setup>
-import { mdiDotsHorizontal } from '@mdi/js'
+import { mdiDotsHorizontal, mdiFolderMoveOutline } from '@mdi/js'
 import { NcActionButton, NcActionInput, NcActionLink, NcActionRadio, NcActions, NcActionSeparator, NcCheckboxRadioSwitch, NcIconSvgWrapper, NcTextField } from '@nextcloud/vue'
 import { computed, nextTick, ref, toRaw } from 'vue'
+import MoveToProjectDialog from './MoveToProjectDialog.vue'
 import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -70,6 +71,7 @@ const PRIORITY_OPTIONS = [
 ]
 
 const editing = ref(false)
+const moveDialogOpen = ref(false)
 const titleDraft = ref('')
 const titleInput = ref(null)
 let titleCancelled = false
@@ -308,7 +310,17 @@ function setPriority(value) {
 				{{ option.label }}
 			</NcActionRadio>
 			<NcActionSeparator />
-			<!-- "Move to project…" goes here (the dialog is #120, cluster P3). -->
+			<NcActionButton
+				class="cc-no-drag"
+				@click="moveDialogOpen = true"
+				@mousedown.stop
+				@pointerdown.stop
+				@touchstart.stop>
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiFolderMoveOutline" :size="20" />
+				</template>
+				Move to project…
+			</NcActionButton>
 			<NcActionLink
 				v-if="task"
 				class="cc-no-drag cc-task-open-in-tasks"
@@ -319,6 +331,11 @@ function setPriority(value) {
 				Open in Tasks
 			</NcActionLink>
 		</NcActions>
+		<MoveToProjectDialog
+			v-if="moveDialogOpen"
+			:open="moveDialogOpen"
+			:task="task"
+			@close="moveDialogOpen = false" />
 	</div>
 </template>
 

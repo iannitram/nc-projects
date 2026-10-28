@@ -99,6 +99,36 @@ describe('TaskRow', () => {
 		}
 		expect(getTasksDeepLink(task)).toBe('/apps/tasks/collections/all/tasks/orphan.ics')
 	})
+
+	it('opens the MoveToProjectDialog from the actions menu', async () => {
+		setActivePinia(createPinia())
+		const wrapper = mount(TaskRow, {
+			props: {
+				node: {
+					task: {
+						uid: 't1',
+						summary: 'Move me',
+						completed: false,
+						calendarUrl: '/list-a/',
+					},
+					children: [],
+					deeper: 0,
+				},
+			},
+			global: {
+				stubs: {
+					NcActions: { template: '<div><slot /></div>' },
+				},
+			},
+		})
+		expect(wrapper.findComponent({ name: 'MoveToProjectDialog' }).exists()).toBe(false)
+		const moveAction = wrapper.findAllComponents({ name: 'NcActionButton' }).find((btn) => btn.text().includes('Move to project…'))
+		expect(moveAction).toBeDefined()
+		await moveAction.find('button').trigger('click')
+		const dialog = wrapper.findComponent({ name: 'MoveToProjectDialog' })
+		expect(dialog.exists()).toBe(true)
+		expect(dialog.props('task').uid).toBe('t1')
+	})
 })
 
 describe('TaskRow done styling (regression)', () => {

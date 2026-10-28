@@ -2,7 +2,8 @@
 import { mdiCheckAll, mdiFolderMoveOutline } from '@mdi/js'
 import { NcButton, NcEmptyContent, NcIconSvgWrapper } from '@nextcloud/vue'
 import { getActivePinia } from 'pinia'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import MoveToProjectDialog from './MoveToProjectDialog.vue'
 import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -82,14 +83,17 @@ async function makeProject(task) {
 	}
 }
 
+const moveDialogOpen = ref(false)
+const movingTask = ref(null)
+
 /**
- * Hook to open the move-to-project dialog for a task.
- * Left visible as a no-op hook here; #120 will implement the Move to project dialog.
+ * Open the move-to-project dialog for a task.
  *
  * @param {import('../models/Task.js').Task} task task to move
  */
 function openMoveDialog(task) {
-	// No-op for now; #120 will implement the Move to project dialog.
+	movingTask.value = task
+	moveDialogOpen.value = true
 	emit('openMoveDialog', task)
 }
 </script>
@@ -219,6 +223,12 @@ function openMoveDialog(task) {
 				</ul>
 			</section>
 		</div>
+
+		<MoveToProjectDialog
+			v-if="moveDialogOpen"
+			:open="moveDialogOpen"
+			:task="movingTask"
+			@close="moveDialogOpen = false; movingTask = null" />
 	</section>
 </template>
 
