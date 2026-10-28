@@ -13,7 +13,11 @@ export const REFRESH_INTERVAL_MS = 2 * 60 * 1000
  */
 export function useRefresh(refresh, intervalMs = REFRESH_INTERVAL_MS) {
 	const run = () => {
-		Promise.resolve(refresh()).catch(() => {})
+		try {
+			Promise.resolve(refresh()).catch(() => {})
+		} catch {
+			// A synchronous throw is handled like a rejection: ignored, so later ticks still run.
+		}
 	}
 
 	window.addEventListener('focus', run)
