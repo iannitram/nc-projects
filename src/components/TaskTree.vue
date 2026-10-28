@@ -23,6 +23,7 @@ export function isTaskClosed(task) {
 </script>
 
 <script setup>
+import { showInfo } from '@nextcloud/dialogs'
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import TaskRow from './TaskRow.vue'
@@ -172,6 +173,28 @@ function uidsOf(element, name) {
 }
 
 /**
+ * Tell the user when a drag was released over a project on another list. Sortable's per-area
+ * group refuses that drop silently (no hover or move callback fires for it), so look under the
+ * pointer once, when the drag ends. Cross-list moves come later (#26).
+ *
+ * @param {{originalEvent?: object}} evt The sortable end event
+ */
+function warnIfDroppedOnOtherList(evt) {
+	if (props.depth !== 1 || !props.areaName) {
+		return
+	}
+	const point = evt.originalEvent?.changedTouches?.[0] ?? evt.originalEvent
+	if (typeof point?.clientX !== 'number' || typeof document.elementFromPoint !== 'function') {
+		return
+	}
+	const under = document.elementFromPoint(point.clientX, point.clientY)
+	const targetArea = under?.closest?.('[data-area-name]')?.dataset.areaName
+	if (targetArea && targetArea !== props.areaName) {
+		showInfo("Can't move a task to a project on another list yet")
+	}
+}
+
+/**
  * Turn a finished drag into a reorder or a move to another project.
  *
  * @param {object} evt The sortable end event
@@ -180,6 +203,7 @@ function uidsOf(element, name) {
 function onDrop(evt) {
 	if (!evt.to || evt.from === evt.to) {
 		restoreDomPosition(evt)
+		warnIfDroppedOnOtherList(evt)
 		const targetParent = parentUid.value || effectiveProjectUid.value
 		if (!targetParent) {
 			return undefined
@@ -224,6 +248,7 @@ function onDrop(evt) {
 		:itemKey="rowKey"
 		:options="sortOptions"
 		:data-project-uid="effectiveProjectUid"
+		:data-area-name="depth === 1 ? areaName : null"
 		:data-all-uids="(nodes || []).map((node) => node.task?.uid).filter(Boolean).join(',')"
 		:data-visible-uids="visibleNodes.map((node) => node.task?.uid).filter(Boolean).join(',')"
 		@end="onDrop">

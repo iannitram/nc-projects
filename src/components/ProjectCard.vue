@@ -10,12 +10,8 @@ const props = defineProps({
 	project: { type: Object, required: true },
 	areaName: { type: String, default: null },
 })
-
 const isCompleted = computed(() => Boolean(props.project?.task?.completed) || props.project?.task?.status?.toUpperCase() === 'COMPLETED')
 
-/**
- * Handle project completion toggle.
- */
 function onCompletionChange() {
 	useProjectsStore().setCompleted(props.project?.task?.uid, !isCompleted.value)
 }

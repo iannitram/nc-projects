@@ -18,6 +18,7 @@ vi.mock('@nextcloud/dialogs', () => ({
 	showSuccess: vi.fn(),
 }))
 
+import { showInfo } from '@nextcloud/dialogs'
 import TaskTree from '../../src/components/TaskTree.vue'
 import { fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
 import { useProjectsStore } from '../../src/store/projects.js'
@@ -98,6 +99,37 @@ describe('TaskTree cross-list drop renders the move', () => {
 
 		expect(rows(listA)).toEqual(['a2'])
 		expect(rows(listB)).toEqual(['b1', 'a1', 'b2'])
+		wrapper.unmount()
+	})
+
+	it('shows one notice and writes nothing when a drag is released over a project on another list', async () => {
+		const wrapper = mount(Host, { attachTo: document.body })
+		const [listA, listB] = wrapper.findAll('ul.cc-task-tree--level-1').map((w) => w.element)
+		const other = document.createElement('ul')
+		other.dataset.areaName = 'Other area'
+		document.body.appendChild(other)
+		const original = document.elementFromPoint
+		document.elementFromPoint = vi.fn(() => other)
+
+		// Sortable refuses the cross-area drop: the end event has from === to, with the pointer over the other area
+		const item = listA.children[0]
+		wrapper.findAllComponents(TaskTree)[0].findComponent({ name: 'Sortable' }).vm.$emit('end', {
+			from: listA,
+			to: listA,
+			item,
+			oldIndex: 0,
+			newIndex: 0,
+			originalEvent: { clientX: 5, clientY: 5 },
+		})
+		await wrapper.vm.$nextTick()
+
+		expect(showInfo).toHaveBeenCalledTimes(1)
+		expect(putTodo).not.toHaveBeenCalled()
+		expect(rows(listA)).toEqual(['a1', 'a2'])
+		expect(rows(listB)).toEqual(['b1', 'b2'])
+
+		document.elementFromPoint = original
+		other.remove()
 		wrapper.unmount()
 	})
 })
