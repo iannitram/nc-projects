@@ -236,6 +236,8 @@ function openMoveDialog(task) {
 	align-items: baseline;
 	gap: calc(var(--default-grid-baseline, 4px) * 2);
 	margin-bottom: calc(var(--default-grid-baseline, 4px) * 1);
+	/* clear the navigation toggle (absolutely positioned over the content's top-left), as the top bar does */
+	padding-left: calc(var(--default-clickable-area, 34px) + var(--default-grid-baseline, 4px) * 2);
 }
 
 .cc-needs-filing-tray__title {
