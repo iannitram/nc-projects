@@ -160,7 +160,47 @@ export const useProjectsStore = defineStore('projects', {
 		loading: false,
 		/** @type {string|null} */
 		error: null,
+		/** @type {'areas'|'needs-filing'} */
+		view: 'areas',
 	}),
+	getters: {
+		/**
+		 * CalDAV calendar colour for an area, falling back to Nextcloud primary element colour.
+		 *
+		 * @param {object} state the store state
+		 * @return {(nameOrArea: string | { name: string, calendar?: { color?: string } }) => string} getter function
+		 */
+		areaColor: (state) => (nameOrArea) => {
+			const name = typeof nameOrArea === 'object' && nameOrArea !== null ? nameOrArea.name : nameOrArea
+			const areaInput = state.areaInputs?.find((a) => a.name === name)
+			const area = state.areas?.find((a) => a.name === name)
+			const available = state.availableLists?.find((c) => c.displayName === name || (area && c.url === area.calendarUrl))
+			const directColor = (typeof nameOrArea === 'object' && nameOrArea !== null) ? nameOrArea.calendar?.color : undefined
+			const rawColor = directColor || area?.calendar?.color || areaInput?.calendar?.color || available?.color
+			if (!rawColor) {
+				return 'var(--color-primary-element)'
+			}
+			if (/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(rawColor)) {
+				return `#${rawColor}`
+			}
+			return rawColor
+		},
+
+		/**
+		 * Count of open projects for an area (someday included, done excluded).
+		 *
+		 * @param {object} state the store state
+		 * @return {(nameOrArea: string | { name: string, projects?: unknown[] }) => number} getter function
+		 */
+		openProjectCount: (state) => (nameOrArea) => {
+			if (typeof nameOrArea === 'object' && nameOrArea !== null && Array.isArray(nameOrArea.projects)) {
+				return nameOrArea.projects.length
+			}
+			const name = typeof nameOrArea === 'object' && nameOrArea !== null ? nameOrArea.name : nameOrArea
+			const area = state.areas?.find((a) => a.name === name)
+			return area?.projects?.length ?? 0
+		},
+	},
 	actions: {
 		/** Read every area list and build the tree (P05). */
 		async load() {
@@ -254,7 +294,10 @@ export const useProjectsStore = defineStore('projects', {
 			const collapseState = collectCollapseState(this.areas)
 			const tree = buildTree(areas, taskList)
 			restoreCollapseState(tree.areas, collapseState)
-			this.areas = tree.areas
+			this.areas = tree.areas.map((node) => {
+				const input = areas.find((a) => a.name === node.name)
+				return input?.calendar ? { ...node, calendar: input.calendar } : node
+			})
 			this.orphans = tree.orphans
 			this.untaggedParents = tree.untaggedParents
 		},

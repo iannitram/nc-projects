@@ -6,3 +6,10 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 		disconnect() {}
 	}
 }
+
+// Nextcloud server provides #skip-actions in its page template for NcContent skip links.
+if (typeof document !== 'undefined' && !document.getElementById('skip-actions')) {
+	const skipActions = document.createElement('div')
+	skipActions.id = 'skip-actions'
+	document.body.appendChild(skipActions)
+}

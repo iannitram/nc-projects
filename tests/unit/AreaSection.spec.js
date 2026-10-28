@@ -41,6 +41,7 @@ describe('AreaSection', () => {
 		})
 
 		expect(wrapper.find('h3').text()).toBe('Home')
+		expect(wrapper.find('section').attributes('id')).toBe('area-home')
 		expect(wrapper.findAll('.cc-project-card')).toHaveLength(2)
 		expect(wrapper.text()).toContain('Project 1')
 		expect(wrapper.text()).toContain('Project 2')

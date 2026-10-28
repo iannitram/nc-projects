@@ -91,6 +91,16 @@ describe('listTaskCalendars', () => {
 		})
 		expect(client.connect).toHaveBeenCalledWith({ enableCalDAV: true })
 	})
+
+	it('includes calendar colour when present', async () => {
+		const calendarWithColor = makeCalendar({
+			color: '#3498db',
+		})
+		mockClient([calendarWithColor])
+
+		const [result] = await listTaskCalendars(createDavSession())
+		expect(result.color).toBe('#3498db')
+	})
 })
 
 describe('todo reads', () => {

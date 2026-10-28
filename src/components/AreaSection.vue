@@ -5,7 +5,7 @@ import { computed, ref } from 'vue'
 import DoneStrip from './DoneStrip.vue'
 import ProjectCard from './ProjectCard.vue'
 import { DRAG_OPTIONS, onSiblingDrop } from '../composables/useDrag.js'
-import { isSomeday } from '../models/tree.js'
+import { areaSlug, isSomeday } from '../models/tree.js'
 import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -106,7 +106,7 @@ function clearProject() {
 </script>
 
 <template>
-	<section class="cc-area-section">
+	<section :id="`area-${areaSlug(area.name)}`" class="cc-area-section">
 		<h3 class="cc-area-section__title">
 			{{ area.name }}
 		</h3>
