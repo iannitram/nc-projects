@@ -937,8 +937,25 @@ export const useProjectsStore = defineStore('projects', {
 			}
 		},
 		/**
+		 * Toggle one status tag through the ordinary guarded update path.
+		 *
+		 * @param {string} uid the project task
+		 * @param {string} category the status category
+		 */
+		async toggleCategory(uid, category) {
+			const task = this.tasksByUid[uid]
+			if (!task || !['blocked', 'someday'].includes(category)) {
+				return
+			}
+			const categories = task.categories
+			const hasCategory = categories.some((value) => value.toLowerCase() === category)
+			await this.updateTask(uid, { categories: hasCategory
+				? categories.filter((value) => value.toLowerCase() !== category)
+				: [...categories, category] })
+		},
+		/**
 		 * @param {string} uid the task
-		 * @param {{summary?: string, due?: (Date|null), priority?: number}} changes quick edits
+		 * @param {{summary?: string, due?: (Date|null), priority?: number, categories?: string[]}} changes quick edits
 		 */
 		async updateTask(uid, changes) {
 			this.davSession ??= markRaw(getDavSession())
@@ -963,6 +980,10 @@ export const useProjectsStore = defineStore('projects', {
 			// Handle priority: 0 removes the property, others set the value
 			if ('priority' in changes) {
 				task.priority = changes.priority
+			}
+
+			if ('categories' in changes) {
+				task.categories = changes.categories
 			}
 
 			// Rebuild the tree with the updated task, preserving collapse state.

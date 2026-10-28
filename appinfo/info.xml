@@ -13,6 +13,10 @@
         <php min-version="8.2"/>
         <nextcloud min-version="33" max-version="35"/>
     </dependencies>
+    <settings>
+        <admin>OCA\CcProjects\Settings\Admin</admin>
+        <admin-section>OCA\CcProjects\Settings\AdminSection</admin-section>
+    </settings>
     <navigations>
         <navigation>
             <name>Projects</name>

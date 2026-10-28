@@ -77,7 +77,7 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 | ID | Feature | Complexity | Notes |
 |---|---|---|---|
 | P15 | **Needs filing tray** | Medium | Needs P04, P12. Lists orphans (RELATED-TO pointing at a missing or closed parent) and parents with children but no `project` tag. One-click "make project" (adds the category) or "move to project" (re-parent). Today: 5 orphans, 4 untagged parents Built: `tree.js` returns orphans and untagged parents (#11, merged 2026-10-26). Left: the tray (#27). |
-| P16 | **Report a bug** (M21) | Medium | The shared craft-bugreport-web form and consent screen in the app navigation; app config for the drop; the open area as the working file; error buffer at startup. #39, #40; blocked by iannitram/craft-bugreport-web#12. Not started |
+| P16 | **Report a bug** (M21) | Medium | The shared craft-bugreport-web form and consent screen in the app navigation; server-only drop config and relay; the selected area as the working file; error buffer at startup. Built locally (#39, #40), awaiting PR; craft-bugreport-web pinned at 4549b81. |
 | P17 | **Updates from the admin panel** (M22) | Medium | info.xml release fields (#41), the tag workflow calling craft-nc-appstore's build-app (#42), first signed release through the merged feed on the test Nextcloud (#44); needs craft-nc-appstore 1.0 |
 
 ---
