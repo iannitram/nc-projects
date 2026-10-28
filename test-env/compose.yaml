@@ -7,7 +7,7 @@ services:
     # Same version as the live server (33.0.10). NC_IMAGE overrides the
     # registry, e.g. mirror.gcr.io/library/nextcloud:33.0.10-apache.
     image: ${NC_IMAGE:-nextcloud:33.0.10-apache}
-    restart: "no"
+    restart: unless-stopped
     ports:
       - "127.0.0.1:${NC_TEST_PORT:-8089}:80"
     environment:
