@@ -11,6 +11,7 @@ import { placeMoved } from '../models/sortOrder.js'
 import { Task } from '../models/Task.js'
 import { buildTree, isSomeday } from '../models/tree.js'
 import { candidateLists, pickAreas } from '../services/areas.js'
+import { crashLogWarning } from '../services/crashLog.js' // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
 import { getAreaLists, saveAreaLists as persistAreaLists } from '../services/settings.js'
 
@@ -475,6 +476,7 @@ export const useProjectsStore = defineStore('projects', {
 				this.settingsOpen = false
 				await this.load()
 			} catch {
+				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 				showError('Could not save your areas')
 			}
 		},
@@ -551,6 +553,7 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {import('../services/dav.js').ConflictError|string|string[]|{url?: string}[]} errorOrUrls the error or task URL(s)
 		 */
 		async handleConflict(errorOrUrls) {
+			crashLogWarning('save conflict') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 			const isArray = Array.isArray(errorOrUrls)
 			let urls = []
 			if (isArray) {
@@ -599,10 +602,12 @@ export const useProjectsStore = defineStore('projects', {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict(error)
 					if (!reloaded) {
+						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 						showError('Could not add the task')
 					}
 					return null
 				}
+				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 				showError('Could not add the task')
 				return null
 			}
@@ -729,11 +734,13 @@ export const useProjectsStore = defineStore('projects', {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict([error.url])
 					if (!reloaded) {
+						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 						showError('Could not save the new order')
 					}
 					return
 				}
 
+				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 				showError('Could not save the new order')
 			}
 		},
@@ -861,11 +868,13 @@ export const useProjectsStore = defineStore('projects', {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict([error.url])
 					if (!reloaded) {
+						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 						showError('Could not save the move')
 					}
 					return
 				}
 
+				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 				showError('Could not save the move')
 			}
 		},
@@ -899,6 +908,7 @@ export const useProjectsStore = defineStore('projects', {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict(plan.map((planUid) => this.tasksByUid[planUid]?.url).filter(Boolean))
 					if (!reloaded) {
+						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 						showError('Could not save the change')
 					}
 					return
@@ -908,6 +918,7 @@ export const useProjectsStore = defineStore('projects', {
 					this.tasksByUid[saved.uid] = Task.fromIcs(saved.ics, saved.where)
 				}
 				this.rebuildTree()
+				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 				showError('Could not save the change')
 			}
 		},
@@ -976,6 +987,7 @@ export const useProjectsStore = defineStore('projects', {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict([task.url])
 					if (!reloaded) {
+						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 						showError('Could not save the change')
 					}
 				} else {
@@ -985,6 +997,7 @@ export const useProjectsStore = defineStore('projects', {
 
 					this.rebuildTree()
 
+					crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 					showError('Could not save the change')
 				}
 			}
@@ -1014,10 +1027,12 @@ export const useProjectsStore = defineStore('projects', {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict(error)
 					if (!reloaded) {
+						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 						showError('Could not create the project')
 					}
 					return
 				}
+				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 				showError('Could not create the project')
 				throw error
 			}
@@ -1044,6 +1059,7 @@ export const useProjectsStore = defineStore('projects', {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict([raw.url])
 					if (!reloaded) {
+						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 						showError('Could not make the project')
 					}
 					return
@@ -1051,6 +1067,7 @@ export const useProjectsStore = defineStore('projects', {
 
 				this.tasksByUid[uid] = Task.fromIcs(before.ics, before.where)
 				this.rebuildTree()
+				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 				showError('Could not make the project')
 			}
 		},
