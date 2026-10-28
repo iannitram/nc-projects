@@ -1,8 +1,10 @@
 <script setup>
-import { NcCheckboxRadioSwitch, NcProgressBar } from '@nextcloud/vue'
+import { mdiChevronDown, mdiChevronRight, mdiDragVertical } from '@mdi/js'
+import { NcActionButton, NcActionCheckbox, NcActionLink, NcActions, NcButton, NcCheckboxRadioSwitch, NcDialog, NcIconSvgWrapper, NcProgressBar } from '@nextcloud/vue'
 import { getActivePinia } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, toRaw, watch } from 'vue'
 import AddTaskInput from './AddTaskInput.vue'
+import { getTasksDeepLink } from './TaskRow.vue'
 import TaskTree from './TaskTree.vue'
 import { readProjectCollapsed, useProjectsStore } from '../store/projects.js'
 
@@ -11,11 +13,107 @@ const props = defineProps({
 	project: { type: Object, required: true },
 	areaName: { type: String, default: null },
 })
+const store = getActivePinia() ? useProjectsStore() : null
+
 const isCompleted = computed(() => Boolean(props.project?.task?.completed) || props.project?.task?.status?.toUpperCase() === 'COMPLETED')
 
-function onCompletionChange() {
-	useProjectsStore().setCompleted(props.project?.task?.uid, !isCompleted.value)
+const confirmCompletion = ref(false)
+
+// The rendered tree stops at three levels. Include the full store graph so
+// confirmation and next due cover deeper tasks and tasks on other lists too.
+const descendants = computed(() => {
+	const tasks = new Map()
+	const visit = (nodes) => {
+		for (const node of nodes || []) {
+			tasks.set(node.task.uid, node.task)
+			visit(node.children)
+		}
+	}
+	visit(props.project.children)
+	const pending = [props.project.task.uid, ...tasks.keys()]
+	const visited = new Set()
+	const byParent = new Map()
+	for (const task of Object.values(store?.tasksByUid || {})) {
+		if (!byParent.has(task.parentUid)) {
+			byParent.set(task.parentUid, [])
+		}
+		byParent.get(task.parentUid).push(task)
+	}
+	while (pending.length) {
+		const uid = pending.shift()
+		if (visited.has(uid)) {
+			continue
+		}
+		visited.add(uid)
+		for (const task of byParent.get(uid) || []) {
+			if (task.uid === props.project.task.uid) {
+				continue
+			}
+			tasks.set(task.uid, task)
+			pending.push(task.uid)
+		}
+	}
+	return [...tasks.values()]
+})
+const openTasks = computed(() => descendants.value.filter((task) => !task.closed
+	&& !task.completed && !['COMPLETED', 'CANCELLED'].includes(task.status?.toUpperCase())))
+const nextDue = computed(() => {
+	const dates = openTasks.value.flatMap((task) => {
+		if (!task.due) {
+			return []
+		}
+		const due = toRaw(task.due)
+		const date = due.toJSDate?.() ?? new Date(due)
+		return Number.isNaN(date.getTime()) ? [] : [date]
+	})
+	return dates.sort((a, b) => a - b)[0]
+})
+const dueLabel = computed(() => nextDue.value?.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }))
+
+/**
+ * Ask before completing open descendants.
+ */
+function checkOffProject() {
+	if (openTasks.value.length) {
+		confirmCompletion.value = true
+	} else {
+		useProjectsStore().setCompleted(props.project.task.uid, true)
+	}
 }
+
+/**
+ * Route checkbox changes through the same check-off path as the menu.
+ */
+function onCompletionChange() {
+	if (isCompleted.value) {
+		useProjectsStore().setCompleted(props.project.task.uid, false)
+	} else {
+		checkOffProject()
+	}
+}
+
+/**
+ * Complete the project after confirmation.
+ */
+function confirmCheckOff() {
+	confirmCompletion.value = false
+	useProjectsStore().setCompleted(props.project.task.uid, true)
+}
+
+/**
+ * Keep the native checkbox in sync when confirmation defers the model change.
+ *
+ * @param {Event} event The checkbox change event
+ */
+async function syncCompletionCheckbox(event) {
+	await nextTick()
+	event.target.checked = isCompleted.value
+}
+
+const confirmationButtons = [
+	{ label: 'Cancel', callback: () => { confirmCompletion.value = false } },
+	{ label: 'Check off', variant: 'primary', callback: confirmCheckOff },
+]
 
 const progressDone = computed(() => Number(props.project?.progress?.done) || 0)
 const progressTotal = computed(() => Number(props.project?.progress?.total) || 0)
@@ -27,7 +125,7 @@ const progressValue = computed(() => {
 	return Math.round((100 * progressDone.value) / progressTotal.value)
 })
 
-const progressText = computed(() => `${progressDone.value}/${progressTotal.value}`)
+const progressText = computed(() => `${progressDone.value} of ${progressTotal.value}`)
 
 /**
  * Read the show-done preference for a project from localStorage.
@@ -106,18 +204,20 @@ const isSomeday = computed(() => {
 	return categories.value.some((cat) => typeof cat === 'string' && cat.toLowerCase() === 'someday')
 })
 
-const store = getActivePinia() ? useProjectsStore() : null
+watch(() => props.project.task.uid, (uid) => {
+	if (store && readProjectCollapsed(uid)) {
+		store.collapsedProjects.add(uid)
+	}
+}, { immediate: true })
 
-const isCollapsed = computed(() => {
-	const uid = props.project?.task?.uid
-	if (!uid) {
-		return false
-	}
-	if (store?.collapsedProjects?.has(uid)) {
-		return true
-	}
-	return readProjectCollapsed(uid)
-})
+const isCollapsed = computed(() => store?.collapsedProjects.has(props.project.task.uid) ?? false)
+
+/**
+ * Persist disclosure through the shared collapse store.
+ */
+function toggleCollapsed() {
+	store?.toggleProjectCollapsed(props.project.task.uid)
+}
 
 </script>
 
@@ -128,41 +228,67 @@ const isCollapsed = computed(() => {
 		<header
 			class="cc-project-card__header drag-handle"
 			:data-uid="project.task?.uid">
-			<h4 class="cc-project-card__title">
-				{{ project.task?.summary }}
-			</h4>
-			<span
-				v-if="isBlocked"
-				class="cc-project-card__badge cc-project-card__badge--blocked">
-				blocked
+			<span class="cc-project-card__grip" aria-hidden="true">
+				<NcIconSvgWrapper :path="mdiDragVertical" :size="20" />
 			</span>
-			<span
-				v-if="isSomeday"
-				class="cc-project-card__badge cc-project-card__badge--someday">
-				someday
-			</span>
-			<div class="cc-project-card__header-actions">
-				<div class="cc-project-card__progress">
-					<NcProgressBar
-						class="cc-project-card__progress-bar"
-						:value="progressValue"
-						ariaLabel="Project progress"
-						size="small" />
-					<span class="cc-project-card__progress-text">{{ progressText }}</span>
-				</div>
-				<NcCheckboxRadioSwitch
-					v-model="showDone"
-					type="switch"
-					class="cc-project-card__show-done">
-					Show done
-				</NcCheckboxRadioSwitch>
-				<NcCheckboxRadioSwitch
-					class="cc-project-card__completion"
-					:isChecked="isCompleted"
-					:modelValue="isCompleted"
-					aria-label="Project completed"
-					@update:modelValue="onCompletionChange" />
+			<NcButton
+				class="cc-project-card__collapse cc-no-drag"
+				variant="tertiary"
+				:aria-label="`${isCollapsed ? 'Expand' : 'Collapse'} ${project.task.summary}`"
+				:aria-expanded="!isCollapsed"
+				@mousedown.stop
+				@pointerdown.stop
+				@touchstart.stop
+				@click="toggleCollapsed">
+				<template #icon>
+					<NcIconSvgWrapper :path="isCollapsed ? mdiChevronRight : mdiChevronDown" :size="20" />
+				</template>
+			</NcButton>
+			<NcCheckboxRadioSwitch
+				class="cc-project-card__completion cc-no-drag"
+				:modelValue="isCompleted"
+				:aria-label="`Check off ${project.task.summary}`"
+				@mousedown.stop
+				@pointerdown.stop
+				@touchstart.stop
+				@change="syncCompletionCheckbox"
+				@update:modelValue="onCompletionChange" />
+			<div class="cc-project-card__heading">
+				<h4 class="cc-project-card__title">
+					{{ project.task.summary }}
+				</h4>
+				<span v-if="isBlocked" class="cc-project-card__badge cc-project-card__badge--blocked">blocked</span>
+				<span v-if="isSomeday" class="cc-project-card__badge cc-project-card__badge--someday">someday</span>
+				<time
+					v-if="isCollapsed && nextDue"
+					class="cc-project-card__due"
+					:datetime="nextDue.toISOString()"
+					:aria-label="`Next due ${dueLabel}`">{{ dueLabel }}</time>
 			</div>
+			<div class="cc-project-card__progress">
+				<NcProgressBar
+					class="cc-project-card__progress-bar"
+					:value="progressValue"
+					ariaLabel="Project progress"
+					size="small" />
+				<span class="cc-project-card__progress-text">{{ progressText }}</span>
+			</div>
+			<NcActions
+				class="cc-project-card__menu cc-no-drag"
+				:aria-label="`Actions for ${project.task.summary}`"
+				@mousedown.stop
+				@pointerdown.stop
+				@touchstart.stop>
+				<NcActionCheckbox v-model="showDone" class="cc-project-card__show-done">
+					Show done tasks ({{ progressDone }})
+				</NcActionCheckbox>
+				<NcActionButton class="cc-project-card__check-off" @click="checkOffProject">
+					Check off project…
+				</NcActionButton>
+				<NcActionLink :href="getTasksDeepLink(project.task)">
+					Open in Tasks
+				</NcActionLink>
+			</NcActions>
 		</header>
 		<div v-if="!isCollapsed" class="cc-project-card__content">
 			<TaskTree
@@ -172,81 +298,112 @@ const isCollapsed = computed(() => {
 				:projectUid="project.task?.uid" />
 			<AddTaskInput :projectUid="project.task?.uid" />
 		</div>
+		<NcDialog
+			v-if="confirmCompletion"
+			v-model:open="confirmCompletion"
+			name="Check off project"
+			:message="`Check off ${project.task.summary} and its ${openTasks.length} open tasks?`"
+			:buttons="confirmationButtons" />
 	</div>
 </template>
 
 <style scoped>
 .cc-project-card {
-	background: var(--color-main-background, #fff);
-	border: 1px solid var(--color-border, #ededed);
-	border-radius: var(--border-radius-large, 8px);
-	padding: calc(var(--default-grid-baseline, 4px) * 3);
-}
-
-.cc-project-card--someday {
-	opacity: 0.6;
+	min-width: 0;
 }
 
 .cc-project-card__header {
+	display: grid;
+	grid-template-columns: 20px auto auto minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.cc-project-card__heading {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	flex-wrap: wrap;
-	gap: calc(var(--default-grid-baseline, 4px) * 2);
-	margin-bottom: calc(var(--default-grid-baseline, 4px) * 2);
+	gap: 8px;
+	min-width: 0;
 }
 
 .cc-project-card__title {
 	margin: 0;
-	font-size: 1.1rem;
+	font-size: 16px;
 	font-weight: 600;
-}
-
-.cc-project-card__header-actions {
-	display: flex;
-	align-items: center;
-	gap: calc(var(--default-grid-baseline, 4px) * 3);
+	overflow-wrap: anywhere;
 }
 
 .cc-project-card__progress {
 	display: flex;
 	align-items: center;
-	gap: calc(var(--default-grid-baseline, 4px) * 2);
-	min-width: 120px;
+	gap: 8px;
 }
 
 .cc-project-card__progress-bar {
-	flex: 1;
-	min-width: 80px;
+	width: 64px;
 }
 
-.cc-project-card__progress-text {
-	font-size: 0.85rem;
-	color: var(--color-text-maxcontrast, #777);
+.cc-project-card__progress-text,
+.cc-project-card__due {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
 	white-space: nowrap;
 }
 
-.cc-project-card__show-done {
-	margin: 0;
-}
-
 .cc-project-card__badge {
-	font-size: 0.75rem;
-	padding: calc(var(--default-grid-baseline, 4px) * 0.5) calc(var(--default-grid-baseline, 4px) * 1.5);
-	border-radius: var(--border-radius-pill, 10px);
+	font-size: 12px;
+	padding: 2px 6px;
+	border-radius: var(--border-radius-pill);
 	font-weight: 500;
-	display: inline-flex;
-	align-items: center;
 }
 
 .cc-project-card__badge--blocked {
 	background-color: var(--color-error);
-	color: var(--color-main-background, #fff);
+	color: var(--color-main-background);
 }
 
 .cc-project-card__badge--someday {
-	background-color: var(--color-background-dark, var(--color-background-hover, #ededed));
-	color: var(--color-text-maxcontrast, #777);
+	background-color: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
 }
 
+.cc-project-card__grip {
+	visibility: hidden;
+	cursor: grab;
+}
+
+/* Keep the menu button focusable while its icon waits for hover or focus. */
+.cc-project-card__menu :deep(.action-item__menutoggle > *) {
+	visibility: hidden;
+}
+
+.cc-project-card__header:hover .cc-project-card__grip,
+.cc-project-card__header:focus-within .cc-project-card__grip,
+.cc-project-card__header:hover .cc-project-card__menu :deep(.action-item__menutoggle > *),
+.cc-project-card__header:focus-within .cc-project-card__menu :deep(.action-item__menutoggle > *) {
+	visibility: visible;
+}
+
+@media (hover: none), (pointer: coarse) {
+	.cc-project-card__menu :deep(.action-item__menutoggle > *) {
+		visibility: visible;
+	}
+}
+
+@media (max-width: 600px) {
+	.cc-project-card__header {
+		grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+		gap: 0;
+		padding: 4px 0;
+	}
+
+	.cc-project-card__grip,
+	.cc-project-card__progress-bar {
+		display: none;
+	}
+}
 </style>
