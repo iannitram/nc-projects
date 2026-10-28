@@ -56,7 +56,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/components/TaskRow.vue` | Present: task completion checkbox (display only until `setCompleted` lands) and title; "+N deeper" Tasks link (built with `generateUrl`) when descendants exceed the rendered depth | P05 |
 | `src/components/AddTaskInput.vue` | Present: inline "+ Add task" field under a project; Enter calls `store.addTask` (one submit at a time), Esc clears | P07 |
 | `src/components/DoneStrip.vue` | **Stub** (empty element; not mounted anywhere yet). Collapsed list of completed projects in an area | P06 |
-| `src/components/NeedsFilingTray.vue` | **Stub** (empty element; not mounted anywhere yet). Orphans and untagged parents with fix buttons | P15 |
+| `src/components/NeedsFilingTray.vue` | **Present** (not mounted anywhere yet): orphans and untagged parents in two lists with counts; each item has a "Make project" button that calls `store.makeProject`; hidden when both lists are empty | P15 |
 | `src/composables/useDrag.js` | **Stub** (`DRAG_OPTIONS` present, with `handle: '.drag-handle'`; the drop wiring is not, and no component uses it yet). `sortablejs-vue3` wiring (Tasks' options: `delay: 500, delayOnTouchOnly: true, touchStartThreshold: 3`): drag handles, long-press on touch, drop → store action | P08, P09, P11, P12 |
 | `src/composables/useRefresh.js` | **Present** (`REFRESH_INTERVAL_MS`, `useRefresh`). Refresh on window focus and every ~2 min | P10 |
 | `src/styles/projects.css` | Layout, including the phone breakpoint | P05, P11 |
