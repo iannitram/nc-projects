@@ -2,6 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AreaSection from '../../src/components/AreaSection.vue'
+import DoneStrip from '../../src/components/DoneStrip.vue'
+import ProjectCard from '../../src/components/ProjectCard.vue'
 import { useProjectsStore } from '../../src/store/projects.js'
 
 const AddTaskInputStub = {
@@ -42,6 +44,45 @@ describe('AreaSection', () => {
 		expect(wrapper.findAll('.cc-project-card')).toHaveLength(2)
 		expect(wrapper.text()).toContain('Project 1')
 		expect(wrapper.text()).toContain('Project 2')
+	})
+
+	it('renders its ProjectCards then the DoneStrip', () => {
+		const area = {
+			name: 'Personal',
+			calendarUrl: '/personal/',
+			projects: [
+				{
+					task: { uid: 'p1', summary: 'Active Project', categories: ['project'], url: '/p1.ics', calendarUrl: '/personal/' },
+					children: [],
+					progress: { done: 0, total: 1 },
+				},
+			],
+			done: [
+				{
+					task: { uid: 'p-done', summary: 'Completed Project', categories: ['project'], url: '/p-done.ics', calendarUrl: '/personal/' },
+					children: [],
+					progress: { done: 1, total: 1 },
+				},
+			],
+		}
+
+		const wrapper = mount(AreaSection, {
+			props: { area },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
+		})
+
+		const projectCards = wrapper.findAllComponents(ProjectCard)
+		expect(projectCards).toHaveLength(1)
+		expect(projectCards[0].text()).toContain('Active Project')
+
+		const doneStrip = wrapper.findComponent(DoneStrip)
+		expect(doneStrip.exists()).toBe(true)
+		expect(doneStrip.text()).toContain('Done (1)')
+
+		// Verify DOM order: ProjectCards container is before DoneStrip
+		const projectsEl = wrapper.find('.cc-area-section__projects').element
+		const doneStripEl = doneStrip.element
+		expect(projectsEl.compareDocumentPosition(doneStripEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 	})
 
 	describe('new project field', () => {
