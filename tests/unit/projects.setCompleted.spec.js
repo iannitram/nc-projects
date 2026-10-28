@@ -7,6 +7,7 @@ vi.mock('../../src/services/dav.js', () => ({
 	fetchTodo: vi.fn(),
 	createTodo: vi.fn(),
 	putTodo: vi.fn(),
+	getDavSession: vi.fn(() => ({})),
 	ConflictError: class ConflictError extends Error {
 		constructor(url) {
 			super(`Conflict writing ${url}`)
