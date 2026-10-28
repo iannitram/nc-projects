@@ -53,7 +53,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/components/AreaSection.vue` | Present: one area with its project cards, rendered in order, and the "+ New project" field (Enter calls `store.createProject`, Esc clears) | P05, P14 |
 | `src/components/ProjectCard.vue` | Present: project title, completion checkbox (calls `setCompleted`), task tree and the `AddTaskInput` under it | P05, P07, P13 |
 | `src/components/TaskTree.vue` | Present: collapsible nested task list, three levels, then a "+N deeper" Tasks link | P05 |
-| `src/components/TaskRow.vue` | Present: task completion checkbox (calls `setCompleted`) and title; "+N deeper" Tasks link (built with `generateUrl`) when descendants exceed the rendered depth | P05, P13 |
+| `src/components/TaskRow.vue` | Present: task completion checkbox (calls `setCompleted`), inline quick edits (click the title to rename; due date; priority high/medium/low/none as 1/5/9/0) calling `store.updateTask`, an Open in Tasks link, and "+N deeper" Tasks link (built with `generateUrl`) when descendants exceed the rendered depth. The edit controls carry `cc-no-drag` and stop mousedown/pointerdown/touchstart | P05, P13 |
 | `src/components/AddTaskInput.vue` | Present: inline "+ Add task" field under a project; Enter calls `store.addTask` (one submit at a time), Esc clears | P07 |
 | `src/components/DoneStrip.vue` | **Stub** (empty element; not mounted anywhere yet). Collapsed list of completed projects in an area | P06 |
 | `src/components/NeedsFilingTray.vue` | **Present** (not mounted anywhere yet): orphans and untagged parents in two lists with counts; each item has a "Make project" button that calls `store.makeProject`; hidden when both lists are empty | P15 |
@@ -68,7 +68,7 @@ Server (PHP): serves the page only. No data endpoints.
 | Path | Job |
 |---|---|
 | `tests/unit/App.spec.js` | The app mounts and shows its heading |
-| `tests/unit/AreaSection.spec.js`, `ProjectCard.spec.js`, `TaskTree.spec.js`, `TaskRow.spec.js`, `AddTaskInput.spec.js` | The panel components render their props, depth and links; `AddTaskInput` submits through the store |
+| `tests/unit/AreaSection.spec.js`, `ProjectCard.spec.js`, `TaskTree.spec.js`, `TaskRow.spec.js`, `TaskRow.inlineEdits.spec.js`, `AddTaskInput.spec.js` | The panel components render their props, depth and links; `AddTaskInput` submits through the store; `TaskRow` edits through `updateTask` and keeps edit controls out of the drag |
 | `tests/php/PageControllerTest.php` | Smoke test: the page route returns the `main` template (skeleton) |
 | `tests/tools/php.mjs` | Runs PHP lint and phpunit with a local PHP 8.4+, else a throwaway `nextcloud:33.0.10-apache` container |
 | `tests/unit/areas.spec.js` | `isExcluded` and `pickAreas`: the eight areas by display name, the exclusions |
