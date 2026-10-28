@@ -48,7 +48,7 @@ export const useProjectsStore = defineStore('projects', {
 				this.tasksByUid = Object.fromEntries(tasks.filter((task) => task.uid).map((task) => [task.uid, task]))
 				this.ctags = Object.fromEntries(areas.map((area) => [area.calendar.url, area.calendar.ctag]))
 			} catch (error) {
-				this.error = error instanceof Error ? error.message : String(error)
+				this.error = (error instanceof Error ? (error.message || error.name) : String(error)) || 'Could not load the task lists'
 			} finally {
 				this.loading = false
 			}
