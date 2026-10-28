@@ -7,7 +7,7 @@ export const APPLE_EPOCH_MS = Date.UTC(2001, 0, 1)
 /**
  * The order a task sorts by: X-APPLE-SORT-ORDER, else seconds from APPLE_EPOCH to CREATED, else 0.
  *
- * @param {{sortOrder: (number|null), created: (Date|null)}} task the task
+ * @param {{sortOrder: (number|null), created: (Date|import('ical.js').default.Time|null)}} task the task
  * @return {number}
  */
 export function effectiveSortOrder(task) {
@@ -16,7 +16,47 @@ export function effectiveSortOrder(task) {
 	}
 
 	if (task.created) {
-		return Math.floor((task.created - APPLE_EPOCH_MS) / 1000)
+		let ms
+		if (task.created instanceof Date) {
+			ms = task.created.getTime()
+		} else if (typeof task.created.year === 'number') {
+			const tzid = task.created.zone?.tzid
+			if (tzid === 'UTC' || tzid === 'Z' || !task.created.zone) {
+				ms = Date.UTC(
+					task.created.year,
+					(task.created.month || 1) - 1,
+					task.created.day || 1,
+					task.created.hour || 0,
+					task.created.minute || 0,
+					task.created.second || 0,
+				)
+			} else {
+				try {
+					ms = task.created.toUnixTime() * 1000
+				} catch {
+					ms = Date.UTC(
+						task.created.year,
+						(task.created.month || 1) - 1,
+						task.created.day || 1,
+						task.created.hour || 0,
+						task.created.minute || 0,
+						task.created.second || 0,
+					)
+				}
+			}
+		} else if (typeof task.created.toUnixTime === 'function') {
+			try {
+				ms = task.created.toUnixTime() * 1000
+			} catch {
+				ms = Number(task.created)
+			}
+		} else {
+			ms = Number(task.created)
+		}
+
+		if (Number.isFinite(ms)) {
+			return Math.floor((ms - APPLE_EPOCH_MS) / 1000)
+		}
 	}
 
 	return 0
