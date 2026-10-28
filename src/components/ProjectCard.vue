@@ -8,9 +8,29 @@ import { useProjectsStore } from '../store/projects.js'
 const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').ProjectNode>} */
 	project: { type: Object, required: true },
+	areaName: { type: String, default: null },
+})
+
+const effectiveAreaName = computed(() => {
+	if (props.areaName) {
+		return props.areaName
+	}
+	const store = useProjectsStore()
+	if (store?.areas && props.project?.task?.uid) {
+		for (const area of store.areas) {
+			if (area.projects?.some((p) => p.task?.uid === props.project.task?.uid)
+				|| area.done?.some((p) => p.task?.uid === props.project.task?.uid)) {
+				return area.name
+			}
+		}
+	}
+	return null
 })
 const isCompleted = computed(() => Boolean(props.project?.task?.completed) || props.project?.task?.status?.toUpperCase() === 'COMPLETED')
 
+/**
+ * Handle project completion toggle.
+ */
 function onCompletionChange() {
 	useProjectsStore().setCompleted(props.project?.task?.uid, !isCompleted.value)
 }
@@ -152,7 +172,9 @@ const isSomeday = computed(() => {
 		<div class="cc-project-card__content">
 			<TaskTree
 				:nodes="project.children || []"
-				:showDone="showDone" />
+				:showDone="showDone"
+				:areaName="effectiveAreaName"
+				:projectUid="project.task?.uid" />
 			<AddTaskInput :projectUid="project.task?.uid" />
 		</div>
 	</div>

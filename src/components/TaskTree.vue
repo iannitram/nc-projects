@@ -26,7 +26,7 @@ export function isTaskClosed(task) {
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import TaskRow from './TaskRow.vue'
-import { DRAG_OPTIONS, onSiblingDrop } from '../composables/useDrag.js'
+import { DRAG_OPTIONS, fullIndexForDrop, onSiblingDrop } from '../composables/useDrag.js'
 import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -34,6 +34,8 @@ const props = defineProps({
 	nodes: { type: Array, required: true },
 	depth: { type: Number, default: 1 },
 	showDone: { type: Boolean, default: false },
+	areaName: { type: String, default: null },
+	projectUid: { type: String, default: null },
 })
 
 const collapsedKeys = ref(new Set())
@@ -113,12 +115,49 @@ const visibleNodes = computed(() => {
 
 /** The project or task whose children these are: every child carries it as its parent. */
 const parentUid = computed(() => props.nodes?.[0]?.task?.parentUid || null)
+const effectiveProjectUid = computed(() => props.projectUid || parentUid.value)
 
-/** Sortable options: Tasks' options, and a group unique to this parent so drops stay among its siblings. */
-const sortOptions = computed(() => ({
-	...DRAG_OPTIONS,
-	group: { name: `cc-tasks-${parentUid.value ?? 'none'}` },
-}))
+const effectiveAreaName = computed(() => {
+	if (props.areaName) {
+		return props.areaName
+	}
+	const uid = effectiveProjectUid.value
+	if (!uid) {
+		return null
+	}
+	try {
+		const store = useProjectsStore()
+		if (store?.areas) {
+			for (const area of store.areas) {
+				if (area.projects?.some((p) => p.task?.uid === uid)
+					|| area.done?.some((p) => p.task?.uid === uid)) {
+					return area.name
+				}
+			}
+		}
+	} catch {
+		// store not available
+	}
+	return null
+})
+
+/** Sortable options: Tasks' options, and group configuration (shared across same-area projects for top-level tasks). */
+const sortOptions = computed(() => {
+	if (props.depth === 1 && effectiveAreaName.value) {
+		return {
+			...DRAG_OPTIONS,
+			group: {
+				name: `cc-tasks-area-${effectiveAreaName.value}`,
+				pull: true,
+				put: true,
+			},
+		}
+	}
+	return {
+		...DRAG_OPTIONS,
+		group: { name: `cc-tasks-${parentUid.value ?? 'none'}` },
+	}
+})
 
 /**
  * Row key for the sortable list (the same key the rows had before).
@@ -146,25 +185,124 @@ function restoreDomPosition(evt) {
 }
 
 /**
- * Turn a finished drag into a reorder of this list's parent (the store decides what to write).
+ * Retrieve the full and visible task UIDs for a target project list.
+ *
+ * @param {HTMLElement} toElement The target Sortable container element
+ * @param {string} targetProjectUid The target project UID
+ * @param {object} store The projects store
+ * @return {{allUids: string[], visibleUids: string[]}} Target project's all and visible UIDs
+ */
+function getTargetUids(toElement, targetProjectUid, store) {
+	let allUids = null
+	let visibleUids = null
+
+	const rawAll = toElement?.dataset?.allUids ?? toElement?.getAttribute?.('data-all-uids')
+	if (typeof rawAll === 'string') {
+		allUids = rawAll ? rawAll.split(',').filter(Boolean) : []
+	}
+	const rawVisible = toElement?.dataset?.visibleUids ?? toElement?.getAttribute?.('data-visible-uids')
+	if (typeof rawVisible === 'string') {
+		visibleUids = rawVisible ? rawVisible.split(',').filter(Boolean) : []
+	}
+
+	if (allUids === null || visibleUids === null) {
+		let targetProject = null
+		if (store?.areas) {
+			for (const area of store.areas) {
+				for (const project of area.projects || []) {
+					if (project?.task?.uid === targetProjectUid) {
+						targetProject = project
+						break
+					}
+				}
+				if (targetProject) {
+					break
+				}
+			}
+		}
+
+		if (targetProject) {
+			if (allUids === null) {
+				allUids = (targetProject.children || []).map((c) => c.task?.uid).filter(Boolean)
+			}
+			if (visibleUids === null) {
+				const showDone = typeof window !== 'undefined' && window.localStorage?.getItem(`cc_projects:showDone:${targetProjectUid}`) === '1'
+				const list = targetProject.children || []
+				const visible = showDone ? list : list.filter((node) => !isTaskClosed(node?.task))
+				visibleUids = visible.map((c) => c.task?.uid).filter(Boolean)
+			}
+		}
+	}
+
+	if (visibleUids === null) {
+		if (toElement?.children) {
+			visibleUids = Array.from(toElement.children)
+				.map((li) => li.querySelector?.('.drag-handle')?.getAttribute?.('data-uid') || li.getAttribute?.('data-uid'))
+				.filter(Boolean)
+		} else {
+			visibleUids = []
+		}
+	}
+	if (allUids === null) {
+		allUids = [...visibleUids]
+	}
+
+	return { allUids, visibleUids }
+}
+
+/**
+ * Turn a finished drag into a reorder or a move to another project.
  *
  * @param {object} evt The sortable end event
- * @return {Promise<void> | undefined} The store's reorder, when the drop changed the order
+ * @return {Promise<void> | undefined} The store's reorder or moveToProject
  */
 function onDrop(evt) {
 	restoreDomPosition(evt)
-	if (!parentUid.value) {
+
+	const isCrossProject = Boolean(evt?.from && evt?.to && evt.from !== evt.to)
+
+	if (!isCrossProject) {
+		const targetParent = parentUid.value || effectiveProjectUid.value
+		if (!targetParent) {
+			return undefined
+		}
+		return onSiblingDrop(
+			useProjectsStore(),
+			{
+				parentUid: targetParent,
+				allUids: (props.nodes || []).map((node) => node.task?.uid),
+				visibleUids: visibleNodes.value.map((node) => node.task?.uid),
+			},
+			evt,
+		)
+	}
+
+	const targetProjectUid = evt.to?.dataset?.projectUid
+		|| evt.to?.getAttribute?.('data-project-uid')
+		|| evt.to?.closest?.('.cc-project-card')?.querySelector?.('.cc-project-card__header')?.getAttribute?.('data-uid')
+
+	if (!targetProjectUid) {
 		return undefined
 	}
-	return onSiblingDrop(
-		useProjectsStore(),
-		{
-			parentUid: parentUid.value,
-			allUids: (props.nodes || []).map((node) => node.task?.uid),
-			visibleUids: visibleNodes.value.map((node) => node.task?.uid),
-		},
-		evt,
-	)
+
+	const movedUid = visibleNodes.value[evt.oldIndex]?.task?.uid
+		|| evt.item?.querySelector?.('.drag-handle')?.getAttribute?.('data-uid')
+		|| evt.item?.getAttribute?.('data-uid')
+
+	if (!movedUid) {
+		return undefined
+	}
+
+	const { newIndex } = evt || {}
+	if (typeof newIndex !== 'number') {
+		return undefined
+	}
+
+	const store = useProjectsStore()
+	const { allUids, visibleUids } = getTargetUids(evt.to, targetProjectUid, store)
+	const fullIndex = fullIndexForDrop(allUids, visibleUids, movedUid, newIndex)
+
+	return store.moveToProject(movedUid, targetProjectUid, fullIndex)
 }
 </script>
 
@@ -176,6 +314,10 @@ function onDrop(evt) {
 		:list="visibleNodes"
 		:itemKey="rowKey"
 		:options="sortOptions"
+		:data-project-uid="effectiveProjectUid"
+		:data-area-name="effectiveAreaName"
+		:data-all-uids="(nodes || []).map((node) => node.task?.uid).filter(Boolean).join(',')"
+		:data-visible-uids="visibleNodes.map((node) => node.task?.uid).filter(Boolean).join(',')"
 		@end="onDrop">
 		<template #item="{ element: node }">
 			<li
@@ -204,7 +346,9 @@ function onDrop(evt) {
 					<TaskTree
 						:nodes="node.children"
 						:depth="depth + 1"
-						:showDone="showDone" />
+						:showDone="showDone"
+						:areaName="areaName"
+						:projectUid="effectiveProjectUid" />
 				</div>
 			</li>
 		</template>
