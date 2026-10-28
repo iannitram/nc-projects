@@ -66,6 +66,12 @@ describe('planCompletion: checking off', () => {
 		expect(planCompletion(tasks, 'nope', true)).toEqual([])
 		expect(planCompletion(tasks, 'X', true)).toEqual(['X', 'Y'])
 	})
+
+	it('reaches open tasks below a closed child', () => {
+		const tasks = byUid(task('A'), task('A1', { parent: 'A', status: DONE }), task('A1a', { parent: 'A1' }))
+
+		expect(planCompletion(tasks, 'A', true)).toEqual(['A', 'A1a'])
+	})
 })
 
 describe('planCompletion: reopening', () => {
@@ -104,5 +110,11 @@ describe('planCompletion: reopening', () => {
 		planCompletion(tasks, 'A', true)
 
 		expect(Object.values(tasks).map((item) => item.completed)).toEqual([false, false, false])
+	})
+
+	it('skips an open project', () => {
+		const tasks = byUid(task('P', { categories: 'project' }), task('A', { parent: 'P', status: DONE }))
+
+		expect(planCompletion(tasks, 'A', false)).toEqual(['A'])
 	})
 })
