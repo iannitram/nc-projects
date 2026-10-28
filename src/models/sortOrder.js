@@ -17,14 +17,46 @@ export function effectiveSortOrder(task) {
 
 	if (task.created) {
 		let ms
-		if (typeof task.created.toUnixTime === 'function') {
-			ms = task.created.toUnixTime() * 1000
-		} else if (task.created instanceof Date) {
+		if (task.created instanceof Date) {
 			ms = task.created.getTime()
+		} else if (typeof task.created.year === 'number') {
+			const tzid = task.created.zone?.tzid
+			if (tzid === 'UTC' || tzid === 'Z' || !task.created.zone) {
+				ms = Date.UTC(
+					task.created.year,
+					(task.created.month || 1) - 1,
+					task.created.day || 1,
+					task.created.hour || 0,
+					task.created.minute || 0,
+					task.created.second || 0,
+				)
+			} else {
+				try {
+					ms = task.created.toUnixTime() * 1000
+				} catch {
+					ms = Date.UTC(
+						task.created.year,
+						(task.created.month || 1) - 1,
+						task.created.day || 1,
+						task.created.hour || 0,
+						task.created.minute || 0,
+						task.created.second || 0,
+					)
+				}
+			}
+		} else if (typeof task.created.toUnixTime === 'function') {
+			try {
+				ms = task.created.toUnixTime() * 1000
+			} catch {
+				ms = Number(task.created)
+			}
 		} else {
 			ms = Number(task.created)
 		}
-		return Math.floor((ms - APPLE_EPOCH_MS) / 1000)
+
+		if (Number.isFinite(ms)) {
+			return Math.floor((ms - APPLE_EPOCH_MS) / 1000)
+		}
 	}
 
 	return 0
