@@ -11,13 +11,19 @@ import { placeMoved } from '../models/sortOrder.js'
 import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
 import { notImplemented } from '../notImplemented.js'
-import { pickAreas } from '../services/areas.js'
+import { candidateLists, pickAreas } from '../services/areas.js'
 import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
+import { getAreaLists, saveAreaLists as persistAreaLists } from '../services/settings.js'
 
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
 		/** @type {import('../models/tree.js').AreaNode[]} */
 		areas: [],
+		/** @type {string[]|null} */
+		areaLists: null,
+		/** @type {import('../services/dav.js').TaskCalendar[]} */
+		availableLists: [],
+		settingsOpen: false,
 		/** @type {import('../models/Task.js').Task[]} */
 		orphans: [],
 		/** @type {import('../models/Task.js').Task[]} */
@@ -39,8 +45,10 @@ export const useProjectsStore = defineStore('projects', {
 			this.loading = true
 			this.error = null
 			try {
-				const calendars = await listTaskCalendars(this.davSession)
-				const areas = pickAreas(calendars)
+				const [areaLists, calendars] = await Promise.all([getAreaLists(), listTaskCalendars(this.davSession)])
+				this.areaLists = areaLists
+				this.availableLists = candidateLists(calendars)
+				const areas = pickAreas(calendars, this.areaLists)
 				const todosByArea = await Promise.all(areas.map((area) => fetchTodos(area.calendar, this.davSession)))
 				const tasks = todosByArea.flat().map((todo) => Task.fromIcs(todo.ics, {
 					url: todo.url,
@@ -64,7 +72,7 @@ export const useProjectsStore = defineStore('projects', {
 			try {
 				this.davSession ??= markRaw(getDavSession())
 				const calendars = await listTaskCalendars(this.davSession)
-				const areas = pickAreas(calendars)
+				const areas = pickAreas(calendars, this.areaLists || [])
 				const changedAreas = areas.filter((area) => this.ctags[area.calendar.url] !== area.calendar.ctag)
 				if (changedAreas.length === 0) {
 					return
@@ -99,6 +107,15 @@ export const useProjectsStore = defineStore('projects', {
 				}
 			} catch {
 				// Keep the current state when a list cannot be refreshed.
+			}
+		},
+		async saveAreaLists(urls) {
+			try {
+				this.areaLists = await persistAreaLists(urls)
+				this.settingsOpen = false
+				await this.load()
+			} catch {
+				showError('Could not save your areas')
 			}
 		},
 		/**

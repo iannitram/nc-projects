@@ -35,7 +35,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
+const GARDEN = { url: '/list-b/', displayName: 'Garden', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
 	return [
@@ -58,11 +58,11 @@ function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, st
 }
 
 function stored(uid, fields) {
-	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/list-b/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/list-b/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }]))
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN }]))
 	fetchTodos.mockResolvedValue(deepFreeze(todos))
 	const store = useProjectsStore()
 	await store.load()
@@ -108,8 +108,8 @@ describe('projects store setCompleted', () => {
 
 		expect(putTodo).toHaveBeenCalledTimes(2)
 		const [first, second] = putTodo.mock.calls
-		expect([first[0], first[2]]).toEqual(['/van/A.ics', '"A-e1"'])
-		expect([second[0], second[2]]).toEqual(['/van/A1.ics', '"A1-e1"'])
+		expect([first[0], first[2]]).toEqual(['/list-b/A.ics', '"A-e1"'])
+		expect([second[0], second[2]]).toEqual(['/list-b/A1.ics', '"A1-e1"'])
 		for (const call of putTodo.mock.calls) {
 			expect(sent(call).status).toBe('COMPLETED')
 			expect(sent(call).completed).toBe(true)
@@ -135,7 +135,7 @@ describe('projects store setCompleted', () => {
 
 		await store.setCompleted('A1', false)
 
-		expect(putTodo.mock.calls.map((call) => call[0])).toEqual(['/van/A1.ics', '/van/A.ics', '/van/P.ics'])
+		expect(putTodo.mock.calls.map((call) => call[0])).toEqual(['/list-b/A1.ics', '/list-b/A.ics', '/list-b/P.ics'])
 		for (const call of putTodo.mock.calls) {
 			expect(sent(call).status).toBe('NEEDS-ACTION')
 			expect(call[1]).not.toContain('COMPLETED:')
@@ -184,12 +184,12 @@ describe('projects store setCompleted', () => {
 
 	it('reloads every task in the plan and shows "Someone else changed this; reloaded" on a conflict', async () => {
 		const store = await loadStore(open())
-		putTodo.mockRejectedValue(new ConflictError('/van/A.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-b/A.ics'))
 		fetchTodo.mockImplementation(async (url) => fresh(uidOfUrl(url), { parent: uidOfUrl(url) === 'A' ? 'P' : 'A', sort: 10 }))
 
 		await store.setCompleted('A', true).catch(() => {})
 
-		expect(fetchTodo.mock.calls.map((call) => call[0]).sort()).toEqual(['/van/A.ics', '/van/A1.ics'])
+		expect(fetchTodo.mock.calls.map((call) => call[0]).sort()).toEqual(['/list-b/A.ics', '/list-b/A1.ics'])
 		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 		expect(showError).not.toHaveBeenCalled()
 		expect(store.tasksByUid.A.etag).toBe('"A-fresh"')

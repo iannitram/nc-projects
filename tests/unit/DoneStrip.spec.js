@@ -23,8 +23,8 @@ describe('DoneStrip', () => {
 				task: {
 					uid: 'p1',
 					summary: 'Done Project 1',
-					url: '/remote.php/dav/calendars/owner/personal/p1.ics',
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					url: '/remote.php/dav/calendars/owner/list-a/p1.ics',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				children: [],
 				progress: { done: 2, total: 2 },
@@ -33,8 +33,8 @@ describe('DoneStrip', () => {
 				task: {
 					uid: 'p2',
 					summary: 'Done Project 2',
-					url: '/remote.php/dav/calendars/owner/personal/p2.ics',
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					url: '/remote.php/dav/calendars/owner/list-a/p2.ics',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				children: [],
 				progress: { done: 1, total: 1 },
@@ -59,8 +59,8 @@ describe('DoneStrip', () => {
 				task: {
 					uid: 'p1',
 					summary: 'Done Project 1',
-					url: '/remote.php/dav/calendars/owner/personal/p1.ics',
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					url: '/remote.php/dav/calendars/owner/list-a/p1.ics',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				children: [],
 				progress: { done: 2, total: 2 },
@@ -69,8 +69,8 @@ describe('DoneStrip', () => {
 				task: {
 					uid: 'p2',
 					summary: 'Done Project 2',
-					url: '/remote.php/dav/calendars/owner/personal/p2.ics',
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					url: '/remote.php/dav/calendars/owner/list-a/p2.ics',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				children: [],
 				progress: { done: 1, total: 1 },
@@ -92,10 +92,10 @@ describe('DoneStrip', () => {
 
 		const links = wrapper.findAll('.cc-done-strip__link')
 		expect(links[0].text()).toBe('Done Project 1')
-		expect(links[0].attributes('href')).toBe('/apps/tasks/calendars/personal/tasks/p1.ics')
+		expect(links[0].attributes('href')).toBe('/apps/tasks/calendars/list-a/tasks/p1.ics')
 
 		expect(links[1].text()).toBe('Done Project 2')
-		expect(links[1].attributes('href')).toBe('/apps/tasks/calendars/personal/tasks/p2.ics')
+		expect(links[1].attributes('href')).toBe('/apps/tasks/calendars/list-a/tasks/p2.ics')
 
 		await toggle.trigger('click')
 		expect(toggle.attributes('aria-expanded')).toBe('false')
@@ -108,8 +108,8 @@ describe('DoneStrip', () => {
 				task: {
 					uid: 'p1',
 					summary: 'Completed Project',
-					url: '/remote.php/dav/calendars/owner/personal/p1.ics',
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					url: '/remote.php/dav/calendars/owner/list-a/p1.ics',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				children: [],
 				progress: { done: 3, total: 3 },

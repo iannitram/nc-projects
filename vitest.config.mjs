@@ -10,6 +10,7 @@ export default defineConfig({
 		maxWorkers: process.env.CI && process.platform === 'win32' ? 1 : (process.env.CI ? 2 : undefined),
 		environment: 'jsdom',
 		include: ['tests/unit/**/*.spec.js'],
+		setupFiles: ['tests/unit/setup.js'],
 		css: {
 			// @nextcloud/vue imports its own CSS; let Vite process it instead of Node.
 			include: [/@nextcloud/],

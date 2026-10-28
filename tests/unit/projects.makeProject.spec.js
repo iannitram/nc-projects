@@ -35,7 +35,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
+const GARDEN = { url: '/list-b/', displayName: 'Garden', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
 	return [
@@ -58,11 +58,11 @@ function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, st
 }
 
 function stored(uid, fields) {
-	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/list-b/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/list-b/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }]))
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN }]))
 	fetchTodos.mockResolvedValue(deepFreeze(todos))
 	const store = useProjectsStore()
 	await store.load()
@@ -109,7 +109,7 @@ describe('projects store makeProject', () => {
 
 		expect(putTodo).toHaveBeenCalledTimes(1)
 		const [url, ics, etag] = putTodo.mock.calls[0]
-		expect([url, etag]).toEqual(['/van/U.ics', '"U-e1"'])
+		expect([url, etag]).toEqual(['/list-b/U.ics', '"U-e1"'])
 		expect(sent(putTodo.mock.calls[0]).categories).toEqual(['home', 'project'])
 		for (const line of ['SUMMARY:U', 'X-CC-NOTE:keep', 'X-APPLE-SORT-ORDER:20']) {
 			expect(ics).toContain(line)
@@ -169,12 +169,12 @@ describe('projects store makeProject', () => {
 
 	it('reloads the task and shows "Someone else changed this; reloaded" on a conflict', async () => {
 		const store = await loadStore(todos())
-		putTodo.mockRejectedValue(new ConflictError('/van/U.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-b/U.ics'))
 		fetchTodo.mockResolvedValue(fresh('U', { categories: 'home,work', sort: 20 }))
 
 		await store.makeProject('U').catch(() => {})
 
-		expect(fetchTodo).toHaveBeenCalledWith('/van/U.ics')
+		expect(fetchTodo).toHaveBeenCalledWith('/list-b/U.ics')
 		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 		expect(showError).not.toHaveBeenCalled()
 		expect(store.tasksByUid.U.etag).toBe('"U-fresh"')

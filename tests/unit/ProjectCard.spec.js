@@ -22,10 +22,10 @@ describe('ProjectCard', () => {
 
 	it('renders project summary and task tree', () => {
 		const project = {
-			task: { uid: 'p1', summary: 'My Project', categories: ['project'], url: '/p1.ics', calendarUrl: '/personal/' },
+			task: { uid: 'p1', summary: 'My Project', categories: ['project'], url: '/p1.ics', calendarUrl: '/list-a/' },
 			children: [
 				{
-					task: { uid: 't1', summary: 'Task 1', completed: false, url: '/t1.ics', calendarUrl: '/personal/' },
+					task: { uid: 't1', summary: 'Task 1', completed: false, url: '/t1.ics', calendarUrl: '/list-a/' },
 					children: [],
 					deeper: 0,
 				},
@@ -52,7 +52,7 @@ describe('ProjectCard', () => {
 				summary: 'Blocked Project',
 				categories: ['project', 'blocked'],
 				url: '/p-blocked.ics',
-				calendarUrl: '/personal/',
+				calendarUrl: '/list-a/',
 			},
 			children: [],
 			progress: { done: 0, total: 2 },
@@ -77,7 +77,7 @@ describe('ProjectCard', () => {
 				summary: 'Someday Project',
 				categories: ['project', 'someday'],
 				url: '/p-someday.ics',
-				calendarUrl: '/personal/',
+				calendarUrl: '/list-a/',
 			},
 			children: [],
 			progress: { done: 0, total: 1 },
@@ -102,7 +102,7 @@ describe('ProjectCard', () => {
 				summary: 'Both Badges Project',
 				categories: ['project', 'blocked', 'someday'],
 				url: '/p-both.ics',
-				calendarUrl: '/personal/',
+				calendarUrl: '/list-a/',
 			},
 			children: [],
 			progress: { done: 0, total: 0 },

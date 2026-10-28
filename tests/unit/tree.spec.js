@@ -4,9 +4,9 @@ import { buildTree } from '../../src/models/tree.js'
 
 describe('tree', () => {
 	const areas = [
-		{ name: 'Personal', calendar: { url: '/remote.php/dav/calendars/owner/personal/' } },
-		{ name: 'The Channel', calendar: { url: '/remote.php/dav/calendars/owner/the-channel/' } },
-		{ name: 'Van', calendar: { url: '/remote.php/dav/calendars/owner/van/' } },
+		{ name: 'Home', calendar: { url: '/remote.php/dav/calendars/owner/list-a/' } },
+		{ name: 'Work', calendar: { url: '/remote.php/dav/calendars/owner/the-channel/' } },
+		{ name: 'Garden', calendar: { url: '/remote.php/dav/calendars/owner/list-b/' } },
 	]
 
 	describe('areas and projects', () => {
@@ -14,13 +14,13 @@ describe('tree', () => {
 			const result = buildTree(areas, [])
 			expect(result.areas).toHaveLength(3)
 			expect(result.areas[0]).toEqual({
-				name: 'Personal',
-				calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+				name: 'Home',
+				calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				projects: [],
 				done: [],
 			})
-			expect(result.areas[1].name).toBe('The Channel')
-			expect(result.areas[2].name).toBe('Van')
+			expect(result.areas[1].name).toBe('Work')
+			expect(result.areas[2].name).toBe('Garden')
 			expect(result.orphans).toEqual([])
 			expect(result.untaggedParents).toEqual([])
 		})
@@ -30,13 +30,13 @@ describe('tree', () => {
 				{
 					uid: 'proj-1',
 					categories: ['project'],
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 					sortOrder: 10,
 				},
 				{
 					uid: 'proj-2',
 					categories: ['project'],
-					calendarUrl: '/remote.php/dav/calendars/owner/van/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-b/',
 					sortOrder: 20,
 				},
 			]
@@ -54,12 +54,12 @@ describe('tree', () => {
 				{
 					uid: 'untagged-parent',
 					categories: ['work'],
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				{
 					uid: 'untagged-child',
 					parentUid: 'untagged-parent',
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 			]
 
@@ -110,7 +110,7 @@ describe('tree', () => {
 
 		it('returns open untagged root parents with children, with orphan precedence and sorted order', () => {
 			const tasks = [
-				{ uid: 'valid-project', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'valid-project', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 				{ uid: 'project-child', parentUid: 'valid-project' },
 				{ uid: 'untagged-late', sortOrder: 20 },
 				{ uid: 'untagged-child-1', parentUid: 'untagged-late' },
@@ -155,25 +155,25 @@ describe('tree', () => {
 				{
 					uid: 'proj-cross',
 					categories: ['project'],
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 					sortOrder: 1,
 				},
 				{
-					uid: 'child-on-van',
+					uid: 'child-on-list-b',
 					parentUid: 'proj-cross',
-					calendarUrl: '/remote.php/dav/calendars/owner/van/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-b/',
 					sortOrder: 10,
 				},
 			]
 
 			const result = buildTree(areas, tasks)
-			const personal = result.areas.find((a) => a.name === 'Personal')
-			const van = result.areas.find((a) => a.name === 'Van')
+			const homeArea = result.areas.find((a) => a.name === 'Home')
+			const gardenArea = result.areas.find((a) => a.name === 'Garden')
 
-			expect(personal.projects).toHaveLength(1)
-			expect(personal.projects[0].children).toHaveLength(1)
-			expect(personal.projects[0].children[0].task.uid).toBe('child-on-van')
-			expect(van.projects).toHaveLength(0)
+			expect(homeArea.projects).toHaveLength(1)
+			expect(homeArea.projects[0].children).toHaveLength(1)
+			expect(homeArea.projects[0].children[0].task.uid).toBe('child-on-list-b')
+			expect(gardenArea.projects).toHaveLength(0)
 		})
 
 		it('follows multi-level descendants across multiple different lists', () => {
@@ -181,7 +181,7 @@ describe('tree', () => {
 				{
 					uid: 'proj-1',
 					categories: ['project'],
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				{
 					uid: 't1',
@@ -191,13 +191,13 @@ describe('tree', () => {
 				{
 					uid: 't2',
 					parentUid: 't1',
-					calendarUrl: '/remote.php/dav/calendars/owner/van/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-b/',
 				},
 			]
 
 			const result = buildTree(areas, tasks)
-			const personal = result.areas[0]
-			const level1 = personal.projects[0].children[0]
+			const homeArea = result.areas[0]
+			const level1 = homeArea.projects[0].children[0]
 			expect(level1.task.uid).toBe('t1')
 			expect(level1.children[0].task.uid).toBe('t2')
 		})
@@ -206,10 +206,10 @@ describe('tree', () => {
 	describe('depth and deeper count', () => {
 		it('populates up to 3 levels and sets deeper count to 0 when no deeper tasks exist', () => {
 			const tasks = [
-				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l1', parentUid: 'proj', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l2', parentUid: 'l1', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l3', parentUid: 'l2', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l1', parentUid: 'proj', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l2', parentUid: 'l1', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l3', parentUid: 'l2', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 			]
 
 			const result = buildTree(areas, tasks)
@@ -234,11 +234,11 @@ describe('tree', () => {
 
 		it('shows +1 deeper on level 3 for a four-level chain (M4 fixture)', () => {
 			const tasks = [
-				{ uid: 'chain-proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'chain-l1', parentUid: 'chain-proj', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'chain-l2', parentUid: 'chain-l1', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'chain-l3', parentUid: 'chain-l2', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'chain-l4', parentUid: 'chain-l3', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'chain-proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'chain-l1', parentUid: 'chain-proj', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'chain-l2', parentUid: 'chain-l1', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'chain-l3', parentUid: 'chain-l2', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'chain-l4', parentUid: 'chain-l3', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 			]
 
 			const result = buildTree(areas, tasks)
@@ -250,13 +250,13 @@ describe('tree', () => {
 
 		it('counts all descendants below level 3 in deeper count', () => {
 			const tasks = [
-				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l1', parentUid: 'proj', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l2', parentUid: 'l1', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l3', parentUid: 'l2', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l4-a', parentUid: 'l3', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l4-b', parentUid: 'l3', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l5-a', parentUid: 'l4-a', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l1', parentUid: 'proj', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l2', parentUid: 'l1', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l3', parentUid: 'l2', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l4-a', parentUid: 'l3', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l4-b', parentUid: 'l3', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l5-a', parentUid: 'l4-a', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 			]
 
 			const result = buildTree(areas, tasks)
@@ -267,10 +267,10 @@ describe('tree', () => {
 
 		it('honours custom maxDepth option', () => {
 			const tasks = [
-				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l1', parentUid: 'proj', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l2', parentUid: 'l1', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'l3', parentUid: 'l2', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l1', parentUid: 'proj', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l2', parentUid: 'l1', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'l3', parentUid: 'l2', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 			]
 
 			const result = buildTree(areas, tasks, { maxDepth: 1 })
@@ -281,13 +281,13 @@ describe('tree', () => {
 
 		it('avoids infinite loops when parent relationships form a cycle', () => {
 			const tasks = [
-				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'c1', parentUid: 'proj', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'c2', parentUid: 'c1', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 'c1-loop', parentUid: 'c2', calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'c1', parentUid: 'proj', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'c2', parentUid: 'c1', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 'c1-loop', parentUid: 'c2', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 			]
 			// Link c2 back to proj
-			tasks.push({ uid: 'proj', parentUid: 'c2', calendarUrl: '/remote.php/dav/calendars/owner/personal/' })
+			tasks.push({ uid: 'proj', parentUid: 'c2', calendarUrl: '/remote.php/dav/calendars/owner/list-a/' })
 
 			expect(() => buildTree(areas, tasks)).not.toThrow()
 		})
@@ -296,7 +296,7 @@ describe('tree', () => {
 	describe('progress calculation', () => {
 		it('returns done: 0 and total: 0 when project has no descendants', () => {
 			const tasks = [
-				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 			]
 			const result = buildTree(areas, tasks)
 			expect(result.areas[0].projects[0].progress).toEqual({ done: 0, total: 0 })
@@ -304,10 +304,10 @@ describe('tree', () => {
 
 		it('counts done and total over every descendant across lists and levels', () => {
 			const tasks = [
-				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 't1', parentUid: 'proj', completed: true, calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 't2', parentUid: 'proj', completed: false, calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 't3', parentUid: 't2', completed: true, calendarUrl: '/remote.php/dav/calendars/owner/van/' },
+				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 't1', parentUid: 'proj', completed: true, calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 't2', parentUid: 'proj', completed: false, calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 't3', parentUid: 't2', completed: true, calendarUrl: '/remote.php/dav/calendars/owner/list-b/' },
 				{ uid: 't4', parentUid: 't3', completed: false, calendarUrl: '/remote.php/dav/calendars/owner/the-channel/' },
 			]
 
@@ -317,7 +317,7 @@ describe('tree', () => {
 
 		it('leaves cancelled tasks out of both done and total (M5 fixture: 4 done of 10 plus 1 cancelled = 4/10)', () => {
 			const tasks = [
-				{ uid: 'prog-proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'prog-proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 			]
 
 			// 5 top level tasks: 2 done, 3 open
@@ -327,7 +327,7 @@ describe('tree', () => {
 					parentUid: 'prog-proj',
 					completed: i <= 2,
 					status: i <= 2 ? 'COMPLETED' : 'NEEDS-ACTION',
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				})
 			}
 
@@ -338,7 +338,7 @@ describe('tree', () => {
 					parentUid: `top-${(i % 2) + 3}`,
 					completed: i <= 2,
 					status: i <= 2 ? 'COMPLETED' : 'NEEDS-ACTION',
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				})
 			}
 
@@ -348,7 +348,7 @@ describe('tree', () => {
 				parentUid: 'prog-proj',
 				status: 'CANCELLED',
 				completed: false,
-				calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+				calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 			})
 
 			const result = buildTree(areas, tasks)
@@ -361,13 +361,13 @@ describe('tree', () => {
 					uid: 'proj',
 					categories: ['project'],
 					completed: true,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				{
 					uid: 'child',
 					parentUid: 'proj',
 					completed: false,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 			]
 
@@ -380,10 +380,10 @@ describe('tree', () => {
 	describe('sorting and order', () => {
 		it('sorts sibling tasks by effectiveSortOrder ascending', () => {
 			const tasks = [
-				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 't3', parentUid: 'proj', sortOrder: 30, calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 't1', parentUid: 'proj', sortOrder: 10, calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
-				{ uid: 't2', parentUid: 'proj', sortOrder: 20, calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 't3', parentUid: 'proj', sortOrder: 30, calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 't1', parentUid: 'proj', sortOrder: 10, calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+				{ uid: 't2', parentUid: 'proj', sortOrder: 20, calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 			]
 
 			const result = buildTree(areas, tasks)
@@ -393,20 +393,20 @@ describe('tree', () => {
 
 		it('uses created timestamp when sortOrder is null', () => {
 			const tasks = [
-				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/personal/' },
+				{ uid: 'proj', categories: ['project'], calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 				{
 					uid: 'newer',
 					parentUid: 'proj',
 					sortOrder: null,
 					created: new Date('2001-01-01T00:02:00Z'),
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				{
 					uid: 'older',
 					parentUid: 'proj',
 					sortOrder: null,
 					created: new Date('2001-01-01T00:01:00Z'),
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 			]
 
@@ -421,25 +421,25 @@ describe('tree', () => {
 					uid: 'proj-someday-1',
 					categories: ['project', 'someday'],
 					sortOrder: 10,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				{
 					uid: 'proj-open-2',
 					categories: ['project'],
 					sortOrder: 50,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				{
 					uid: 'proj-open-1',
 					categories: ['project'],
 					sortOrder: 20,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				{
 					uid: 'proj-someday-2',
 					categories: ['project', 'someday'],
 					sortOrder: 5,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 			]
 
@@ -457,14 +457,14 @@ describe('tree', () => {
 					uid: 'open-proj',
 					categories: ['project'],
 					completed: false,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 					sortOrder: 10,
 				},
 				{
 					uid: 'completed-proj',
 					categories: ['project'],
 					completed: true,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 					sortOrder: 5,
 				},
 			]
@@ -482,19 +482,19 @@ describe('tree', () => {
 					uid: 'full-proj',
 					categories: ['project'],
 					completed: false,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				{
 					uid: 't1',
 					parentUid: 'full-proj',
 					completed: true,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 				{
 					uid: 't2',
 					parentUid: 'full-proj',
 					completed: true,
-					calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 				},
 			]
 
@@ -533,12 +533,12 @@ END:VCALENDAR`
 			const taskProj = Task.fromIcs(icsProj, {
 				url: '/task/proj.ics',
 				etag: '"1"',
-				calendarUrl: '/remote.php/dav/calendars/owner/personal/',
+				calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 			})
 			const taskChild = Task.fromIcs(icsChild, {
 				url: '/task/child.ics',
 				etag: '"2"',
-				calendarUrl: '/remote.php/dav/calendars/owner/van/',
+				calendarUrl: '/remote.php/dav/calendars/owner/list-b/',
 			})
 
 			const result = buildTree(areas, [taskProj, taskChild])

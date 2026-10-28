@@ -33,7 +33,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
+const GARDEN = { url: '/list-b/', displayName: 'Garden', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
 	return [
@@ -56,14 +56,14 @@ function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, st
 }
 
 function stored(uid, fields) {
-	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/list-b/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/list-b/', ics: vtodo({ uid, ...fields }) }
 }
 
-const BARNUM = { url: '/barnum/', displayName: 'Barnum', ownedByMe: true, writable: true, ctag: 'b1' }
+const ORCHARD = { url: '/list-c/', displayName: 'Orchard', ownedByMe: true, writable: true, ctag: 'b1' }
 
-const barnumTodo = (uid, fields) => ({ ...stored(uid, fields), url: `/barnum/${uid}.ics`, calendarUrl: '/barnum/' })
+const orchardTodo = (uid, fields) => ({ ...stored(uid, fields), url: `/list-c/${uid}.ics`, calendarUrl: '/list-c/' })
 
-function vanTodos() {
+function gardenTodos() {
 	return [
 		stored('P', { categories: 'project', sort: 10 }),
 		stored('t1', { parent: 'P', sort: 10 }),
@@ -71,16 +71,16 @@ function vanTodos() {
 	]
 }
 
-function barnumTodos() {
+function orchardTodos() {
 	return [
-		barnumTodo('Q', { categories: 'project', sort: 10 }),
-		barnumTodo('q1', { parent: 'Q', sort: 10 }),
+		orchardTodo('Q', { categories: 'project', sort: 10 }),
+		orchardTodo('q1', { parent: 'Q', sort: 10 }),
 	]
 }
 
 async function loaded() {
-	const data = { '/van/': vanTodos(), '/barnum/': barnumTodos() }
-	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN }, { ...BARNUM }]))
+	const data = { '/list-b/': gardenTodos(), '/list-c/': orchardTodos() }
+	listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN }, { ...ORCHARD }]))
 	fetchTodos.mockImplementation(async (calendar) => deepFreeze(data[calendar.url]))
 	const store = useProjectsStore()
 	await store.load()
@@ -108,32 +108,32 @@ describe('projects store refresh', () => {
 
 	it('re-reads only the list whose ctag changed and leaves the other list as it was', async () => {
 		const store = await loaded()
-		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN, ctag: 'v2' }, { ...BARNUM }]))
-		fetchTodos.mockResolvedValue(deepFreeze(vanTodos()))
+		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN, ctag: 'v2' }, { ...ORCHARD }]))
+		fetchTodos.mockResolvedValue(deepFreeze(gardenTodos()))
 
 		await store.refresh()
 
 		expect(fetchTodos).toHaveBeenCalledTimes(1)
-		expect(fetchTodos.mock.calls[0][0].url).toBe('/van/')
+		expect(fetchTodos.mock.calls[0][0].url).toBe('/list-b/')
 		expect(store.tasksByUid.q1.etag).toBe('"q1-e1"')
 		expect(childNames(store, 1)).toEqual(['q1'])
 	})
 
 	it('refreshes a list after its calendar ctag changes', async () => {
 		const store = await loaded()
-		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN, ctag: 'v2' }, { ...BARNUM }]))
-		fetchTodos.mockResolvedValue(deepFreeze(vanTodos()))
+		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN, ctag: 'v2' }, { ...ORCHARD }]))
+		fetchTodos.mockResolvedValue(deepFreeze(gardenTodos()))
 
 		await store.refresh()
 
 		expect(listTaskCalendars).toHaveBeenCalledTimes(2)
 		expect(fetchTodos).toHaveBeenCalledOnce()
-		expect(fetchTodos.mock.calls[0][0].url).toBe('/van/')
+		expect(fetchTodos.mock.calls[0][0].url).toBe('/list-b/')
 	})
 
 	it('shows what changed on that list: an edited task, a removed task, a new task', async () => {
 		const store = await loaded()
-		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN, ctag: 'v2' }, { ...BARNUM }]))
+		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN, ctag: 'v2' }, { ...ORCHARD }]))
 		fetchTodos.mockResolvedValue(deepFreeze([
 			stored('P', { categories: 'project', sort: 10 }),
 			{ ...stored('t1', { parent: 'P', sort: 10 }), etag: '"t1-e2"', ics: vtodo({ uid: 't1', parent: 'P', sort: 30 }) },
@@ -152,15 +152,15 @@ describe('projects store refresh', () => {
 
 	it('remembers the new ctag, so the next refresh with the same ctag re-reads nothing', async () => {
 		const store = await loaded()
-		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN, ctag: 'v2' }, { ...BARNUM }]))
-		fetchTodos.mockResolvedValue(deepFreeze(vanTodos()))
+		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...GARDEN, ctag: 'v2' }, { ...ORCHARD }]))
+		fetchTodos.mockResolvedValue(deepFreeze(gardenTodos()))
 
 		await store.refresh()
 		fetchTodos.mockClear()
 		await store.refresh()
 
-		expect(store.ctags['/van/']).toBe('v2')
-		expect(store.ctags['/barnum/']).toBe('b1')
+		expect(store.ctags['/list-b/']).toBe('v2')
+		expect(store.ctags['/list-c/']).toBe('b1')
 		expect(fetchTodos).not.toHaveBeenCalled()
 	})
 
