@@ -24,12 +24,19 @@ export function isTaskClosed(task) {
 
 <script setup>
 import { mdiChevronDown } from '@mdi/js'
-import { showInfo } from '@nextcloud/dialogs'
-import { NcIconSvgWrapper } from '@nextcloud/vue'
+import { NcDialog, NcIconSvgWrapper } from '@nextcloud/vue'
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import TaskRow from './TaskRow.vue'
-import { DRAG_OPTIONS, fullIndexForDrop, onSiblingDrop } from '../composables/useDrag.js'
+import {
+	activeDragSourceProjectUid,
+	activeDragUid,
+	activeDropProjectUid,
+	DRAG_OPTIONS,
+	fullIndexForDrop,
+	getSubtaskCount,
+	onSiblingDrop,
+} from '../composables/useDrag.js'
 import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -39,9 +46,12 @@ const props = defineProps({
 	showDone: { type: Boolean, default: false },
 	areaName: { type: String, default: null },
 	projectUid: { type: String, default: null },
+	dialogContainer: { type: String, default: 'body' },
 })
 
 const collapsedKeys = ref(new Set())
+const pendingCrossListMove = ref(null)
+const treeKey = ref(0)
 
 /**
  * Return a stable key for a task node.
@@ -131,15 +141,24 @@ const visibleNodes = computed(() => {
 const parentUid = computed(() => props.nodes?.[0]?.task?.parentUid || null)
 const effectiveProjectUid = computed(() => props.projectUid || parentUid.value)
 
-/** Sortable options: Tasks' options, and group configuration (shared across same-area projects for top-level tasks). */
+/** Sortable options: Tasks' options, and group configuration (shared across top-level task trees across all areas). */
 const sortOptions = computed(() => {
 	if (props.depth === 1 && props.areaName) {
 		return {
 			...DRAG_OPTIONS,
 			group: {
-				name: `cc-tasks-area-${props.areaName}`,
+				name: 'cc-tasks-top',
 				pull: true,
 				put: true,
+			},
+			onMove(evt) {
+				const toProjectUid = evt.to?.dataset?.projectUid
+				if (toProjectUid && toProjectUid !== effectiveProjectUid.value) {
+					activeDropProjectUid.value = toProjectUid
+				} else {
+					activeDropProjectUid.value = null
+				}
+				return true
 			},
 		}
 	}
@@ -186,26 +205,138 @@ function uidsOf(element, name) {
 }
 
 /**
- * Tell the user when a drag was released over a project on another list. Sortable's per-area
- * group refuses that drop silently (no hover or move callback fires for it), so look under the
- * pointer once, when the drag ends. Cross-list moves come later (#26).
+ * Clear global drag tracking state and remove any temporary drag badges.
  *
- * @param {{originalEvent?: object}} evt The sortable end event
+ * @param {{item?: HTMLElement}} [evt] Sortable event
  */
-function warnIfDroppedOnOtherList(evt) {
-	if (props.depth !== 1 || !props.areaName) {
-		return
+function clearDragState(evt) {
+	activeDragUid.value = null
+	activeDragSourceProjectUid.value = null
+	activeDropProjectUid.value = null
+	if (evt?.item) {
+		evt.item.querySelectorAll('[data-drag-badge]').forEach((b) => b.remove())
 	}
-	const point = evt.originalEvent?.changedTouches?.[0] ?? evt.originalEvent
-	if (typeof point?.clientX !== 'number' || typeof document.elementFromPoint !== 'function') {
-		return
-	}
-	const under = document.elementFromPoint(point.clientX, point.clientY)
-	const targetArea = under?.closest?.('[data-area-name]')?.dataset.areaName
-	if (targetArea && targetArea !== props.areaName) {
-		showInfo("Can't move a task to a project on another list yet")
+	if (typeof document !== 'undefined') {
+		document.querySelectorAll('.cc-drag-badge, .drag-badge').forEach((b) => b.remove())
 	}
 }
+
+/**
+ * Handle drag start: track active item and attach +N subtask badge if descendants exist.
+ *
+ * @param {{item: HTMLElement, oldIndex: number}} evt Sortable start event
+ */
+function onDragStart(evt) {
+	const node = visibleNodes.value[evt.oldIndex]
+	const movedUid = node?.task?.uid
+	activeDragUid.value = movedUid || null
+	activeDragSourceProjectUid.value = effectiveProjectUid.value
+	activeDropProjectUid.value = null
+
+	const store = useProjectsStore()
+	const count = movedUid ? getSubtaskCount(store.tasksByUid, movedUid) : 0
+	if (count > 0 && evt.item) {
+		const row = evt.item.querySelector('.cc-task-tree__row-wrapper') || evt.item
+		const badge = document.createElement('span')
+		badge.className = 'cc-drag-badge drag-badge'
+		badge.textContent = `+${count}`
+		badge.dataset.dragBadge = 'true'
+		row.appendChild(badge)
+	}
+}
+
+/**
+ * Check whether a cross-project drop moves the task to a different list.
+ *
+ * @param {string} movedUid UID of the moved task
+ * @param {string} targetProjectUid UID of the target project
+ * @param {string|null} targetAreaName area name from the drop target dataset
+ * @return {boolean}
+ */
+function isCrossListDrop(movedUid, targetProjectUid, targetAreaName) {
+	if (props.areaName && targetAreaName && props.areaName !== targetAreaName) {
+		return true
+	}
+	const store = useProjectsStore()
+	const movedTask = store.tasksByUid?.[movedUid]
+	const targetTask = store.tasksByUid?.[targetProjectUid]
+	if (movedTask?.calendarUrl && targetTask?.calendarUrl) {
+		const c1 = movedTask.calendarUrl.replace(/\/+$/, '')
+		const c2 = targetTask.calendarUrl.replace(/\/+$/, '')
+		if (c1 !== c2) {
+			return true
+		}
+	}
+	return false
+}
+
+/**
+ * Build the consequence sentence for a cross-list move confirmation.
+ *
+ * @param {string} movedUid UID of the moved task
+ * @param {string} targetProjectUid UID of the target project
+ * @param {string|null} targetAreaName area name from the drop target dataset
+ * @return {string}
+ */
+function buildConsequenceSentence(movedUid, targetProjectUid, targetAreaName) {
+	const store = useProjectsStore()
+	const targetTask = store.tasksByUid?.[targetProjectUid]
+	const targetTitle = targetTask?.summary || 'project'
+
+	let targetListName = targetAreaName || ''
+	if (!targetListName && targetTask?.calendarUrl) {
+		const normalized = targetTask.calendarUrl.replace(/\/+$/, '')
+		const area = store.areas?.find((a) => (a.calendarUrl || '').replace(/\/+$/, '') === normalized)
+		targetListName = area?.name || targetTask.listName || targetTask.calendarName || ''
+	}
+	if (!targetListName && targetTask?.listName) {
+		targetListName = targetTask.listName
+	}
+
+	const subtasks = getSubtaskCount(store.tasksByUid, movedUid)
+	const subtaskPhrase = subtasks > 0
+		? `, with its ${subtasks} ${subtasks === 1 ? 'subtask' : 'subtasks'}`
+		: ''
+	return `Moves under '${targetTitle}' and to the ${targetListName} list${subtaskPhrase}.`
+}
+
+/**
+ * Cancel the pending cross-list move and restore the row in the source list.
+ */
+function cancelCrossListMove() {
+	pendingCrossListMove.value = null
+	treeKey.value++
+	useProjectsStore().rebuildTree()
+}
+
+/**
+ * Confirm and execute the pending cross-list move.
+ */
+async function confirmCrossListMove() {
+	const pending = pendingCrossListMove.value
+	pendingCrossListMove.value = null
+	if (!pending) {
+		return
+	}
+	try {
+		await useProjectsStore().moveToProject(pending.movedUid, pending.targetProjectUid, pending.fullIndex)
+	} catch {
+		treeKey.value++
+		useProjectsStore().rebuildTree()
+	}
+}
+
+const crossListConfirmationButtons = computed(() => [
+	{
+		label: 'Cancel',
+		callback: cancelCrossListMove,
+	},
+	{
+		label: 'Move',
+		variant: 'primary',
+		callback: confirmCrossListMove,
+	},
+])
 
 /**
  * Turn a finished drag into a reorder or a move to another project.
@@ -214,9 +345,10 @@ function warnIfDroppedOnOtherList(evt) {
  * @return {Promise<void> | undefined} The store's reorder or moveToProject
  */
 function onDrop(evt) {
+	clearDragState(evt)
+
 	if (!evt.to || evt.from === evt.to) {
 		restoreDomPosition(evt)
-		warnIfDroppedOnOtherList(evt)
 		const targetParent = parentUid.value || effectiveProjectUid.value
 		if (!targetParent) {
 			return undefined
@@ -232,12 +364,8 @@ function onDrop(evt) {
 		)
 	}
 
-	// Cross-list: Sortable moved the row's element into the target list. Take it out again and
-	// let Vue render the moved task in the target from the store. (Putting it back in the source
-	// list does not work: Vue keeps each row between two anchor nodes, and an element re-inserted
-	// by index lands outside the anchors of its own row, so Vue never removes it and the row
-	// stays in the source list until a reload. Without the element in the source DOM, Vue's
-	// removal of the row is a no-op.)
+	// Cross-project drop: Sortable moved the row's element into the target list. Take it out
+	// again and let Vue render the moved task in the target from the store (#25).
 	evt.item.remove()
 
 	const movedUid = visibleNodes.value[evt.oldIndex]?.task?.uid
@@ -245,15 +373,32 @@ function onDrop(evt) {
 	if (!movedUid || !targetProjectUid) {
 		return undefined
 	}
+	const targetAreaName = evt.to.dataset.areaName || null
 	const allUids = uidsOf(evt.to, 'allUids')
 	const visibleUids = uidsOf(evt.to, 'visibleUids')
 	const fullIndex = fullIndexForDrop(allUids, visibleUids, movedUid, evt.newIndex)
-	return useProjectsStore().moveToProject(movedUid, targetProjectUid, fullIndex)
+
+	if (isCrossListDrop(movedUid, targetProjectUid, targetAreaName)) {
+		const message = buildConsequenceSentence(movedUid, targetProjectUid, targetAreaName)
+		pendingCrossListMove.value = {
+			movedUid,
+			targetProjectUid,
+			fullIndex,
+			message,
+		}
+		return undefined
+	}
+
+	return useProjectsStore().moveToProject(movedUid, targetProjectUid, fullIndex).catch(() => {
+		treeKey.value++
+		useProjectsStore().rebuildTree()
+	})
 }
 </script>
 
 <template>
 	<Sortable
+		:key="`task-tree-${treeKey}`"
 		tag="ul"
 		class="cc-task-tree"
 		:class="`cc-task-tree--level-${depth}`"
@@ -264,6 +409,7 @@ function onDrop(evt) {
 		:data-area-name="depth === 1 ? areaName : null"
 		:data-all-uids="(nodes || []).map((node) => node.task?.uid).filter(Boolean).join(',')"
 		:data-visible-uids="visibleNodes.map((node) => node.task?.uid).filter(Boolean).join(',')"
+		@start="onDragStart"
 		@end="onDrop">
 		<template #item="{ element: node }">
 			<li
@@ -303,11 +449,21 @@ function onDrop(evt) {
 						:depth="depth + 1"
 						:showDone="showDone"
 						:areaName="areaName"
-						:projectUid="effectiveProjectUid" />
+						:projectUid="effectiveProjectUid"
+						:dialogContainer="dialogContainer" />
 				</div>
 			</li>
 		</template>
 	</Sortable>
+	<NcDialog
+		v-if="pendingCrossListMove"
+		:open="Boolean(pendingCrossListMove)"
+		name="Move to project"
+		:message="pendingCrossListMove.message"
+		:buttons="crossListConfirmationButtons"
+		:container="dialogContainer"
+		@update:open="(val) => { if (!val) cancelCrossListMove() }"
+		@keydown.esc.stop="cancelCrossListMove" />
 </template>
 
 <style scoped>
