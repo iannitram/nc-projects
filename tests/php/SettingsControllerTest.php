@@ -52,4 +52,23 @@ final class SettingsControllerTest extends TestCase {
 		$this->assertSame(401, $this->controller($config, null)->getAreas()->getStatus());
 		$this->assertSame(401, $this->controller($config, null)->setAreas([])->getStatus());
 	}
+
+	public function testInvalidAreaListShapesAndSizesAreRejected(): void {
+		foreach (['x', ['a' => 'b'], 5, null, ['/a/', 5], ['   '], array_fill(0, 101, '/a/'), [str_repeat('a', 1025)]] as $areaLists) {
+			$config = $this->createMock(IConfig::class);
+			$config->expects($this->never())->method('setUserValue');
+			$response = $this->controller($config)->setAreas($areaLists);
+			$this->assertSame(400, $response->getStatus());
+			$this->assertArrayHasKey('message', $response->getData());
+		}
+	}
+
+	public function testMaximumAreaListSizeAndUrlLengthAreAccepted(): void {
+		$areaLists = array_map(static fn (int $index): string => str_pad((string)$index, 1024, 'a'), range(0, 99));
+		$config = $this->createMock(IConfig::class);
+		$config->expects($this->once())->method('setUserValue')->with('user-a', 'cc_projects', 'area_lists', json_encode($areaLists));
+		$response = $this->controller($config)->setAreas($areaLists);
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(['areaLists' => $areaLists], $response->getData());
+	}
 }

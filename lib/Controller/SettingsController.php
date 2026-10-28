@@ -11,6 +11,9 @@ use OCP\IConfig;
 use OCP\IRequest;
 
 class SettingsController extends Controller {
+	public const MAX_AREA_LISTS = 100;
+	public const MAX_URL_LENGTH = 1024;
+
 	public function __construct(IRequest $request, private IConfig $config, private ?string $userId) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -34,12 +37,15 @@ class SettingsController extends Controller {
 	/**
 	 * @NoAdminRequired
 	 */
-	public function setAreas(array $areaLists = []): JSONResponse {
+	public function setAreas($areaLists = []): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse(['message' => 'Authentication required'], 401);
 		}
+		if (!is_array($areaLists) || !array_is_list($areaLists) || count($areaLists) > self::MAX_AREA_LISTS) {
+			return new JSONResponse(['message' => 'Area lists must be a list of at most 100 URLs'], 400);
+		}
 		foreach ($areaLists as $url) {
-			if (!is_string($url) || trim($url) === '') {
+			if (!is_string($url) || trim($url) === '' || strlen($url) > self::MAX_URL_LENGTH) {
 				return new JSONResponse(['message' => 'Area list URLs must be non-empty strings'], 400);
 			}
 		}
