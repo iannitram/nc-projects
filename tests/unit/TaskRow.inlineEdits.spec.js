@@ -110,6 +110,33 @@ describe('TaskRow inline edits', () => {
 
 			expect(updateTask).not.toHaveBeenCalled()
 		})
+
+		it('makes the title focusable with a button role and an accessible name', () => {
+			const wrapper = mountRow()
+			const title = wrapper.find('.cc-task-row__title')
+
+			expect(title.attributes('tabindex')).toBe('0')
+			expect(title.attributes('role')).toBe('button')
+			expect(title.attributes('aria-label')).toBe('Rename Fix the engine')
+		})
+
+		it('opens the rename field on Enter', async () => {
+			const wrapper = mountRow()
+
+			await wrapper.find('.cc-task-row__title').trigger('keydown.enter')
+			await nextTick()
+
+			expect(wrapper.find('input[aria-label="Task title"]').exists()).toBe(true)
+		})
+
+		it('opens the rename field on Space', async () => {
+			const wrapper = mountRow()
+
+			await wrapper.find('.cc-task-row__title').trigger('keydown.space')
+			await nextTick()
+
+			expect(wrapper.find('input[aria-label="Task title"]').exists()).toBe(true)
+		})
 	})
 
 	describe('due date', () => {
@@ -120,16 +147,43 @@ describe('TaskRow inline edits', () => {
 
 			await picker.vm.$emit('update:modelValue', due)
 
+			expect(updateTask).toHaveBeenCalledTimes(1)
 			expect(updateTask).toHaveBeenCalledWith('t1', { due })
 		})
 
-		it('clears DUE with null', async () => {
+		it('does not write an empty value', async () => {
 			const wrapper = mountRow(node({ due: new Date(Date.UTC(2026, 10, 5, 12, 0, 0)) }))
 			const picker = wrapper.findComponent(NcDateTimePickerNative)
 
 			await picker.vm.$emit('update:modelValue', null)
 
+			expect(updateTask).not.toHaveBeenCalled()
+		})
+
+		it('does not write an invalid date', async () => {
+			const wrapper = mountRow()
+			const picker = wrapper.findComponent(NcDateTimePickerNative)
+
+			await picker.vm.$emit('update:modelValue', new Date(NaN))
+
+			expect(updateTask).not.toHaveBeenCalled()
+		})
+
+		it('clears the due date with the Clear action', async () => {
+			const wrapper = mountRow(node({ due: new Date(Date.UTC(2026, 10, 5, 12, 0, 0)) }))
+			const clear = wrapper.find('.cc-task-row__clear-due')
+
+			expect(clear.exists()).toBe(true)
+			await clear.trigger('click')
+
+			expect(updateTask).toHaveBeenCalledTimes(1)
 			expect(updateTask).toHaveBeenCalledWith('t1', { due: null })
+		})
+
+		it('hides the Clear action when there is no due date', () => {
+			const wrapper = mountRow()
+
+			expect(wrapper.find('.cc-task-row__clear-due').exists()).toBe(false)
 		})
 
 		it('renders the task DUE date in the picker', () => {
@@ -222,5 +276,15 @@ describe('TaskRow inline edits', () => {
 		await input.trigger('touchstart')
 
 		expect(rowEvent).not.toHaveBeenCalled()
+	})
+
+	it('lets touchstart on the title bubble to the row', async () => {
+		const wrapper = mountRow()
+		const rowTouchstart = vi.fn()
+		wrapper.element.addEventListener('touchstart', rowTouchstart)
+
+		await wrapper.find('.cc-task-row__title').trigger('touchstart')
+
+		expect(rowTouchstart).toHaveBeenCalledOnce()
 	})
 })

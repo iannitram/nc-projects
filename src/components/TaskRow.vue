@@ -167,10 +167,18 @@ function cancelTitle() {
 }
 
 /**
- * @param {Date|null} value the picked day, or null when cleared
+ * @param {Date|null|string} value the picked day, or null/'' when cleared
  */
 function setDue(value) {
-	update({ due: value ?? null })
+	if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+		return
+	}
+	update({ due: value })
+}
+
+/** Remove the due date on purpose (the only way to clear it). */
+function clearDue() {
+	update({ due: null })
 }
 
 /**
@@ -206,7 +214,12 @@ function setPriority(value) {
 		<span
 			v-else
 			class="cc-task-row__title"
-			@click="startEdit">
+			role="button"
+			tabindex="0"
+			:aria-label="`Rename ${summary}`"
+			@click="startEdit"
+			@keydown.enter.prevent="startEdit"
+			@keydown.space.prevent="startEdit">
 			{{ summary }}
 		</span>
 		<NcDateTimePickerNative
@@ -221,6 +234,17 @@ function setPriority(value) {
 			@mousedown.stop
 			@pointerdown.stop
 			@touchstart.stop />
+		<button
+			v-if="dueDate"
+			type="button"
+			class="cc-task-row__clear-due cc-no-drag"
+			aria-label="Clear due date"
+			@click="clearDue"
+			@mousedown.stop
+			@pointerdown.stop
+			@touchstart.stop>
+			Clear due date
+		</button>
 		<NcActions
 			class="cc-task-row__priority-menu cc-no-drag"
 			menuName="Priority"
@@ -287,6 +311,20 @@ function setPriority(value) {
 
 .cc-task-row__date {
 	max-width: 10rem;
+}
+
+.cc-task-row__clear-due {
+	flex-shrink: 0;
+	font-size: 0.85rem;
+	color: var(--color-primary-element);
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 0;
+}
+
+.cc-task-row__clear-due:hover {
+	text-decoration: underline;
 }
 
 .cc-task-row__priority-menu {
