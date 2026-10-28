@@ -42,7 +42,7 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 
 | ID | Feature | Complexity | Notes |
 |---|---|---|---|
-| P05 | **Panel view** | Medium | Needs P04, P00(b). Areas, project cards, open tasks, collapsible subtasks with a "+N deeper" note past level 3 (opens that task in Tasks), done/total progress bar over every task at every level under the project, "show done" toggle Store `load` merged 2026-10-26 (#12); the panel view is PR #43 (#13). Progress bar and show-done (#14) not started. |
+| P05 | **Panel view** | Medium | Needs P04, P00(b). Areas, project cards, open tasks, collapsible subtasks with a "+N deeper" note past level 3 (opens that task in Tasks), done/total progress bar over every task at every level under the project, "show done" toggle Store `load` merged 2026-10-26 (#12); the panel view is PR #43 (#13). Progress bar and show-done (#14) in PR. |
 
 ## Unwritten
 
