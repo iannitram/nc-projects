@@ -3,6 +3,7 @@ import { mdiCheckboxMarkedOutline, mdiChevronDown, mdiChevronRight, mdiOpenInNew
 import { NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
 import { computed, ref, toRaw } from 'vue'
 import { getTasksDeepLink } from './TaskRow.vue'
+import { n } from '../services/l10n.js'
 
 const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').ProjectNode[]>} */
@@ -95,7 +96,7 @@ function getProjectKey(project) {
 				<template #icon>
 					<NcIconSvgWrapper :path="expanded ? mdiChevronDown : mdiChevronRight" :size="20" />
 				</template>
-				<span class="cc-done-strip__title">{{ count }} done projects</span>
+				<span class="cc-done-strip__title">{{ n('%n done project', '%n done projects', count) }}</span>
 			</NcButton>
 		</div>
 		<ul
@@ -105,11 +106,8 @@ function getProjectKey(project) {
 				v-for="project in completedProjects"
 				:key="getProjectKey(project)"
 				class="cc-done-strip__item">
-				<span
-					role="checkbox"
-					aria-checked="true"
-					aria-readonly="true"
-					:aria-label="`Completed: ${getProjectTitle(project)}`">
+				<!-- Decorative: a done project cannot be reopened here, and the strip already says "done". -->
+				<span class="cc-done-strip__marker" aria-hidden="true">
 					<NcIconSvgWrapper :path="mdiCheckboxMarkedOutline" :size="20" />
 				</span>
 				<span class="cc-done-strip__project-title">{{ getProjectTitle(project) }}</span>

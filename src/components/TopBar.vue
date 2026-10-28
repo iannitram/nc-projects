@@ -208,6 +208,11 @@ async function submitNewProject() {
 	font-weight: 650;
 	margin: 0;
 	line-height: 1.2;
+	/* One line: at 390 px "All areas" must not wrap; a long title ends in an ellipsis. */
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	color: var(--color-main-text);
 }
 
@@ -215,6 +220,11 @@ async function submitNewProject() {
 	color: var(--color-text-maxcontrast);
 	font-size: 14px;
 	white-space: nowrap;
+	/* The count gives way before the title does. */
+	min-width: 0;
+	flex-shrink: 4;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .cc-top-bar__spacer {

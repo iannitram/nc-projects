@@ -6,6 +6,7 @@ import { computed, nextTick, ref, toRaw, watch } from 'vue'
 import AddTaskInput from './AddTaskInput.vue'
 import { getTasksDeepLink } from './TaskRow.vue'
 import TaskTree from './TaskTree.vue'
+import { n } from '../services/l10n.js'
 import { readProjectCollapsed, useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -335,7 +336,7 @@ function toggleCollapsed() {
 			v-if="confirmCompletion"
 			v-model:open="confirmCompletion"
 			name="Check off project"
-			:message="`Check off ${project.task.summary} and its ${openTasks.length} open tasks?`"
+			:message="`Check off ${project.task.summary} and its ${n('%n open task', '%n open tasks', openTasks.length)}?`"
 			:buttons="confirmationButtons" />
 	</div>
 </template>

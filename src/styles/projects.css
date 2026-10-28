@@ -182,7 +182,11 @@
 		flex-shrink: 0;
 	}
 
-	/* Touch targets: 44 x 44. */
+	/* Touch targets: 44 x 44 (the project band's buttons too). */
+	.cc-project-card__collapse,
+	.cc-project-card__completion,
+	.cc-project-card__menu,
+	.cc-project-card__menu .action-item__menutoggle,
 	button.cc-task-tree__collapse-toggle,
 	.cc-task-tree__collapse-placeholder,
 	.cc-task-row__checkbox,

@@ -56,9 +56,7 @@ const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').TaskNode>} */
 	node: { type: Object, required: true },
 })
-/**
- *
- */
+/** Check the task off, or reopen it, through the store (the store cascades to subtasks). */
 function onCompletionChange() {
 	useProjectsStore().setCompleted(props.node?.task?.uid, !isCompleted.value)
 }
@@ -280,10 +278,17 @@ function setPriority(value) {
 			<template #icon>
 				<NcIconSvgWrapper :path="mdiDotsHorizontal" :size="20" />
 			</template>
+			<!--
+				With no due date the picker must show nothing, not today: "clearable" makes it
+				keep null, and the placeholder says so. Clearing stays the explicit menu item,
+				so the picker's own clear button is hidden (see the style).
+			-->
 			<NcActionInput
-				class="cc-no-drag"
+				class="cc-no-drag cc-task-row__due-input"
 				type="date"
 				label="Due date…"
+				placeholder="No due date"
+				clearable
 				:modelValue="dueDate"
 				@update:modelValue="setDue"
 				@mousedown.stop
@@ -443,6 +448,10 @@ function setPriority(value) {
 
 .cc-no-drag {
 	-webkit-touch-callout: default;
+}
+
+.cc-task-row__due-input :deep(.dp--clear-btn) {
+	display: none;
 }
 
 .cc-task-deeper {
