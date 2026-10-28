@@ -4,6 +4,7 @@ import { listTaskCalendars } from '../../src/services/dav.js'
 import { useProjectsStore } from '../../src/store/projects.js'
 
 vi.mock('../../src/services/dav.js', () => ({
+	getDavSession: vi.fn(() => ({})),
 	listTaskCalendars: vi.fn(),
 	fetchTodos: vi.fn(),
 }))

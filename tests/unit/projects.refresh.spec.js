@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../src/services/dav.js', () => ({
+	getDavSession: vi.fn(() => ({})),
 	listTaskCalendars: vi.fn(),
 	fetchTodos: vi.fn(),
 	fetchTodo: vi.fn(),
@@ -116,6 +117,18 @@ describe('projects store refresh', () => {
 		expect(fetchTodos.mock.calls[0][0].url).toBe('/van/')
 		expect(store.tasksByUid.q1.etag).toBe('"q1-e1"')
 		expect(childNames(store, 1)).toEqual(['q1'])
+	})
+
+	it('refreshes a list after its calendar ctag changes', async () => {
+		const store = await loaded()
+		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN, ctag: 'v2' }, { ...BARNUM }]))
+		fetchTodos.mockResolvedValue(deepFreeze(vanTodos()))
+
+		await store.refresh()
+
+		expect(listTaskCalendars).toHaveBeenCalledTimes(2)
+		expect(fetchTodos).toHaveBeenCalledOnce()
+		expect(fetchTodos.mock.calls[0][0].url).toBe('/van/')
 	})
 
 	it('shows what changed on that list: an edited task, a removed task, a new task', async () => {

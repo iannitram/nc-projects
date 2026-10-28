@@ -2,7 +2,7 @@ import { getRequestToken } from '@nextcloud/auth'
 import DavClient from '@nextcloud/cdav-library'
 import { generateRemoteUrl } from '@nextcloud/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createTodo, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
+import { createDavSession, createTodo, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
 
 vi.mock('@nextcloud/auth', () => ({
 	getRequestToken: vi.fn(),
@@ -69,7 +69,7 @@ describe('listTaskCalendars', () => {
 		})
 		const client = mockClient([taskCalendar, eventsCalendar, sharedCalendar])
 
-		await expect(listTaskCalendars()).resolves.toEqual([
+		await expect(listTaskCalendars(createDavSession())).resolves.toEqual([
 			{
 				url: calendarUrl,
 				displayName: 'Projects',
@@ -102,7 +102,7 @@ describe('todo reads', () => {
 		])
 		mockClient([calendar])
 
-		await expect(fetchTodos({ url: calendarUrl })).resolves.toEqual([
+		await expect(fetchTodos({ url: calendarUrl }, createDavSession())).resolves.toEqual([
 			{ url: todoUrl, etag: '"one"', ics: 'BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n', calendarUrl },
 			{ url: `${calendarUrl}done.ics`, etag: '"two"', ics: 'DONE', calendarUrl },
 		])
@@ -114,7 +114,7 @@ describe('todo reads', () => {
 		calendar.find.mockResolvedValue({ url: todoUrl, etag: '"fresh"', data: 'FRESH' })
 		mockClient([calendar])
 
-		await expect(fetchTodo(todoUrl)).resolves.toEqual({
+		await expect(fetchTodo(todoUrl, createDavSession())).resolves.toEqual({
 			url: todoUrl,
 			etag: '"fresh"',
 			ics: 'FRESH',
@@ -138,7 +138,7 @@ describe('todo writes', () => {
 		calendar.find.mockResolvedValue(todo)
 		mockClient([calendar])
 
-		await expect(putTodo(todoUrl, 'FULL ICALENDAR', '"old"')).resolves.toEqual({ etag: '"new"' })
+		await expect(putTodo(todoUrl, 'FULL ICALENDAR', '"old"', createDavSession())).resolves.toEqual({ etag: '"new"' })
 		expect(calendar.find).toHaveBeenCalledWith('first.ics')
 		expect(todo.data).toBe('FULL ICALENDAR')
 		expect(todo.update).toHaveBeenCalledOnce()
@@ -150,7 +150,7 @@ describe('todo writes', () => {
 		calendar.find.mockResolvedValue(todo)
 		mockClient([calendar])
 
-		await expect(putTodo(todoUrl, 'FULL ICALENDAR', '"old"')).rejects.toMatchObject({
+		await expect(putTodo(todoUrl, 'FULL ICALENDAR', '"old"', createDavSession())).rejects.toMatchObject({
 			name: 'ConflictError',
 			url: todoUrl,
 		})
@@ -163,7 +163,7 @@ describe('todo writes', () => {
 		})
 		mockClient([calendar])
 
-		await expect(createTodo({ url: calendarUrl }, 'FULL ICALENDAR')).resolves.toEqual({
+		await expect(createTodo({ url: calendarUrl }, 'FULL ICALENDAR', createDavSession())).resolves.toEqual({
 			url: `${calendarUrl}random.ics`,
 			etag: '"created"',
 			ics: 'FULL ICALENDAR',
@@ -177,7 +177,7 @@ describe('todo writes', () => {
 		const calendar = makeCalendar({ createObject: vi.fn().mockRejectedValue({ status: 412 }) })
 		mockClient([calendar])
 
-		await expect(createTodo({ url: calendarUrl }, 'FULL ICALENDAR')).rejects.toMatchObject({
+		await expect(createTodo({ url: calendarUrl }, 'FULL ICALENDAR', createDavSession())).rejects.toMatchObject({
 			name: 'ConflictError',
 			url: `${calendarUrl}new-uuid.ics`,
 		})
