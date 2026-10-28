@@ -1,7 +1,7 @@
 /**
- * Refresh on window focus and every ~2 minutes (P10). Stub.
+ * Refresh on window focus and every ~2 minutes (P10).
  */
-import { notImplemented } from '../notImplemented.js'
+import { onBeforeUnmount } from 'vue'
 
 export const REFRESH_INTERVAL_MS = 2 * 60 * 1000
 
@@ -12,5 +12,15 @@ export const REFRESH_INTERVAL_MS = 2 * 60 * 1000
  * @param {number} [intervalMs] the interval
  */
 export function useRefresh(refresh, intervalMs = REFRESH_INTERVAL_MS) {
-	notImplemented('useRefresh', refresh, intervalMs)
+	const run = () => {
+		Promise.resolve(refresh()).catch(() => {})
+	}
+
+	window.addEventListener('focus', run)
+	const id = setInterval(run, intervalMs)
+
+	onBeforeUnmount(() => {
+		window.removeEventListener('focus', run)
+		clearInterval(id)
+	})
 }
