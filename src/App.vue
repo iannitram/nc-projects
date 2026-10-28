@@ -3,12 +3,17 @@ import { NcAppContent, NcContent, NcLoadingIcon } from '@nextcloud/vue'
 import { getActivePinia } from 'pinia'
 import { computed, onMounted } from 'vue'
 import AreaSection from './components/AreaSection.vue'
+import { useRefresh } from './composables/useRefresh.js'
 import { useProjectsStore } from './store/projects.js'
 
 const store = getActivePinia() ? useProjectsStore() : null
 const areas = computed(() => store?.areas || [])
 const loading = computed(() => store?.loading || false)
 const error = computed(() => store?.error || null)
+
+if (store) {
+	useRefresh(store.refresh)
+}
 
 onMounted(() => {
 	store?.load()
