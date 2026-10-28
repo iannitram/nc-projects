@@ -1,4 +1,4 @@
-import { NcCheckboxRadioSwitch } from '@nextcloud/vue'
+import { NcCheckboxRadioSwitch, NcDialog } from '@nextcloud/vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -81,7 +81,7 @@ describe('panel edits with reactive Tasks and real Pinia actions', () => {
 		await checkbox().trigger('click')
 		await flushPromises()
 
-		expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('1/1')
+		expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('1 of 1')
 		expect(checkbox().element.checked).toBe(true)
 		expect(row.findComponent(NcCheckboxRadioSwitch).props('modelValue')).toBe(true)
 		expect(row.classes()).toContain('is-completed')
@@ -92,7 +92,7 @@ describe('panel edits with reactive Tasks and real Pinia actions', () => {
 		expect(checkbox().element.checked).toBe(false)
 		expect(row.findComponent(NcCheckboxRadioSwitch).props('modelValue')).toBe(false)
 		expect(row.classes()).not.toContain('is-completed')
-		expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('0/1')
+		expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('0 of 1')
 		expect(setCompleted.mock.calls).toEqual([['T', true], ['T', false]])
 		expect(putTodo).toHaveBeenCalledTimes(2)
 	})
@@ -104,6 +104,15 @@ describe('panel edits with reactive Tasks and real Pinia actions', () => {
 		expect(checkbox().element.checked).toBe(false)
 
 		await checkbox().trigger('click')
+		await flushPromises()
+
+		expect(setCompleted).not.toHaveBeenCalled()
+		expect(putTodo).not.toHaveBeenCalled()
+		expect(checkbox().element.checked).toBe(false)
+		expect(wrapper.findComponent(NcDialog).exists()).toBe(true)
+		const confirm = [...document.querySelectorAll('[role="dialog"] button')]
+			.find((button) => button.textContent.trim() === 'Check off')
+		confirm.click()
 		await flushPromises()
 
 		expect(checkbox().element.checked).toBe(true)

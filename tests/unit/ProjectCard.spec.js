@@ -1,5 +1,5 @@
-import { NcCheckboxRadioSwitch, NcProgressBar } from '@nextcloud/vue'
-import { flushPromises, mount } from '@vue/test-utils'
+import { NcActionButton, NcActionCheckbox, NcActions, NcDialog, NcProgressBar } from '@nextcloud/vue'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProjectCard from '../../src/components/ProjectCard.vue'
@@ -10,6 +10,8 @@ const AddTaskInputStub = {
 	props: ['projectUid'],
 	template: '<div class="cc-add-task-input" />',
 }
+
+enableAutoUnmount(afterEach)
 
 describe('ProjectCard', () => {
 	it('checks off and reopens the project through the store', async () => {
@@ -25,9 +27,51 @@ describe('ProjectCard', () => {
 		expect(setCompleted).toHaveBeenCalledWith('p1', true)
 	})
 
+	it('asks before cascading a check-off with open tasks', async () => {
+		setActivePinia(createPinia())
+		const store = useProjectsStore()
+		const setCompleted = vi.spyOn(store, 'setCompleted').mockResolvedValue()
+		const project = {
+			task: { uid: 'p-confirm', summary: 'Kitchen refresh', completed: false },
+			children: [{ task: { uid: 't-open', summary: 'Choose sample', completed: false }, children: [] }],
+			progress: { done: 0, total: 1 },
+		}
+		const wrapper = mount(ProjectCard, {
+			props: { project },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
+		})
+		await wrapper.find('.cc-project-card__completion input').setValue(true)
+		expect(setCompleted).not.toHaveBeenCalled()
+		const dialog = wrapper.findComponent(NcDialog)
+		expect(dialog.exists()).toBe(true)
+		expect(dialog.props('message')).toBe('Check off Kitchen refresh and its 1 open tasks?')
+		const dialogButtons = () => [...document.querySelectorAll('[role="dialog"] button')]
+		const cancel = dialogButtons().find((button) => button.textContent.trim() === 'Cancel')
+		expect(cancel).toBeTruthy()
+		cancel.click()
+		await flushPromises()
+		expect(wrapper.findComponent(NcDialog).exists()).toBe(false)
+		expect(setCompleted).not.toHaveBeenCalled()
+		expect(wrapper.get('.cc-project-card__completion input').element.checked).toBe(false)
+		expect(project.task.completed).toBe(false)
+		expect(project.children[0].task.completed).toBe(false)
+		await wrapper.findComponent(NcActions).find('button').trigger('click')
+		await vi.waitFor(() => expect(wrapper.findComponent(NcActionCheckbox).exists()).toBe(true))
+		const checkOff = wrapper.findAllComponents(NcActionButton).find((action) => action.text() === 'Check off project…')
+		await checkOff.find('button').trigger('click')
+		expect(setCompleted).not.toHaveBeenCalled()
+		const confirm = dialogButtons().find((button) => button.textContent.trim() === 'Check off')
+		expect(confirm).toBeTruthy()
+		confirm.click()
+		await flushPromises()
+		expect(setCompleted).toHaveBeenCalledExactlyOnceWith('p-confirm', true)
+		expect(wrapper.findComponent(NcDialog).exists()).toBe(false)
+	})
+
 	beforeEach(() => {
 		window.localStorage.clear()
 		vi.restoreAllMocks()
+		setActivePinia(createPinia())
 	})
 
 	afterEach(() => {
@@ -149,10 +193,10 @@ describe('ProjectCard', () => {
 			const progressBar = wrapper.findComponent(NcProgressBar)
 			expect(progressBar.exists()).toBe(true)
 			expect(progressBar.props('value')).toBe(43) // Math.round(100 * 3 / 7)
-			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('3/7')
+			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('3 of 7')
 		})
 
-		it('shows 0/0 and value 0 when total is 0', () => {
+		it('shows No tasks yet without a progress bar when total is 0', () => {
 			const project = {
 				task: { uid: 'p-empty', summary: 'Empty Project' },
 				children: [],
@@ -165,11 +209,11 @@ describe('ProjectCard', () => {
 			})
 
 			const progressBar = wrapper.findComponent(NcProgressBar)
-			expect(progressBar.props('value')).toBe(0)
-			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('0/0')
+			expect(progressBar.exists()).toBe(false)
+			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('No tasks yet')
 		})
 
-		it('handles missing progress gracefully by displaying 0/0 and value 0', () => {
+		it('handles missing progress by showing No tasks yet', () => {
 			const project = {
 				task: { uid: 'p-none', summary: 'No Progress Project' },
 				children: [],
@@ -181,13 +225,13 @@ describe('ProjectCard', () => {
 			})
 
 			const progressBar = wrapper.findComponent(NcProgressBar)
-			expect(progressBar.props('value')).toBe(0)
-			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('0/0')
+			expect(progressBar.exists()).toBe(false)
+			expect(wrapper.find('.cc-project-card__progress-text').text()).toBe('No tasks yet')
 		})
 	})
 
 	describe('show done toggle', () => {
-		it('defaults to off and passes showDone=false to TaskTree', () => {
+		it('defaults to off and passes showDone=false to TaskTree', async () => {
 			const project = {
 				task: { uid: 'p-toggle-1', summary: 'Toggle Project' },
 				children: [],
@@ -199,16 +243,17 @@ describe('ProjectCard', () => {
 				global: { stubs: { AddTaskInput: AddTaskInputStub } },
 			})
 
-			const toggle = wrapper.findComponent(NcCheckboxRadioSwitch)
+			await wrapper.findComponent(NcActions).find('button').trigger('click')
+			await vi.waitFor(() => expect(wrapper.findComponent(NcActionCheckbox).exists()).toBe(true))
+			const toggle = wrapper.findComponent(NcActionCheckbox)
 			expect(toggle.exists()).toBe(true)
-			expect(toggle.props('type')).toBe('switch')
 			expect(toggle.props('modelValue')).toBe(false)
 
 			const tree = wrapper.findComponent(TaskTree)
 			expect(tree.props('showDone')).toBe(false)
 		})
 
-		it('reads initial on state from localStorage key cc_projects:showDone:<uid>', () => {
+		it('reads initial on state from localStorage key cc_projects:showDone:<uid>', async () => {
 			window.localStorage.setItem('cc_projects:showDone:p-saved', '1')
 
 			const project = {
@@ -221,7 +266,9 @@ describe('ProjectCard', () => {
 				global: { stubs: { AddTaskInput: AddTaskInputStub } },
 			})
 
-			const toggle = wrapper.findComponent(NcCheckboxRadioSwitch)
+			await wrapper.findComponent(NcActions).find('button').trigger('click')
+			await vi.waitFor(() => expect(wrapper.findComponent(NcActionCheckbox).exists()).toBe(true))
+			const toggle = wrapper.findComponent(NcActionCheckbox)
 			expect(toggle.props('modelValue')).toBe(true)
 
 			const tree = wrapper.findComponent(TaskTree)
@@ -237,7 +284,9 @@ describe('ProjectCard', () => {
 				global: { stubs: { AddTaskInput: AddTaskInputStub } },
 			})
 
-			const toggle = wrapper.findComponent(NcCheckboxRadioSwitch)
+			await wrapper.findComponent(NcActions).find('button').trigger('click')
+			await vi.waitFor(() => expect(wrapper.findComponent(NcActionCheckbox).exists()).toBe(true))
+			const toggle = wrapper.findComponent(NcActionCheckbox)
 			expect(toggle.props('modelValue')).toBe(false)
 			expect(window.localStorage.getItem('cc_projects:showDone:p-write')).toBeNull()
 
@@ -260,7 +309,7 @@ describe('ProjectCard', () => {
 			expect(wrapper.findComponent(TaskTree).props('showDone')).toBe(false)
 		})
 
-		it('behaves as off when localStorage.getItem throws', () => {
+		it('behaves as off when localStorage.getItem throws', async () => {
 			vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
 				throw new Error('SecurityError: Access Denied')
 			})
@@ -275,7 +324,9 @@ describe('ProjectCard', () => {
 				global: { stubs: { AddTaskInput: AddTaskInputStub } },
 			})
 
-			const toggle = wrapper.findComponent(NcCheckboxRadioSwitch)
+			await wrapper.findComponent(NcActions).find('button').trigger('click')
+			await vi.waitFor(() => expect(wrapper.findComponent(NcActionCheckbox).exists()).toBe(true))
+			const toggle = wrapper.findComponent(NcActionCheckbox)
 			expect(toggle.props('modelValue')).toBe(false)
 			expect(wrapper.findComponent(TaskTree).props('showDone')).toBe(false)
 		})
@@ -295,7 +346,9 @@ describe('ProjectCard', () => {
 				global: { stubs: { AddTaskInput: AddTaskInputStub } },
 			})
 
-			const toggle = wrapper.findComponent(NcCheckboxRadioSwitch)
+			await wrapper.findComponent(NcActions).find('button').trigger('click')
+			await vi.waitFor(() => expect(wrapper.findComponent(NcActionCheckbox).exists()).toBe(true))
+			const toggle = wrapper.findComponent(NcActionCheckbox)
 			await toggle.vm.$emit('update:modelValue', true)
 			await flushPromises()
 

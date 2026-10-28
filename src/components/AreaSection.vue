@@ -1,9 +1,10 @@
 <script setup>
 import { mdiPlus } from '@mdi/js'
-import { NcButton, NcIconSvgWrapper, NcTextField } from '@nextcloud/vue'
+import { NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import DoneStrip from './DoneStrip.vue'
+import GhostInput from './GhostInput.vue'
 import ProjectCard from './ProjectCard.vue'
 import { DRAG_OPTIONS, onSiblingDrop } from '../composables/useDrag.js'
 import { areaSlug, isSomeday } from '../models/tree.js'
@@ -104,19 +105,9 @@ async function createProject(area) {
 	}
 }
 
-/**
- * Clear the new project input field.
- */
-function clearProject() {
-	newProject.value = ''
-}
-
-/**
- * Focus the new project input field.
- */
+/** Open the new project field and focus it. */
 function focusNewProject() {
-	const el = newProjectInputRef.value?.$el?.querySelector('input') || newProjectInputRef.value
-	el?.focus?.()
+	newProjectInputRef.value?.activate()
 }
 
 </script>
@@ -149,6 +140,7 @@ function focusNewProject() {
 						:areaName="area.name" />
 				</template>
 			</Sortable>
+			<h4 v-if="somedayProjects.length" class="cc-area-section__someday-caption">Someday</h4>
 			<ProjectCard
 				v-for="project in somedayProjects"
 				:key="project.task?.uid || project.task?.summary"
@@ -168,15 +160,14 @@ function focusNewProject() {
 				New project in {{ area.name }}
 			</NcButton>
 		</div>
-		<DoneStrip :projects="area.done || []" />
-		<NcTextField
+		<GhostInput
 			ref="newProjectInputRef"
 			v-model="newProject"
 			class="cc-area-section__new-project"
-			placeholder="+ New project"
+			:label="`New project in ${area.name}`"
 			:disabled="creating"
-			@keydown.enter.prevent="createProject(area)"
-			@keydown.esc="clearProject" />
+			@submit="createProject(area)" />
+		<DoneStrip :projects="area.done || []" />
 	</section>
 </template>
 
@@ -207,6 +198,11 @@ function focusNewProject() {
 	display: flex;
 	flex-direction: column;
 	gap: calc(var(--default-grid-baseline, 4px) * 3);
+}
+
+.cc-area-section__someday-caption {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
 }
 
 .cc-area-section__sortable {
