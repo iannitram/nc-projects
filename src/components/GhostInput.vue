@@ -20,6 +20,8 @@ async function activate() {
 	field.value?.focus()
 }
 
+defineExpose({ activate })
+
 /** A disabled input loses focus, so take it back once creation finishes. */
 watch(() => props.disabled, async (now, before) => {
 	if (before && !now && editing.value) {
