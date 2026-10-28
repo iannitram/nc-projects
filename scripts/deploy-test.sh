@@ -26,6 +26,16 @@ if [ "$PROJECT" != "nc-projects-test" ]; then
   exit 1
 fi
 
+INSTALLED_VERSION="$(occ config:app:get cc_projects installed_version 2>/dev/null || true)"
+INSTALLED_VERSION="$(printf '%s' "$INSTALLED_VERSION" | tr -d '[:space:]')"
+if [ -n "$INSTALLED_VERSION" ]; then
+  NEW_VERSION="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' appinfo/info.xml | tr -d '[:space:]')"
+  if [ "$INSTALLED_VERSION" != "$NEW_VERSION" ] && [ "$(printf '%s\n%s\n' "$INSTALLED_VERSION" "$NEW_VERSION" | sort -V | head -n1)" = "$NEW_VERSION" ]; then
+    echo "installed version $INSTALLED_VERSION is newer than $NEW_VERSION: run 'bash test-env/recover.sh' after deploying a build with that version or higher, or to reset the test container with 'bash test-env/reset.sh' then 'bash test-env/setup.sh'" >&2
+    exit 1
+  fi
+fi
+
 echo "3/5 Copying the app into the test container"
 for d in appinfo lib templates img js css; do
   if [ ! -e "$d" ]; then
@@ -50,3 +60,14 @@ esac
 NEXT=$((10#$CURRENT + 1))
 occ config:app:set theming cachebuster --value="$NEXT"
 echo "theming cachebuster: $NEXT"
+
+STATUS_URL="http://127.0.0.1:${NC_TEST_PORT:-8089}/status.php"
+STATUS="$(curl -sS --max-time 5 "$STATUS_URL" 2>/dev/null || true)"
+if printf '%s' "$STATUS" | grep -q -e '"needsDbUpgrade":true' -e '"maintenance":true' -e '"needsDbUpgrade": true' -e '"maintenance": true'; then
+  bash test-env/recover.sh
+  STATUS="$(curl -sS --max-time 5 "$STATUS_URL" 2>/dev/null || true)"
+  if printf '%s' "$STATUS" | grep -q -e '"needsDbUpgrade":true' -e '"maintenance":true' -e '"needsDbUpgrade": true' -e '"maintenance": true' || [ -z "$STATUS" ]; then
+    echo "test container is still not clean after recover.sh" >&2
+    exit 1
+  fi
+fi
