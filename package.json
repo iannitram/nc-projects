@@ -19,7 +19,7 @@
     "@nextcloud/event-bus": "^3.3.3",
     "@nextcloud/router": "^3.2.0",
     "@nextcloud/vue": "^9.8.2",
-    "craft-bugreport-web": "github:iannitram/craft-bugreport-web#4549b81",
+    "craft-bugreport-web": "github:iannitram/craft-bugreport-web#f07b776",
     "ical.js": "^2.2.1",
     "pinia": "^3.0.4",
     "sortablejs": "~1.15.6",
