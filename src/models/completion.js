@@ -33,13 +33,15 @@ export function planCompletion(tasksByUid, uid, done) {
 			const currentUid = toProcess.shift()
 
 			// Process all children of the current task
-			for (const childUid in tasksByUid) {
+			for (const childTask of Object.values(tasksByUid)) {
+				const childUid = childTask.uid
 				if (!visited.has(childUid)) {
-					const childTask = tasksByUid[childUid]
-					if (childTask.parentUid === currentUid && !childTask.closed) {
-						result.push(childUid)
+					if (childTask.parentUid === currentUid) {
 						visited.add(childUid)
 						toProcess.push(childUid)
+						if (!childTask.closed) {
+							result.push(childUid)
+						}
 					}
 				}
 			}
@@ -63,9 +65,11 @@ export function planCompletion(tasksByUid, uid, done) {
 			const parentTask = tasksByUid[parentUid]
 
 			if (parentTask && !visited.has(parentUid)) {
-				// If we've reached a project, include it and stop
+				// Include a closed project, then stop at the project boundary.
 				if (parentTask.isProject) {
-					result.push(parentUid)
+					if (parentTask.closed) {
+						result.push(parentUid)
+					}
 					break
 				}
 
