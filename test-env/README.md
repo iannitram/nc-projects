@@ -40,6 +40,7 @@ bash scripts/deploy-test.sh
 ```
 
 It runs `npm ci && npm run build`, copies `appinfo/ lib/ templates/ img/ js/ css/` into `cc_projects` in the **test** container, runs `occ app:enable cc_projects`, and bumps the theming cachebuster. It refuses any container that is not compose project `nc-projects-test`; there is no live-install script.
+Before copying, it stops if `appinfo/info.xml` has no readable `<version>` or the container has a newer installed version. After deploy, it requires `/status.php` to report `maintenance:false` and `needsDbUpgrade:false` (an unreachable or empty answer counts as not clean), runs `test-env/recover.sh` if not, and exits 1 if it is still not clean.
 
 Nextcloud serves app JS with a 6-month immutable cache keyed on the app version plus the theming cachebuster, so the script's bump is what makes browsers load the new build. It never changes `<version>` in `appinfo/info.xml`: a version change forces `occ upgrade` (and an interrupted one leaves maintenance mode on; see Recover).
 
