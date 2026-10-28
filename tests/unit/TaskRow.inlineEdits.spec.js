@@ -1,4 +1,3 @@
-import { NcDateTimePickerNative } from '@nextcloud/vue'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, reactive } from 'vue'
@@ -17,13 +16,41 @@ vi.mock('@nextcloud/router', async (importOriginal) => ({
 
 import TaskRow from '../../src/components/TaskRow.vue'
 
+// NcActions renders its items only when the menu is open, so the tests render them inline.
 const NcActionsStub = {
 	template: '<div class="nc-actions-stub"><slot /></div>',
+}
+
+const NcActionInputStub = {
+	name: 'NcActionInput',
+	props: ['modelValue', 'type', 'label'],
+	emits: ['update:modelValue'],
+	template: '<div class="nc-action-input-stub" :aria-label="label"><slot /></div>',
 }
 
 const NcActionButtonStub = {
 	emits: ['click'],
 	template: '<button class="nc-action-button-stub" @click="$emit(\'click\')"><slot /></button>',
+}
+
+const NcActionRadioStub = {
+	name: 'NcActionRadio',
+	props: ['modelValue', 'value'],
+	emits: ['update:modelValue'],
+	template: '<label class="nc-action-radio-stub"><input type="radio" :checked="modelValue === value" @change="$emit(\'update:modelValue\', value)"><slot /></label>',
+}
+
+const NcActionLinkStub = {
+	props: ['href'],
+	template: '<a class="nc-action-link-stub" :href="href"><slot /></a>',
+}
+
+const menuStubs = {
+	NcActions: NcActionsStub,
+	NcActionInput: NcActionInputStub,
+	NcActionButton: NcActionButtonStub,
+	NcActionRadio: NcActionRadioStub,
+	NcActionLink: NcActionLinkStub,
 }
 
 function node(overrides = {}) {
@@ -44,7 +71,7 @@ function node(overrides = {}) {
 }
 
 function mountRow(task = node()) {
-	return mount(TaskRow, { props: { node: task } })
+	return mount(TaskRow, { props: { node: task }, global: { stubs: menuStubs } })
 }
 
 async function openTitleEditor(wrapper) {
@@ -140,53 +167,86 @@ describe('TaskRow inline edits', () => {
 	})
 
 	describe('due date', () => {
+		const due = new Date(Date.UTC(2026, 10, 5, 12, 0, 0))
+
+		it('renders no date input and no chip at rest', () => {
+			const wrapper = mount(TaskRow, { props: { node: node() } })
+
+			expect(wrapper.find('input[type="date"]').exists()).toBe(false)
+			expect(wrapper.find('.cc-task-row__due').exists()).toBe(false)
+			expect(wrapper.find('.cc-task-row__clear-due').exists()).toBe(false)
+			expect(wrapper.find('.cc-task-open-in-tasks').exists()).toBe(false)
+		})
+
+		it('shows a due chip only when a date is set, overdue in the error class', () => {
+			const future = new Date(Date.now() + 5 * 86400000)
+			const wrapper = mountRow(node({ due: future }))
+			const chip = wrapper.find('.cc-task-row__due')
+
+			expect(chip.exists()).toBe(true)
+			expect(chip.classes()).not.toContain('is-overdue')
+
+			const overdue = mountRow(node({ due: new Date(2020, 0, 3) })).find('.cc-task-row__due')
+			expect(overdue.classes()).toContain('is-overdue')
+			expect(overdue.text()).toContain('overdue')
+		})
+
+		it('does not mark a completed task overdue', () => {
+			const wrapper = mountRow(node({ due: new Date(2020, 0, 3), completed: true }))
+
+			expect(wrapper.find('.cc-task-row__due').classes()).not.toContain('is-overdue')
+		})
+
+		it('has a "Due date…" menu input of type date', () => {
+			const input = mountRow().findComponent(NcActionInputStub)
+
+			expect(input.props('type')).toBe('date')
+			expect(input.attributes('aria-label')).toBe('Due date…')
+		})
+
 		it('sets DUE with the picked date', async () => {
 			const wrapper = mountRow()
-			const picker = wrapper.findComponent(NcDateTimePickerNative)
-			const due = new Date(Date.UTC(2026, 10, 5, 12, 0, 0))
 
-			await picker.vm.$emit('update:modelValue', due)
+			await wrapper.findComponent(NcActionInputStub).vm.$emit('update:modelValue', due)
 
 			expect(updateTask).toHaveBeenCalledTimes(1)
 			expect(updateTask).toHaveBeenCalledWith('t1', { due })
 		})
 
 		it('does not write an empty value', async () => {
-			const wrapper = mountRow(node({ due: new Date(Date.UTC(2026, 10, 5, 12, 0, 0)) }))
-			const picker = wrapper.findComponent(NcDateTimePickerNative)
+			const wrapper = mountRow(node({ due }))
 
-			await picker.vm.$emit('update:modelValue', null)
+			await wrapper.findComponent(NcActionInputStub).vm.$emit('update:modelValue', null)
 
 			expect(updateTask).not.toHaveBeenCalled()
 		})
 
 		it('does not write an invalid date', async () => {
 			const wrapper = mountRow()
-			const picker = wrapper.findComponent(NcDateTimePickerNative)
 
-			await picker.vm.$emit('update:modelValue', new Date(NaN))
+			await wrapper.findComponent(NcActionInputStub).vm.$emit('update:modelValue', new Date(NaN))
 
 			expect(updateTask).not.toHaveBeenCalled()
 		})
 
-		it('clears the due date with the Clear action', async () => {
-			const wrapper = mountRow(node({ due: new Date(Date.UTC(2026, 10, 5, 12, 0, 0)) }))
-			const clear = wrapper.find('.cc-task-row__clear-due')
+		it('clears the due date from the menu and changes nothing else (M15)', async () => {
+			const wrapper = mountRow(node({ due }))
+			const clear = wrapper.findAll('.nc-action-button-stub').find((item) => item.text() === 'Clear due date')
 
-			expect(clear.exists()).toBe(true)
+			expect(clear).toBeTruthy()
 			await clear.trigger('click')
 
 			expect(updateTask).toHaveBeenCalledTimes(1)
 			expect(updateTask).toHaveBeenCalledWith('t1', { due: null })
 		})
 
-		it('hides the Clear action when there is no due date', () => {
+		it('hides "Clear due date" when there is no due date', () => {
 			const wrapper = mountRow()
 
-			expect(wrapper.find('.cc-task-row__clear-due').exists()).toBe(false)
+			expect(wrapper.findAll('.nc-action-button-stub').some((item) => item.text() === 'Clear due date')).toBe(false)
 		})
 
-		it('renders the task DUE date in the picker', () => {
+		it('hands the task DUE date to the menu input', () => {
 			const ics = [
 				'BEGIN:VCALENDAR',
 				'VERSION:2.0',
@@ -205,13 +265,15 @@ describe('TaskRow inline edits', () => {
 			}))
 			const wrapper = mount(TaskRow, {
 				props: { node: { task, children: [], deeper: 0 } },
+				global: { stubs: menuStubs },
 			})
 
-			const value = wrapper.findComponent(NcDateTimePickerNative).props('modelValue')
+			const value = wrapper.findComponent(NcActionInputStub).props('modelValue')
 			expect(value).toBeInstanceOf(Date)
 			expect(value.getFullYear()).toBe(2030)
 			expect(value.getMonth()).toBe(2)
 			expect(value.getDate()).toBe(4)
+			expect(wrapper.find('.cc-task-row__due').text()).toMatch(/Mar/)
 		})
 	})
 
@@ -223,32 +285,52 @@ describe('TaskRow inline edits', () => {
 			['None', 0],
 		]
 
-		it.each(labels)('sets %s to %i', async (label, value) => {
-			const wrapper = mount(TaskRow, {
-				props: { node: node() },
-				global: {
-					stubs: {
-						NcActions: NcActionsStub,
-						NcActionButton: NcActionButtonStub,
-					},
-				},
-			})
+		it('offers four radios with names', () => {
+			const radios = mountRow().findAll('.nc-action-radio-stub')
 
-			const button = wrapper.findAll('.nc-action-button-stub').find((item) => item.text() === label)
-			await button.trigger('click')
+			expect(radios.map((item) => item.text())).toEqual(['High', 'Medium', 'Low', 'None'])
+		})
+
+		it.each(labels)('sets %s to %i and writes only the priority', async (label, value) => {
+			const wrapper = mountRow()
+
+			const radio = wrapper.findAll('.nc-action-radio-stub').find((item) => item.text() === label)
+			await radio.find('input').trigger('change')
 
 			expect(updateTask).toHaveBeenCalledTimes(1)
 			expect(updateTask).toHaveBeenCalledWith('t1', { priority: value })
 		})
+
+		it.each([
+			[1, 'high'],
+			[4, 'high'],
+			[5, 'medium'],
+			[6, 'low'],
+			[9, 'low'],
+			[0, 'none'],
+			[null, 'none'],
+		])('priority %s gives the %s ring and checks that radio', (priority, level) => {
+			const wrapper = mountRow(node({ priority }))
+
+			expect(wrapper.find('.cc-task-row__checkbox').classes()).toContain(`cc-task-row__checkbox--${level}`)
+			const checked = wrapper.findAll('.nc-action-radio-stub').filter((item) => item.find('input').element.checked)
+			expect(checked.map((item) => item.text())).toEqual([{ high: 'High', medium: 'Medium', low: 'Low', none: 'None' }[level]])
+		})
 	})
 
-	it('links to the task in Tasks', () => {
+	it('links to the task in Tasks from the menu', () => {
 		const wrapper = mountRow()
 
-		const link = wrapper.find('.cc-task-open-in-tasks')
+		const link = wrapper.find('.nc-action-link-stub')
 		expect(link.exists()).toBe(true)
 		expect(link.text()).toBe('Open in Tasks')
 		expect(link.attributes('href')).toBe('/apps/tasks/calendars/list-a/tasks/t1.ics')
+	})
+
+	it('names the menu button after the task', () => {
+		const wrapper = mount(TaskRow, { props: { node: node() } })
+
+		expect(wrapper.find(`[aria-label="Actions for ${node().task.summary}"]`).exists()).toBe(true)
 	})
 
 	it('does not let mousedown on an edit control bubble to the row', async () => {
@@ -258,9 +340,6 @@ describe('TaskRow inline edits', () => {
 
 		const input = await openTitleEditor(wrapper)
 		await input.trigger('mousedown')
-
-		const dateInput = wrapper.findComponent(NcDateTimePickerNative).find('input')
-		await dateInput.trigger('mousedown')
 
 		expect(rowMousedown).not.toHaveBeenCalled()
 	})

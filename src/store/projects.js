@@ -703,16 +703,6 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 			} catch (error) {
-				// Handle ConflictError differently: reload every task of the change
-				if (error instanceof ConflictError) {
-					const reloaded = await this.handleConflict(toUpdate.map(({ uid }) => this.tasksByUid[uid]?.url).filter(Boolean))
-					if (!reloaded) {
-						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-						showError('Could not save the new order')
-					}
-					return
-				}
-
 				for (const [uid, original] of before) {
 					if (!landed.has(uid)) {
 						this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
@@ -739,6 +729,17 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 				this.rebuildTree()
+
+				// Handle ConflictError differently: reload the conflicted task
+				if (error instanceof ConflictError) {
+					const reloaded = await this.handleConflict([error.url])
+					if (!reloaded) {
+						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+						showError('Could not save the new order')
+					}
+					return
+				}
+
 				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 				showError('Could not save the new order')
 			}
@@ -836,32 +837,6 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 			} catch (error) {
-				// Handle ConflictError differently: reload every task of the change
-				if (error instanceof ConflictError) {
-					try {
-						for (const { uid } of toUpdate) {
-							const task = this.tasksByUid[uid]
-							if (task) {
-								const stored = await fetchTodo(task.url)
-								const updatedTask = Task.fromIcs(stored.ics, {
-									url: stored.url,
-									etag: stored.etag,
-									calendarUrl: stored.calendarUrl,
-								})
-								this.tasksByUid[uid] = updatedTask
-							}
-						}
-
-						rebuild()
-						showInfo('Someone else changed this; reloaded')
-					} catch {
-						// If reload fails, show error
-						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-						showError('Could not save the move')
-					}
-					return
-				}
-
 				for (const [uid, original] of before) {
 					if (!landed.has(uid)) {
 						this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
@@ -888,6 +863,17 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 				rebuild()
+
+				// Handle ConflictError differently: reload the conflicted task
+				if (error instanceof ConflictError) {
+					const reloaded = await this.handleConflict([error.url])
+					if (!reloaded) {
+						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+						showError('Could not save the move')
+					}
+					return
+				}
+
 				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 				showError('Could not save the move')
 			}
@@ -937,8 +923,25 @@ export const useProjectsStore = defineStore('projects', {
 			}
 		},
 		/**
+		 * Toggle one status tag through the ordinary guarded update path.
+		 *
+		 * @param {string} uid the project task
+		 * @param {string} category the status category
+		 */
+		async toggleCategory(uid, category) {
+			const task = this.tasksByUid[uid]
+			if (!task || !['blocked', 'someday'].includes(category)) {
+				return
+			}
+			const categories = task.categories
+			const hasCategory = categories.some((value) => value.toLowerCase() === category)
+			await this.updateTask(uid, { categories: hasCategory
+				? categories.filter((value) => value.toLowerCase() !== category)
+				: [...categories, category] })
+		},
+		/**
 		 * @param {string} uid the task
-		 * @param {{summary?: string, due?: (Date|null), priority?: number}} changes quick edits
+		 * @param {{summary?: string, due?: (Date|null), priority?: number, categories?: string[]}} changes quick edits
 		 */
 		async updateTask(uid, changes) {
 			this.davSession ??= markRaw(getDavSession())
@@ -963,6 +966,10 @@ export const useProjectsStore = defineStore('projects', {
 			// Handle priority: 0 removes the property, others set the value
 			if ('priority' in changes) {
 				task.priority = changes.priority
+			}
+
+			if ('categories' in changes) {
+				task.categories = changes.categories
 			}
 
 			// Rebuild the tree with the updated task, preserving collapse state.

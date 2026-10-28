@@ -5,26 +5,48 @@ declare(strict_types=1);
 namespace OCA\CcProjects\Tests;
 
 use OCA\CcProjects\Controller\PageController;
-use OCP\App\IAppManager; // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+use OCP\App\IAppManager;
 use OCP\AppFramework\Http\TemplateResponse;
-use OCP\IAppConfig; // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-use OCP\IConfig; // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+use OCP\AppFramework\Services\IInitialState;
+use OCP\IAppConfig;
 use OCP\IRequest;
+use OCP\ServerVersion;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface; // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 
 final class PageControllerTest extends TestCase {
 	public function testIndexReturnsTheMainTemplate(): void {
-		$controller = new PageController( // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-			$this->createMock(IRequest::class), // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-			$this->createMock(IAppConfig::class), // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-			$this->createMock(IAppManager::class), // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-			$this->createMock(IConfig::class), // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$controller = new PageController(
+			$this->createMock(IRequest::class),
+			$this->createMock(IInitialState::class),
+			$this->createMock(IAppManager::class),
+			$this->createMock(IAppConfig::class),
+			$this->createMock(ServerVersion::class),
 		); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 
 		$response = $controller->index();
 
 		$this->assertInstanceOf(TemplateResponse::class, $response);
+	}
+
+	public function testInitialStateContainsMetadataAndReadinessOnly(): void {
+		$state = $this->createMock(IInitialState::class);
+		$apps = $this->createMock(IAppManager::class);
+		$apps->method('getAppVersion')->with('cc_projects')->willReturn('0.1.0');
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturnCallback(fn ($app, $key) => $key === 'bug_drop_base' ? 'https://drop.example.invalid' : 'TEST-TOKEN-123');
+		$version = $this->createMock(ServerVersion::class);
+		$version->method('getVersionString')->willReturn('33.0.10');
+		$state->expects($this->once())->method('provideInitialState')->with('bugReport', $this->callback(function ($data): bool {
+			$this->assertSame(['version', 'commit', 'ncVersion', 'configured'], array_keys($data));
+			$this->assertSame('0.1.0', $data['version']);
+			$this->assertSame('33.0.10', $data['ncVersion']);
+			$this->assertTrue($data['configured']);
+			$this->assertStringNotContainsString('TEST-TOKEN-123', json_encode($data));
+			$this->assertStringNotContainsString('https://drop.example.invalid', str_replace('\\/', '/', json_encode($data)));
+			return true;
+		}));
+		$response = (new PageController($this->createMock(IRequest::class), $state, $apps, $config, $version))->index();
 		$this->assertSame('main', $response->getTemplateName());
 		$this->assertSame('cc_projects', $response->getApp());
 	}
@@ -32,12 +54,12 @@ final class PageControllerTest extends TestCase {
 	// TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 	public function testIndexPassesTheCrashLogSwitchAndTheVersionsToThePage(): void { // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 		$appConfig = $this->createMock(IAppConfig::class); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-		$appConfig->expects($this->once())->method('getValueString')->with('cc_projects', 'crash_log', '1')->willReturn('0'); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$appConfig->method('getValueString')->willReturnCallback(fn ($app, $key, $default = '') => $key === 'crash_log' ? '0' : ''); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 		$appManager = $this->createMock(IAppManager::class); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 		$appManager->method('getAppVersion')->willReturn('0.1.0'); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-		$config = $this->createMock(IConfig::class); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-		$config->method('getSystemValueString')->with('version', '')->willReturn('33.0.10.1'); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-		$controller = new PageController($this->createMock(IRequest::class), $appConfig, $appManager, $config); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$version = $this->createMock(ServerVersion::class); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$version->method('getVersionString')->willReturn('33.0.10.1'); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$controller = new PageController($this->createMock(IRequest::class), $this->createMock(IInitialState::class), $appManager, $appConfig, $version); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 
 		$response = $controller->index(); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 
@@ -51,7 +73,7 @@ final class PageControllerTest extends TestCase {
 		$logger = $this->createMock(LoggerInterface::class); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 		$logger->expects($this->once())->method('error') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 			->with($this->stringContains('server exception in OCA\CcProjects\Controller\PageController::index: RuntimeException: row … missing'), ['app' => 'cc_projects']); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-		$controller = new PageController($this->createMock(IRequest::class), $appConfig, $this->createMock(IAppManager::class), $this->createMock(IConfig::class), $logger); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		$controller = new PageController($this->createMock(IRequest::class), $this->createMock(IInitialState::class), $this->createMock(IAppManager::class), $appConfig, $this->createMock(ServerVersion::class), $logger); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 
 		$this->expectException(\RuntimeException::class); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 		$controller->index(); // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)

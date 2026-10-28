@@ -17,7 +17,7 @@ export default defineConfig({
 		},
 		server: {
 			deps: {
-				inline: [/@nextcloud/],
+				inline: [/@nextcloud/, /craft-bugreport-web/],
 			},
 		},
 	},

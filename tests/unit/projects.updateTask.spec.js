@@ -105,6 +105,34 @@ describe('projects store updateTask', () => {
 		expect(store.tasksByUid.t1.etag).toBe('"t1-e2"')
 	})
 
+	it('toggles only the requested category, preserving ICS fields and rebuilding the someday order', async () => {
+		const extra = ['X-CC-NOTE;X-KEEP=yes:keep', 'X-FORK-STATE:waiting', 'RELATED-TO;RELTYPE=SIBLING:other', 'PRIORITY:5']
+		const store = await loadStore([
+			stored('P', { categories: 'project,custom\\,tag', sort: 10, extra }),
+			stored('Q', { categories: 'project', sort: 20 }),
+		])
+		for (const category of ['blocked', 'someday', 'blocked', 'someday']) {
+			await store.toggleCategory('P', category)
+		}
+		const expected = [
+			'CATEGORIES:project,custom\\,tag,blocked',
+			'CATEGORIES:project,custom\\,tag,blocked,someday',
+			'CATEGORIES:project,custom\\,tag,someday',
+			'CATEGORIES:project,custom\\,tag',
+		]
+		putTodo.mock.calls.forEach((call, index) => {
+			expect(call[1].split('\r\n').find((line) => line.startsWith('CATEGORIES:'))).toBe(expected[index])
+			for (const line of [...extra, 'X-APPLE-SORT-ORDER:10', 'SUMMARY:P']) {
+				expect(call[1]).toContain(line)
+			}
+			expect(Task.fromIcs(call[1]).categories).toContain('custom,tag')
+		})
+		await store.toggleCategory('P', 'someday')
+		expect(store.areas[0].projects.map((node) => node.task.uid)).toEqual(['Q', 'P'])
+		await store.toggleCategory('P', 'someday')
+		expect(store.areas[0].projects.map((node) => node.task.uid)).toEqual(['P', 'Q'])
+	})
+
 	it('sets a due date from a Date, and clears it with null', async () => {
 		const store = await loadStore(todos())
 

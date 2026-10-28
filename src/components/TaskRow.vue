@@ -46,7 +46,8 @@ export function getTasksDeepLink(task) {
 </script>
 
 <script setup>
-import { NcActionButton, NcActions, NcCheckboxRadioSwitch, NcDateTimePickerNative, NcTextField } from '@nextcloud/vue'
+import { mdiDotsHorizontal } from '@mdi/js'
+import { NcActionButton, NcActionInput, NcActionLink, NcActionRadio, NcActions, NcActionSeparator, NcCheckboxRadioSwitch, NcIconSvgWrapper, NcTextField } from '@nextcloud/vue'
 import { computed, nextTick, ref, toRaw } from 'vue'
 import { useProjectsStore } from '../store/projects.js'
 
@@ -54,15 +55,18 @@ const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').TaskNode>} */
 	node: { type: Object, required: true },
 })
+/**
+ *
+ */
 function onCompletionChange() {
 	useProjectsStore().setCompleted(props.node?.task?.uid, !isCompleted.value)
 }
 
 const PRIORITY_OPTIONS = [
-	{ value: 1, label: 'High' },
-	{ value: 5, label: 'Medium' },
-	{ value: 9, label: 'Low' },
-	{ value: 0, label: 'None' },
+	{ value: 1, level: 'high', label: 'High' },
+	{ value: 5, level: 'medium', label: 'Medium' },
+	{ value: 9, level: 'low', label: 'Low' },
+	{ value: 0, level: 'none', label: 'None' },
 ]
 
 const editing = ref(false)
@@ -108,12 +112,31 @@ const dueDate = computed(() => {
 	return null
 })
 
-const priority = computed(() => {
+/** The priority bucket as Tasks reads it: 1-4 high, 5 medium, 6-9 low, anything else none. */
+const priorityLevel = computed(() => {
 	const value = Number(task.value?.priority)
-	return PRIORITY_OPTIONS.some((option) => option.value === value) ? value : 0
+	if (value >= 1 && value <= 4) {
+		return 'high'
+	}
+	if (value === 5) {
+		return 'medium'
+	}
+	if (value >= 6 && value <= 9) {
+		return 'low'
+	}
+	return 'none'
 })
 
-const priorityLabel = computed(() => PRIORITY_OPTIONS.find((option) => option.value === priority.value)?.label ?? 'None')
+/** The due date as a short chip ("Fri 31 Oct"), and whether it is past (open tasks only). */
+const dueLabel = computed(() => dueDate.value?.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) ?? '')
+const isOverdue = computed(() => {
+	if (!dueDate.value || isCompleted.value) {
+		return false
+	}
+	const endOfDueDay = new Date(dueDate.value)
+	endOfDueDay.setHours(23, 59, 59, 999)
+	return endOfDueDay.getTime() < Date.now()
+})
 
 /**
  * Send one quick edit through the store (it writes only that field, with If-Match).
@@ -195,12 +218,13 @@ function setPriority(value) {
 <template>
 	<div
 		class="cc-task-row"
-		:class="{ 'is-completed': isCompleted }">
+		:class="{ 'is-completed': isCompleted, [`cc-task-row--priority-${priorityLevel}`]: true }">
 		<NcCheckboxRadioSwitch
 			class="cc-task-row__checkbox"
+			:class="`cc-task-row__checkbox--${priorityLevel}`"
 			:isChecked="isCompleted"
 			:modelValue="isCompleted"
-			aria-label="Task completed"
+			:aria-label="isCompleted ? `Reopen ${summary}` : `Check off ${summary}`"
 			@update:modelValue="onCompletionChange" />
 		<NcTextField
 			v-if="editing"
@@ -225,64 +249,76 @@ function setPriority(value) {
 			@keydown.space.prevent="startEdit">
 			{{ summary }}
 		</span>
-		<NcDateTimePickerNative
-			class="cc-task-row__date cc-no-drag"
-			:modelValue="dueDate"
-			type="date"
-			label="Due date"
-			hideLabel
-			clearable
-			aria-label="Due date"
-			@update:modelValue="setDue"
-			@mousedown.stop
-			@pointerdown.stop
-			@touchstart.stop />
-		<button
+		<span
 			v-if="dueDate"
-			type="button"
-			class="cc-task-row__clear-due cc-no-drag"
-			aria-label="Clear due date"
-			@click="clearDue"
+			class="cc-task-row__due"
+			:class="{ 'is-overdue': isOverdue }">
+			{{ dueLabel }}<span v-if="isOverdue" class="hidden-visually"> (overdue)</span>
+		</span>
+		<a
+			v-if="node.deeper && node.deeper > 0"
+			:href="tasksDeepLink"
+			class="cc-task-deeper cc-no-drag"
 			@mousedown.stop
 			@pointerdown.stop
 			@touchstart.stop>
-			Clear due date
-		</button>
+			{{ node.deeper }} more {{ node.deeper === 1 ? 'level' : 'levels' }} in Tasks
+		</a>
 		<NcActions
-			class="cc-task-row__priority-menu cc-no-drag"
-			menuName="Priority"
-			:aria-label="`Priority: ${priorityLabel}`"
+			class="cc-task-row__menu cc-no-drag"
+			:aria-label="`Actions for ${summary}`"
 			@mousedown.stop
 			@pointerdown.stop
 			@touchstart.stop>
+			<template #icon>
+				<NcIconSvgWrapper :path="mdiDotsHorizontal" :size="20" />
+			</template>
+			<NcActionInput
+				class="cc-no-drag"
+				type="date"
+				label="Due date…"
+				:modelValue="dueDate"
+				@update:modelValue="setDue"
+				@mousedown.stop
+				@pointerdown.stop
+				@touchstart.stop>
+				Due date…
+			</NcActionInput>
 			<NcActionButton
+				v-if="dueDate"
+				class="cc-no-drag"
+				@click="clearDue"
+				@mousedown.stop
+				@pointerdown.stop
+				@touchstart.stop>
+				Clear due date
+			</NcActionButton>
+			<NcActionSeparator />
+			<NcActionRadio
 				v-for="option in PRIORITY_OPTIONS"
 				:key="option.value"
 				class="cc-no-drag"
-				@click="setPriority(option.value)"
+				name="cc-task-priority"
+				:modelValue="priorityLevel"
+				:value="option.level"
+				@update:modelValue="setPriority(option.value)"
 				@mousedown.stop
 				@pointerdown.stop
 				@touchstart.stop>
 				{{ option.label }}
-			</NcActionButton>
+			</NcActionRadio>
+			<NcActionSeparator />
+			<!-- "Move to project…" goes here (the dialog is #120, cluster P3). -->
+			<NcActionLink
+				v-if="task"
+				class="cc-no-drag cc-task-open-in-tasks"
+				:href="tasksDeepLink"
+				@mousedown.stop
+				@pointerdown.stop
+				@touchstart.stop>
+				Open in Tasks
+			</NcActionLink>
 		</NcActions>
-		<a
-			v-if="task"
-			:href="tasksDeepLink"
-			class="cc-task-open-in-tasks cc-no-drag"
-			title="Open in Tasks"
-			@mousedown.stop
-			@pointerdown.stop
-			@touchstart.stop>
-			Open in Tasks
-		</a>
-		<a
-			v-if="node.deeper && node.deeper > 0"
-			:href="tasksDeepLink"
-			class="cc-task-deeper"
-			:title="`Open task in Tasks (${node.deeper} deeper subtasks)`">
-			+{{ node.deeper }} deeper
-		</a>
 	</div>
 </template>
 
@@ -291,18 +327,73 @@ function setPriority(value) {
 	display: flex;
 	align-items: center;
 	gap: calc(var(--default-grid-baseline, 4px) * 2);
-	padding: 4px 6px;
+	min-height: var(--default-clickable-area, 44px);
+	padding: 0 6px;
 	border-radius: var(--border-radius-element, 4px);
 	flex: 1;
+	min-width: 0;
+}
+
+.cc-task-row:hover,
+.cc-task-row:focus-within {
+	background: var(--color-background-hover);
 }
 
 .cc-task-row.is-completed .cc-task-row__title {
 	text-decoration: line-through;
-	color: var(--color-text-maxcontrast, #777);
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Priority ring, as in Tasks. NcCheckboxRadioSwitch draws the box as an inline
+ * SVG that carries its own fill, so colour the SVG and its path (not only the
+ * wrapper). Strong text-level variables: --color-error is a pale tint here.
+ * The checked state is left alone.
+ */
+.cc-task-row__checkbox--high,
+.cc-task-row__checkbox--medium,
+.cc-task-row__checkbox--low {
+	--cc-priority-color: var(--color-primary-element);
+}
+
+.cc-task-row__checkbox--high {
+	--cc-priority-color: var(--color-error-text);
+}
+
+.cc-task-row__checkbox--medium {
+	--cc-priority-color: var(--color-warning-text);
+}
+
+.cc-task-row__checkbox--low {
+	--cc-priority-color: var(--color-primary-element);
+}
+
+.cc-task-row__checkbox--high :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg),
+.cc-task-row__checkbox--medium :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg),
+.cc-task-row__checkbox--low :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg),
+.cc-task-row__checkbox--high :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg path),
+.cc-task-row__checkbox--medium :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg path),
+.cc-task-row__checkbox--low :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg path) {
+	color: var(--cc-priority-color);
+	fill: var(--cc-priority-color);
+}
+
+/* Priority ring, as in Tasks: high, medium, low. Theme variables only. */
+.cc-task-row__checkbox--high :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked)) {
+	color: var(--color-error);
+}
+
+.cc-task-row__checkbox--medium :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked)) {
+	color: var(--color-warning);
+}
+
+.cc-task-row__checkbox--low :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked)) {
+	color: var(--color-primary-element);
 }
 
 .cc-task-row__title {
 	flex: 1;
+	min-width: 0;
 	font-size: 0.95rem;
 	cursor: text;
 }
@@ -312,37 +403,40 @@ function setPriority(value) {
 	min-width: 8rem;
 }
 
-.cc-task-row__date {
-	max-width: 10rem;
+/* Same height as the row, so the list does not jump while renaming. */
+.cc-task-row__title-input :deep(input) {
+	height: var(--default-clickable-area, 44px);
+	margin: 0;
 }
 
-.cc-task-row__clear-due {
+.cc-task-row__due {
 	flex-shrink: 0;
 	font-size: 0.85rem;
-	color: var(--color-primary-element);
-	background: none;
-	border: none;
-	cursor: pointer;
-	padding: 0;
-}
-
-.cc-task-row__clear-due:hover {
-	text-decoration: underline;
-}
-
-.cc-task-row__priority-menu {
-	flex-shrink: 0;
-}
-
-.cc-task-open-in-tasks {
-	font-size: 0.85rem;
-	color: var(--color-primary-element);
-	text-decoration: none;
 	white-space: nowrap;
+	color: var(--color-text-maxcontrast);
 }
 
-.cc-task-open-in-tasks:hover {
-	text-decoration: underline;
+.cc-task-row__due.is-overdue {
+	color: var(--color-error-text);
+	font-weight: 600;
+}
+
+/* The menu shows on hover or focus with a pointer, always on touch. */
+.cc-task-row__menu {
+	flex-shrink: 0;
+	visibility: hidden;
+}
+
+.cc-task-row:hover .cc-task-row__menu,
+.cc-task-row:focus-within .cc-task-row__menu,
+.cc-task-row__menu:has([aria-expanded='true']) {
+	visibility: visible;
+}
+
+@media (hover: none) {
+	.cc-task-row__menu {
+		visibility: visible;
+	}
 }
 
 .cc-no-drag {
@@ -350,16 +444,16 @@ function setPriority(value) {
 }
 
 .cc-task-deeper {
+	flex-shrink: 0;
 	font-size: 0.85rem;
-	font-weight: 600;
-	color: var(--color-primary, #0082c9);
+	color: var(--color-text-maxcontrast);
 	text-decoration: none;
-	padding: 2px 6px;
-	border: 1px dashed var(--color-primary, #0082c9);
-	border-radius: var(--border-radius-element, 4px);
+	white-space: nowrap;
 }
 
-.cc-task-deeper:hover {
-	background: var(--color-primary-element-light, rgba(0, 130, 201, 0.1));
+.cc-task-deeper:hover,
+.cc-task-deeper:focus-visible {
+	color: var(--color-main-text);
+	text-decoration: underline;
 }
 </style>
