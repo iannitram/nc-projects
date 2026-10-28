@@ -43,6 +43,7 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 | ID | Feature | Complexity | Notes |
 |---|---|---|---|
 | P05 | **Panel view** | Medium | Needs P04, P00(b). Areas, project cards, open tasks, collapsible subtasks with a "+N deeper" note past level 3 (opens that task in Tasks), done/total progress bar over every task at every level under the project, "show done" toggle Store `load` merged 2026-10-26 (#12); the panel view is PR #43 (#13). Progress bar and show-done (#14) not started. |
+| P06 | **Status badges and Done strip** | Low | Needs P05. `blocked` red, `someday` greyed and sunk to the bottom of its area; completed projects in a collapsed Done strip per area. Checking off a project also checks off its open tasks (as Tasks does) Badges, someday greying and the Done strip are PR #73 (#16); checking off a project's open tasks not started. |
 
 ## Unwritten
 
@@ -57,11 +58,10 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 | ID | Feature | Complexity | Notes |
 |---|---|---|---|
 | P01 | **App skeleton**: `cc_projects`, "Projects" nav entry, page that mounts the Vue app, Vite build | Low | Files and stubs landed 2026-10-26 (CODE_MAP). Lockfiles and `npm ci` in CI merged 2026-10-26 (#2). Left: `scripts/deploy-test.sh` and loading it in the test container with an empty panel (#4). |
-| P06 | **Status badges and Done strip** | Low | Needs P05. `blocked` red, `someday` greyed and sunk to the bottom of its area; completed projects in a collapsed Done strip per area. Checking off a project also checks off its open tasks (as Tasks does) |
 | P07 | **+ Add task** under a project | Low | Needs P05. New VTODO on the project's list with bare `RELATED-TO:<project uid>`; lands at the bottom (no sort order until a drag) |
 | P08 | **Drag to reorder tasks** within a project | Medium | Needs P05, P00(a). Tasks' own rule (CODE_MAP §Facts): moved task takes neighbour ±1, later colliding siblings bumped by one; unordered tasks placed by creation time exactly as Tasks does Built: the pure order rule `sortOrder.js` (#9, merged 2026-10-26). Left: the drag wiring (#19). |
 | P09 | **Drag to reorder projects** within an area | Low | Needs P08. Same order field, on the project VTODOs |
-| P10 | **Refresh and conflict safety** | Medium | Needs P05. Refresh on tab focus and every ~2 min (etag/ctag compare, not a full reload). Every PUT sends If-Match; a 412 reloads that task and shows a quiet notice Built: `dav.js` writes with `ConflictError` on 412 (#15, merged 2026-10-26). Left: the store's `refresh`, the 2-minute loop and the notice (#21), and #34. |
+| P10 | **Refresh and conflict safety** | Medium | Needs P05. Refresh on tab focus and every ~2 min (etag/ctag compare, not a full reload). Every PUT sends If-Match; a 412 reloads that task and shows a quiet notice Built: `dav.js` writes with `ConflictError` on 412 (#15, merged 2026-10-26). Left: the store's `refresh`, the 2-minute loop and the notice (#21), and #34. Connect once per page is PR #75 (#54). |
 | P11 | **Phone layout** | Medium | Needs P05, P08. Responsive in Nextcloud's mobile web view; long-press to drag on touch |
 
 ### Phase 2: move, edit, create projects

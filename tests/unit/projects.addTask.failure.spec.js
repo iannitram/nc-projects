@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../src/services/dav.js', () => ({
+	getDavSession: vi.fn(() => ({})),
 	listTaskCalendars: vi.fn(),
 	fetchTodos: vi.fn(),
 	fetchTodo: vi.fn(),

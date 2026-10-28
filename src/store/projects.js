@@ -5,13 +5,13 @@
  */
 import { showError, showInfo } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
-import { toRaw } from 'vue'
+import { markRaw, toRaw } from 'vue'
 import { placeMoved } from '../models/sortOrder.js'
 import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
 import { notImplemented } from '../notImplemented.js'
 import { pickAreas } from '../services/areas.js'
-import { ConflictError, createTodo, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../services/dav.js'
+import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
 
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
@@ -25,6 +25,8 @@ export const useProjectsStore = defineStore('projects', {
 		tasksByUid: {},
 		/** @type {Record<string, string|undefined>} */
 		ctags: {},
+		/** @type {object|null} */
+		davSession: null,
 		loading: false,
 		/** @type {string|null} */
 		error: null,
@@ -32,12 +34,13 @@ export const useProjectsStore = defineStore('projects', {
 	actions: {
 		/** Read every area list and build the tree (P05). */
 		async load() {
+			this.davSession ??= markRaw(getDavSession())
 			this.loading = true
 			this.error = null
 			try {
-				const calendars = await listTaskCalendars()
+				const calendars = await listTaskCalendars(this.davSession)
 				const areas = pickAreas(calendars)
-				const todosByArea = await Promise.all(areas.map((area) => fetchTodos(area.calendar)))
+				const todosByArea = await Promise.all(areas.map((area) => fetchTodos(area.calendar, this.davSession)))
 				const tasks = todosByArea.flat().map((todo) => Task.fromIcs(todo.ics, {
 					url: todo.url,
 					etag: todo.etag,
@@ -58,14 +61,15 @@ export const useProjectsStore = defineStore('projects', {
 		/** Re-read only lists whose ctag changed (P10). */
 		async refresh() {
 			try {
-				const calendars = await listTaskCalendars()
+				this.davSession ??= markRaw(getDavSession())
+				const calendars = await listTaskCalendars(this.davSession)
 				const areas = pickAreas(calendars)
 				const changedAreas = areas.filter((area) => this.ctags[area.calendar.url] !== area.calendar.ctag)
 				if (changedAreas.length === 0) {
 					return
 				}
 
-				const todosByArea = await Promise.all(changedAreas.map((area) => fetchTodos(area.calendar)))
+				const todosByArea = await Promise.all(changedAreas.map((area) => fetchTodos(area.calendar, this.davSession)))
 				const tasksByUid = { ...this.tasksByUid }
 				for (const [index, area] of changedAreas.entries()) {
 					for (const [uid, task] of Object.entries(tasksByUid)) {
@@ -102,6 +106,7 @@ export const useProjectsStore = defineStore('projects', {
 		 * @return {Promise<string>} The uid of the created task
 		 */
 		async addTask(projectUid, summary) {
+			this.davSession ??= markRaw(getDavSession())
 			const project = this.tasksByUid[projectUid]
 			if (!project) {
 				showError('Could not add the task: project not found')
@@ -115,7 +120,7 @@ export const useProjectsStore = defineStore('projects', {
 			})
 
 			try {
-				const created = await createTodo(this.calendarOf(project), task.toIcs())
+				const created = await createTodo(this.calendarOf(project), task.toIcs(), this.davSession)
 				task.where = {
 					...task.where,
 					url: created.url,
@@ -340,17 +345,18 @@ export const useProjectsStore = defineStore('projects', {
 		 */
 		async createProject(areaName, summary) {
 			try {
+				this.davSession ??= markRaw(getDavSession())
 				const area = this.areas.find((item) => item.name === areaName)
 				if (!area) {
 					throw new Error(`Area not found: ${areaName}`)
 				}
-				const calendar = await listTaskCalendars()
+				const calendar = await listTaskCalendars(this.davSession)
 				const areaCalendar = calendar.find((item) => item.url === area.calendarUrl || item.displayName === areaName)
 				if (!areaCalendar) {
 					throw new Error(`Calendar not found for area: ${areaName}`)
 				}
 				const task = Task.create({ summary, calendarUrl: areaCalendar.url, categories: ['project'] })
-				const stored = await createTodo(areaCalendar, task.toIcs())
+				const stored = await createTodo(areaCalendar, task.toIcs(), this.davSession)
 				const created = Task.fromIcs(stored.ics, { url: stored.url, etag: stored.etag, calendarUrl: stored.calendarUrl })
 				this.tasksByUid[created.uid] = created
 				const areas = this.areas.map((item) => ({ name: item.name, calendar: { url: item.calendarUrl } }))
