@@ -42,14 +42,14 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/models/completion.js` | **Present** (`planCompletion`). Pure: which tasks a check-off or reopen changes, following Tasks' cascades (checking off closes the task and its open descendants breadth-first; reopening opens the task and its closed ancestors up to the first project). Changes no task | P06, P13 |
 | `src/notImplemented.js` | The stubs' placeholder error; delete once nothing imports it (today `dav.js` for `moveTodo`, `store/projects.js`, `useRefresh.js`) | P01 |
 | `src/models/sortOrder.js` | **Present** (`APPLE_EPOCH_MS`, `effectiveSortOrder`, `placeMoved`). Pure order math, a copy of Tasks' rule (§Facts): effective order, place a moved task at neighbour ±1, bump later colliding siblings. `CREATED` may be a `Date` or an `ICAL.Time` (also through a store proxy): it is turned into ms before the Apple-epoch maths (#50). Open: a `CREATED` with a TZID sorts an hour off (#68) | P08, P09 |
-| `src/store/projects.js` | **Present**: state (`areas`, `orphans`, `untaggedParents`, `tasksByUid`, `ctags`, `loading`, `error`), `load` (a failure leaves a non-empty `error`, #49), `addTask` (P07: creates the task on the project's list with `parentUid`, rebuilds the tree, shows an error toast on failure and returns `null`), `calendarOf`, `createProject` (P14: `project` category on the area's list; rethrows after the toast). **Stubs**: `refresh`, `reorder`, `moveToProject`, `setCompleted`, `updateTask`, `makeProject`. Pinia store: load, refresh by etag/ctag, optimistic updates with rollback, 412 handling | P05, P07, P10, P14 |
+| `src/store/projects.js` | **Present**: state (`areas`, `orphans`, `untaggedParents`, `tasksByUid`, `ctags`, `loading`, `error`), `load` (a failure leaves a non-empty `error`, #49), `refresh` (P10: re-reads lists whose ctag changed), `handleConflict` / `reloadTask` (reloads a task on ConflictError with a quiet notice), `addTask` (P07: creates the task on the project's list with `parentUid`, rebuilds the tree, shows an error toast on failure and returns `null`), `calendarOf`, `createProject` (P14: `project` category on the area's list; rethrows after the toast). **Stubs**: `reorder`, `moveToProject`, `setCompleted`, `updateTask`, `makeProject`. Pinia store: load, refresh by etag/ctag, optimistic updates with rollback, 412 handling | P05, P07, P10, P14 |
 
 ### UI (Vue 3 + `@nextcloud/vue`)
 
 | Path | Job | IDs |
 |---|---|---|
 | `src/main.js` | Creates the app, installs Pinia, mounts on `#cc_projects` | P01 |
-| `src/App.vue` | `NcContent` / `NcAppContent` shell; calls the store's `load` on mount, shows a spinner, the error text, or one `AreaSection` per area. Does not call `useRefresh` yet (P10) | P01, P05 |
+| `src/App.vue` | `NcContent` / `NcAppContent` shell; calls the store's `load` on mount, shows a spinner, the error text, or one `AreaSection` per area; calls `useRefresh(store.refresh)` (P10) | P01, P05, P10 |
 | `src/components/AreaSection.vue` | Present: one area with its project cards, rendered in order, and the "+ New project" field (Enter calls `store.createProject`, Esc clears) | P05, P14 |
 | `src/components/ProjectCard.vue` | Present: project title, task tree and the `AddTaskInput` under it | P05, P07 |
 | `src/components/TaskTree.vue` | Present: collapsible nested task list, three levels, then a "+N deeper" Tasks link | P05 |

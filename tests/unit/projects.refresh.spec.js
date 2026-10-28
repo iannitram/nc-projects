@@ -22,7 +22,8 @@ vi.mock('@nextcloud/dialogs', () => ({
 	showSuccess: vi.fn(),
 }))
 
-import { fetchTodos, listTaskCalendars } from '../../src/services/dav.js'
+import { showError, showInfo } from '@nextcloud/dialogs'
+import { ConflictError, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
 import { useProjectsStore } from '../../src/store/projects.js'
 
 function deepFreeze(value) {
@@ -35,13 +36,13 @@ function deepFreeze(value) {
 
 const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
 
-function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
+function vtodo({ uid, summary, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
 	return [
 		'BEGIN:VCALENDAR',
 		'VERSION:2.0',
 		'BEGIN:VTODO',
 		`UID:${uid}`,
-		`SUMMARY:${uid}`,
+		`SUMMARY:${summary ?? uid}`,
 		`STATUS:${status ?? 'NEEDS-ACTION'}`,
 		status === 'COMPLETED' ? 'COMPLETED:20260101T000000Z' : null,
 		`CREATED:${created}`,
@@ -173,5 +174,140 @@ describe('projects store refresh', () => {
 		expect(store.error).toBeNull()
 		expect(childNames(store, 0)).toEqual(['t1', 't2'])
 		expect(childNames(store, 1)).toEqual(['q1'])
+	})
+
+	it('preserves node collapse state across a refresh when task objects are replaced', async () => {
+		const store = await loaded()
+		// Collapse t1
+		store.areas[0].projects[0].children[0].collapsed = true
+		// Expand t2 explicitly
+		store.areas[0].projects[0].children[1].collapsed = false
+
+		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN, ctag: 'v2' }, { ...BARNUM }]))
+		fetchTodos.mockResolvedValue(deepFreeze([
+			stored('P', { categories: 'project', sort: 10 }),
+			stored('t1', { parent: 'P', sort: 10, summary: 't1 renewed' }),
+			stored('t2', { parent: 'P', sort: 20, summary: 't2 renewed' }),
+		]))
+
+		await store.refresh()
+
+		const children = store.areas[0].projects[0].children
+		expect(children[0].task.uid).toBe('t1')
+		expect(children[0].collapsed).toBe(true)
+		expect(children[1].task.uid).toBe('t2')
+		expect(children[1].collapsed).toBe(false)
+	})
+
+	it('handleConflict reloads a task after ConflictError and shows one quiet notice', async () => {
+		const store = await loaded()
+		fetchTodo.mockResolvedValue(deepFreeze({
+			url: '/van/t1.ics',
+			etag: '"t1-e2"',
+			calendarUrl: '/van/',
+			ics: vtodo({ uid: 't1', parent: 'P', sort: 50, summary: 't1 from server' }),
+		}))
+
+		await store.handleConflict(new ConflictError('/van/t1.ics'))
+
+		expect(fetchTodo).toHaveBeenCalledWith('/van/t1.ics', expect.anything())
+		expect(store.tasksByUid.t1.summary).toBe('t1 from server')
+		expect(store.tasksByUid.t1.etag).toBe('"t1-e2"')
+		expect(store.tasksByUid.t1.sortOrder).toBe(50)
+		expect(showInfo).toHaveBeenCalledTimes(1)
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
+	})
+
+	it('shows only a single notice when several ConflictErrors arrive together', async () => {
+		const store = await loaded()
+		fetchTodo.mockImplementation(async (url) => deepFreeze({
+			url,
+			etag: '"new-etag"',
+			calendarUrl: '/van/',
+			ics: vtodo({ uid: url.includes('t1') ? 't1' : 't2', parent: 'P', summary: 'reloaded' }),
+		}))
+
+		await Promise.all([
+			store.handleConflict(new ConflictError('/van/t1.ics')),
+			store.handleConflict(new ConflictError('/van/t2.ics')),
+		])
+
+		expect(fetchTodo).toHaveBeenCalledTimes(2)
+		expect(showInfo).toHaveBeenCalledTimes(1)
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
+	})
+
+	it('shows only a single notice when two ConflictErrors from different actions arrive at once (e.g. setCompleted and reorder)', async () => {
+		const store = await loaded()
+		putTodo.mockImplementation(async (url) => {
+			throw new ConflictError(url)
+		})
+		fetchTodo.mockImplementation(async (url) => deepFreeze({
+			url,
+			etag: '"new-etag"',
+			calendarUrl: '/van/',
+			ics: vtodo({ uid: url.includes('t1') ? 't1' : 't2', parent: 'P', summary: 'reloaded' }),
+		}))
+
+		await Promise.all([
+			store.setCompleted('t1', true),
+			store.reorder('P', 'Van', 't2', 0),
+		])
+
+		expect(showInfo).toHaveBeenCalledTimes(1)
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
+	})
+
+	it('shows the action error, not "reloaded", for the failed reload when two conflicts arrive and one reload fails', async () => {
+		const store = await loaded()
+		putTodo.mockImplementation(async (url) => {
+			throw new ConflictError(url)
+		})
+		fetchTodo.mockImplementation(async (url) => {
+			if (url.includes('t1')) {
+				throw new Error('reload failed')
+			}
+			return deepFreeze({
+				url,
+				etag: '"new-etag"',
+				calendarUrl: '/van/',
+				ics: vtodo({ uid: 't2', parent: 'P', summary: 'reloaded' }),
+			})
+		})
+
+		await Promise.all([
+			store.setCompleted('t1', true),
+			store.reorder('P', 'Van', 't2', 0),
+		])
+
+		expect(showError).toHaveBeenCalledWith('Could not save the change')
+		expect(showInfo).toHaveBeenCalledTimes(1)
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
+	})
+
+	it('reloadTask updates task and rebuilds tree without showing a notice', async () => {
+		const store = await loaded()
+		fetchTodo.mockResolvedValue(deepFreeze({
+			url: '/van/t1.ics',
+			etag: '"t1-e3"',
+			calendarUrl: '/van/',
+			ics: vtodo({ uid: 't1', parent: 'P', summary: 't1 reloadTask' }),
+		}))
+
+		await store.reloadTask('/van/t1.ics')
+
+		expect(fetchTodo).toHaveBeenCalledWith('/van/t1.ics', expect.anything())
+		expect(store.tasksByUid.t1.summary).toBe('t1 reloadTask')
+		expect(showInfo).not.toHaveBeenCalled()
+	})
+
+	it('does not show conflict notice during a regular ctag refresh', async () => {
+		const store = await loaded()
+		listTaskCalendars.mockResolvedValue(deepFreeze([{ ...VAN, ctag: 'v2' }, { ...BARNUM }]))
+		fetchTodos.mockResolvedValue(deepFreeze(vanTodos()))
+
+		await store.refresh()
+
+		expect(showInfo).not.toHaveBeenCalled()
 	})
 })
