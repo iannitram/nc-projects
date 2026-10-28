@@ -3,14 +3,15 @@
  * Writes are optimistic with rollback; a ConflictError reloads the task (rule 3).
  * Stub: state and action names only.
  */
-import { showError } from '@nextcloud/dialogs'
+import { showError, showInfo } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
 import { toRaw } from 'vue'
+import { placeMoved } from '../models/sortOrder.js'
 import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
 import { notImplemented } from '../notImplemented.js'
 import { pickAreas } from '../services/areas.js'
-import { createTodo, fetchTodos, listTaskCalendars } from '../services/dav.js'
+import { ConflictError, createTodo, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../services/dav.js'
 
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
@@ -151,7 +152,165 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {number} newIndex its index after the drop
 		 */
 		async reorder(parentUid, areaName, movedUid, newIndex) {
-			return notImplemented('reorder', parentUid, areaName, movedUid, newIndex)
+			// The projects-in-an-area case (parentUid null) is another issue
+			if (parentUid === null) {
+				return notImplemented('reorder', parentUid, areaName, movedUid, newIndex)
+			}
+
+			// Find the parent node in the tree
+			let parentNode = null
+			for (const area of this.areas) {
+				for (const project of area.projects) {
+					if (project.task.uid === parentUid) {
+						parentNode = project
+						break
+					}
+					// Check if parentUid matches a task in children
+					if (project.children) {
+						const found = project.children.find((child) => child.task.uid === parentUid)
+						if (found) {
+							parentNode = found
+							break
+						}
+					}
+				}
+				if (parentNode) {
+					break
+				}
+			}
+
+			// If parent not found, return without doing anything
+			if (!parentNode) {
+				return
+			}
+
+			// Get the children of the parent in display order
+			const siblings = parentNode.children?.map((child) => child.task) || []
+
+			// If the moved task is not among the children, return without doing anything
+			if (!siblings.some((task) => task.uid === movedUid)) {
+				return
+			}
+
+			// Prepare the siblings data for placeMoved function
+			const siblingsForPlaceMoved = siblings.map((task) => ({
+				uid: task.uid,
+				sortOrder: task.sortOrder,
+				created: task.created,
+			}))
+
+			// Get the tasks that need to be updated
+			const toUpdate = placeMoved(siblingsForPlaceMoved, movedUid, newIndex)
+
+			// If no tasks to update (unknown moved uid), return early
+			if (toUpdate.length === 0) {
+				return
+			}
+
+			// Keep a copy of original values for rollback
+			const originalValues = {}
+			for (const { uid } of toUpdate) {
+				const task = this.tasksByUid[uid]
+				if (task) {
+					originalValues[uid] = {
+						sortOrder: task.sortOrder,
+						etag: task.etag,
+					}
+				}
+			}
+
+			try {
+				// Apply the new sort orders to the tasks
+				for (const { uid, sortOrder } of toUpdate) {
+					const task = this.tasksByUid[uid]
+					if (task) {
+						toRaw(task).sortOrder = sortOrder
+					}
+				}
+
+				// Write each task to the server
+				const etags = {}
+				for (const { uid } of toUpdate) {
+					const task = this.tasksByUid[uid]
+					if (task) {
+						const etag = await putTodo(task.url, task.toIcs(), task.etag)
+						etags[uid] = etag.etag
+					}
+				}
+
+				// Update etags in tasks
+				for (const [uid, etag] of Object.entries(etags)) {
+					const task = this.tasksByUid[uid]
+					if (task) {
+						toRaw(task).where = { ...task.where, etag }
+					}
+				}
+
+				// Rebuild the tree after successful write
+				const allTasks = Object.values(this.tasksByUid)
+				const tree = buildTree(this.areas.map((area) => ({
+					name: area.name,
+					calendar: { url: area.calendarUrl },
+				})), allTasks)
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
+			} catch (error) {
+				// Restore original values on any error (including ConflictError)
+				for (const [uid, original] of Object.entries(originalValues)) {
+					const task = this.tasksByUid[uid]
+					if (task) {
+						toRaw(task).sortOrder = original.sortOrder
+					}
+				}
+
+				// Rebuild the tree after rollback
+				const allTasks = Object.values(this.tasksByUid)
+				const tree = buildTree(this.areas.map((area) => ({
+					name: area.name,
+					calendar: { url: area.calendarUrl },
+				})), allTasks)
+				this.areas = tree.areas
+				this.orphans = tree.orphans
+				this.untaggedParents = tree.untaggedParents
+
+				// Handle ConflictError differently
+				if (error instanceof ConflictError) {
+					// Handle ConflictError - reload the tasks
+					try {
+						for (const { uid } of toUpdate) {
+							const task = this.tasksByUid[uid]
+							if (task) {
+								const stored = await fetchTodo(task.url)
+								const updatedTask = Task.fromIcs(stored.ics, {
+									url: stored.url,
+									etag: stored.etag,
+									calendarUrl: stored.calendarUrl,
+								})
+								this.tasksByUid[uid] = updatedTask
+							}
+						}
+
+						// Rebuild the tree after reload
+						const allTasks = Object.values(this.tasksByUid)
+						const tree = buildTree(this.areas.map((area) => ({
+							name: area.name,
+							calendar: { url: area.calendarUrl },
+						})), allTasks)
+						this.areas = tree.areas
+						this.orphans = tree.orphans
+						this.untaggedParents = tree.untaggedParents
+
+						showInfo('Someone else changed this; reloaded')
+					} catch {
+						// If reload fails, show error
+						showError('Could not save the new order')
+					}
+				} else {
+					// Show error for all other errors
+					showError('Could not save the new order')
+				}
+			}
 		},
 		/**
 		 * @param {string} taskUid the task
