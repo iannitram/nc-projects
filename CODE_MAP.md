@@ -2,7 +2,7 @@
 
 Describes commit: eb3b328 (2026-10-28)
 
-**Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`), the panel (`App.vue`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`) and store actions for loading, refreshing, adding, ordering, completion, quick edits and project creation are **present**; `moveToProject` and `reorder` for projects within an area remain **stubs**. When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
+**Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`), the panel (`App.vue`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`) and store actions for loading, refreshing, adding, ordering, completion, quick edits and project creation are **present**; `reorder` for projects within an area remains a **stub** (`moveToProject` landed in PR #101). When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
 
 **Design pass (approved 2026-10-28, #102):** [brief](docs/design/2026-10-28-design-pass/brief.md) · [mockups, sections a to g](docs/design/2026-10-28-design-pass/mockups.html) · [implementation notes](docs/design/2026-10-28-design-pass/implementation-notes.md). UI work follows these.
 
@@ -54,7 +54,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/App.vue` | `NcContent` / `NcAppContent` shell; calls the store's `load` on mount, shows a spinner, the error text, or one `AreaSection` per area; calls `useRefresh(store.refresh)` (P10) | P01, P05, P10 |
 | `src/components/AreaSection.vue` | Present: one area with its project cards, rendered in order, and the "+ New project" field (Enter calls `store.createProject`, Esc clears) | P05, P14 |
 | `src/components/ProjectCard.vue` | Present: project title, completion checkbox (calls `setCompleted`), task tree and the `AddTaskInput` under it | P05, P07, P13 |
-| `src/components/TaskTree.vue` | Present: collapsible nested task list, three levels, "+N deeper" Tasks link, and drag drops (reorder within parent, cross-project move within area via moveToProject) | P05, P08, P12 |
+| `src/components/TaskTree.vue` | Present: collapsible nested task list (chevron icon, 24 px indent with a guide line, no opacity on done rows, "N subtasks" when collapsed), three levels, "N more levels in Tasks" link, and drag drops (reorder within parent, cross-project move within area via moveToProject) | P05, P08, P12 |
 | `src/components/TaskRow.vue` | Present: task completion checkbox (calls `setCompleted`), inline quick edits (click the title to rename; due date; priority high/medium/low/none as 1/5/9/0) calling `store.updateTask`, an Open in Tasks link, and "+N deeper" Tasks link (built with `generateUrl`) when descendants exceed the rendered depth. The edit controls carry `cc-no-drag` and stop mousedown/pointerdown/touchstart | P05, P13 |
 | `src/components/AddTaskInput.vue` | Present: inline "+ Add task" field under a project; Enter calls `store.addTask` (one submit at a time), Esc clears | P07 |
 | `src/components/DoneStrip.vue` | **Stub** (empty element; not mounted anywhere yet). Collapsed list of completed projects in an area | P06 |

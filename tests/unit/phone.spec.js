@@ -1,4 +1,3 @@
-import { NcDateTimePickerNative } from '@nextcloud/vue'
 import { mount } from '@vue/test-utils'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -14,6 +13,11 @@ vi.mock('@nextcloud/router', async (importOriginal) => ({
 
 const NcActionsStub = {
 	template: '<div class="nc-actions-stub"><slot /></div>',
+}
+
+const NcActionLinkStub = {
+	props: ['href'],
+	template: '<a class="nc-action-link-stub" :href="href"><slot /></a>',
 }
 
 const NcActionButtonStub = {
@@ -52,6 +56,7 @@ describe('phone layout and touch interaction (issue #22)', () => {
 				stubs: {
 					NcActions: NcActionsStub,
 					NcActionButton: NcActionButtonStub,
+					NcActionLink: NcActionLinkStub,
 				},
 			},
 		})
@@ -59,26 +64,19 @@ describe('phone layout and touch interaction (issue #22)', () => {
 		const rowTouchstart = vi.fn()
 		wrapper.element.addEventListener('touchstart', rowTouchstart)
 
-		// 1. Open in Tasks link
-		const link = wrapper.find('.cc-task-open-in-tasks')
+		// 1. Open in Tasks (menu link)
+		const link = wrapper.find('.nc-action-link-stub')
 		expect(link.exists()).toBe(true)
 		await link.trigger('touchstart')
 		expect(rowTouchstart).not.toHaveBeenCalled()
 
-		// 2. Date picker
-		const datePicker = wrapper.findComponent(NcDateTimePickerNative)
-		const dateInput = datePicker.find('input')
-		expect(dateInput.exists()).toBe(true)
-		await dateInput.trigger('touchstart')
-		expect(rowTouchstart).not.toHaveBeenCalled()
-
-		// 3. Priority menu
-		const priorityMenu = wrapper.find('.cc-task-row__priority-menu')
+		// 2. Actions menu
+		const priorityMenu = wrapper.find('.cc-task-row__menu')
 		expect(priorityMenu.exists()).toBe(true)
 		await priorityMenu.trigger('touchstart')
 		expect(rowTouchstart).not.toHaveBeenCalled()
 
-		// 4. Title editor input
+		// 3. Title editor input
 		await wrapper.find('.cc-task-row__title').trigger('click')
 		await nextTick()
 		const titleInput = wrapper.find('.cc-task-row__title-input input')
@@ -101,8 +99,7 @@ describe('phone layout and touch interaction (issue #22)', () => {
 		const tapTargetSelectors = [
 			'.cc-task-row__checkbox',
 			'.cc-task-row__title',
-			'.cc-task-row__date',
-			'.cc-task-row__priority-menu',
+			'.cc-task-row__menu',
 			'.cc-task-open-in-tasks',
 			'.cc-project-card__show-done',
 			'.cc-add-task-input',
@@ -129,7 +126,7 @@ describe('phone layout and touch interaction (issue #22)', () => {
 		const cssPath = path.resolve(__dirname, '../../src/styles/projects.css')
 		const css = fs.readFileSync(cssPath, 'utf8')
 
-		// Native input inside NcDateTimePickerNative is styled with min-height 44px
+		// The rename input is styled with min-height 44px
 		expect(css).toContain('.input-field__input')
 		expect(css).toMatch(/\.input-field__input[\s\S]*?min-height:\s*44px/)
 
