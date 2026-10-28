@@ -1,8 +1,8 @@
 <script setup>
-import { NcTextField } from '@nextcloud/vue'
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import DoneStrip from './DoneStrip.vue'
+import GhostInput from './GhostInput.vue'
 import ProjectCard from './ProjectCard.vue'
 import { DRAG_OPTIONS, onSiblingDrop } from '../composables/useDrag.js'
 import { areaSlug, isSomeday } from '../models/tree.js'
@@ -96,13 +96,6 @@ async function createProject(area) {
 	}
 }
 
-/**
- * Clear the new project input field.
- */
-function clearProject() {
-	newProject.value = ''
-}
-
 </script>
 
 <template>
@@ -131,14 +124,13 @@ function clearProject() {
 				:project="project"
 				:areaName="area.name" />
 		</div>
-		<DoneStrip :projects="area.done || []" />
-		<NcTextField
+		<GhostInput
 			v-model="newProject"
 			class="cc-area-section__new-project"
-			placeholder="+ New project"
+			:label="`New project in ${area.name}`"
 			:disabled="creating"
-			@keydown.enter.prevent="createProject(area)"
-			@keydown.esc="clearProject" />
+			@submit="createProject(area)" />
+		<DoneStrip :projects="area.done || []" />
 	</section>
 </template>
 

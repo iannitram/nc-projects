@@ -90,12 +90,28 @@ describe('AreaSection', () => {
 		const area = { name: 'Home', calendarUrl: '/list-a/', projects: [], done: [] }
 
 		async function typeAndSubmit(wrapper, value) {
+			expect(wrapper.find('input').exists()).toBe(false)
+			await wrapper.get('.cc-area-section__new-project button').trigger('click')
 			const input = wrapper.find('input')
 			await input.setValue(value)
 			await input.trigger('keydown.enter')
 			await flushPromises()
 			return input
 		}
+
+		it('shows New project above Done and cancels with Esc or empty blur', async () => {
+			const wrapper = mount(AreaSection, { props: { area: { ...area, done: [{ task: { uid: 'd', summary: 'Done' } }] } } })
+			const ghost = () => wrapper.get('.cc-area-section__new-project button')
+			expect(ghost().text()).toBe('New project in Home')
+			expect(wrapper.element.lastElementChild.classList.contains('cc-done-strip')).toBe(true)
+			await ghost().trigger('keydown.enter')
+			await wrapper.get('input').setValue('draft')
+			await wrapper.get('input').trigger('keydown.esc')
+			expect(wrapper.find('input').exists()).toBe(false)
+			await ghost().trigger('click')
+			await wrapper.get('input').trigger('blur')
+			expect(wrapper.find('input').exists()).toBe(false)
+		})
 
 		it('keeps the typed title and swallows the rejection when creation fails', async () => {
 			const store = useProjectsStore()

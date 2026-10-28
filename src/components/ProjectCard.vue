@@ -321,7 +321,10 @@ function toggleCollapsed() {
 				:showDone="showDone"
 				:areaName="areaName"
 				:projectUid="project.task?.uid" />
-			<AddTaskInput :projectUid="project.task?.uid" />
+			<AddTaskInput
+				v-model:showDone="showDone"
+				:projectUid="project.task?.uid"
+				:doneCount="progressDone" />
 		</div>
 		<NcDialog
 			v-if="confirmCompletion"

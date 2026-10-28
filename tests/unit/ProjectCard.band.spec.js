@@ -1,4 +1,4 @@
-import { NcActionButton, NcActionLink, NcActions, NcDialog } from '@nextcloud/vue'
+import { NcActionButton, NcActionCheckbox, NcActionLink, NcActions, NcDialog } from '@nextcloud/vue'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -51,6 +51,23 @@ describe('project band', () => {
 		await wrapper.findComponent(NcActions).find('button').trigger('click')
 		await vi.waitFor(() => expect(wrapper.findAllComponents(NcActionButton).some((button) => button.text() === remove)).toBe(true))
 		expect(wrapper.get(`.cc-project-card__badge--${category}`).text()).toBe(category)
+	})
+
+	it('shares Show done state between the footer and menu, with no footer toggle when none are done', async () => {
+		const wrapper = mount(ProjectCard, { props: { project: { ...project(), progress: { done: 2, total: 3 } } } })
+		const footer = () => wrapper.get('.cc-add-task-input__done button')
+		expect(footer().text()).toBe('Show')
+		expect(wrapper.get('.cc-add-task-input__done').text()).toContain('2 done')
+		await footer().trigger('click')
+		expect(footer().text()).toBe('Hide')
+		expect(window.localStorage.getItem('cc_projects:showDone:p-band')).toBe('1')
+		await wrapper.findComponent(NcActions).find('button').trigger('click')
+		await vi.waitFor(() => expect(wrapper.findComponent(NcActionCheckbox).exists()).toBe(true))
+		expect(wrapper.findComponent(NcActionCheckbox).props('modelValue')).toBe(true)
+		await wrapper.findComponent(NcActionCheckbox).vm.$emit('update:modelValue', false)
+		expect(footer().text()).toBe('Show')
+		await wrapper.setProps({ project: project() })
+		expect(wrapper.find('.cc-add-task-input__done').exists()).toBe(false)
 	})
 
 	it('collapses from the named button and restores after a new store and mount', async () => {
