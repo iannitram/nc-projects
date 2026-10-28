@@ -3,19 +3,117 @@
  * Writes are optimistic with rollback; a ConflictError reloads the task (rule 3).
  * Stub: state and action names only.
  */
-import { showError } from '@nextcloud/dialogs'
+import { showError, showInfo } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
 import { markRaw, toRaw } from 'vue'
 import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
 import { notImplemented } from '../notImplemented.js'
 import { pickAreas } from '../services/areas.js'
-import { createTodo, fetchTodos, getDavSession, listTaskCalendars } from '../services/dav.js'
+import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars } from '../services/dav.js'
+
+let pendingConflictReloads = 0
+let noticeScheduled = false
+
+/**
+ * Queue a task reload caused by a ConflictError and show one quiet notice.
+ *
+ * @param {() => Promise<void>} reloadFn the reload callback
+ * @return {Promise<void>}
+ */
+function queueConflictReload(reloadFn) {
+	pendingConflictReloads++
+	return reloadFn().finally(() => {
+		pendingConflictReloads--
+		if (pendingConflictReloads === 0 && !noticeScheduled) {
+			noticeScheduled = true
+			Promise.resolve().then(() => {
+				noticeScheduled = false
+				if (pendingConflictReloads === 0) {
+					showInfo('Reloaded')
+				}
+			})
+		}
+	})
+}
+
+/**
+ * Record collapsed state of every task node in the tree.
+ *
+ * @param {import('../models/tree.js').AreaNode[]} areas the area tree
+ * @return {Map<string, boolean>}
+ */
+function collectCollapseState(areas) {
+	const state = new Map()
+	/**
+	 *
+	 * @param nodes
+	 */
+	function walk(nodes) {
+		for (const node of nodes || []) {
+			if (node?.task?.uid && typeof node.collapsed === 'boolean') {
+				state.set(node.task.uid, node.collapsed)
+			}
+			if (node?.children?.length) {
+				walk(node.children)
+			}
+		}
+	}
+	for (const area of areas || []) {
+		for (const project of area.projects || []) {
+			walk(project.children)
+		}
+		for (const project of area.done || []) {
+			walk(project.children)
+		}
+	}
+	return state
+}
+
+/**
+ * Restore collapsed state onto new tree nodes.
+ *
+ * @param {import('../models/tree.js').AreaNode[]} areas the new area tree
+ * @param {Map<string, boolean>} state the saved collapsed state
+ */
+function restoreCollapseState(areas, state) {
+	if (!state || state.size === 0) {
+		return
+	}
+	/**
+	 *
+	 * @param nodes
+	 */
+	function walk(nodes) {
+		for (const node of nodes || []) {
+			if (node?.task?.uid && state.has(node.task.uid)) {
+				try {
+					node.collapsed = state.get(node.task.uid)
+				} catch {
+					// Ignore if node is frozen
+				}
+			}
+			if (node?.children?.length) {
+				walk(node.children)
+			}
+		}
+	}
+	for (const area of areas || []) {
+		for (const project of area.projects || []) {
+			walk(project.children)
+		}
+		for (const project of area.done || []) {
+			walk(project.children)
+		}
+	}
+}
 
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
 		/** @type {import('../models/tree.js').AreaNode[]} */
 		areas: [],
+		/** @type {{name: string, calendar: import('../services/dav.js').TaskCalendar}[]} */
+		areaInputs: [],
 		/** @type {import('../models/Task.js').Task[]} */
 		orphans: [],
 		/** @type {import('../models/Task.js').Task[]} */
@@ -39,6 +137,7 @@ export const useProjectsStore = defineStore('projects', {
 			try {
 				const calendars = await listTaskCalendars(this.davSession)
 				const areas = pickAreas(calendars)
+				this.areaInputs = areas
 				const todosByArea = await Promise.all(areas.map((area) => fetchTodos(area.calendar, this.davSession)))
 				const tasks = todosByArea.flat().map((todo) => Task.fromIcs(todo.ics, {
 					url: todo.url,
@@ -63,6 +162,7 @@ export const useProjectsStore = defineStore('projects', {
 				this.davSession ??= markRaw(getDavSession())
 				const calendars = await listTaskCalendars(this.davSession)
 				const areas = pickAreas(calendars)
+				this.areaInputs = areas
 				const changedAreas = areas.filter((area) => this.ctags[area.calendar.url] !== area.calendar.ctag)
 				if (changedAreas.length === 0) {
 					return
@@ -86,7 +186,9 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 
+				const collapseState = collectCollapseState(this.areas)
 				const tree = buildTree(areas, Object.values(tasksByUid).map((task) => toRaw(task)))
+				restoreCollapseState(tree.areas, collapseState)
 				this.areas = tree.areas
 				this.orphans = tree.orphans
 				this.untaggedParents = tree.untaggedParents
@@ -98,6 +200,55 @@ export const useProjectsStore = defineStore('projects', {
 			} catch {
 				// Keep the current state when a list cannot be refreshed.
 			}
+		},
+		/**
+		 * Reload a single task by URL and rebuild the tree.
+		 *
+		 * @param {string} url the task's URL
+		 */
+		async reloadTask(url) {
+			if (!url) {
+				return
+			}
+			this.davSession ??= markRaw(getDavSession())
+			try {
+				const stored = await fetchTodo(url, this.davSession)
+				if (stored?.ics) {
+					const task = Task.fromIcs(stored.ics, {
+						url: stored.url,
+						etag: stored.etag,
+						calendarUrl: stored.calendarUrl,
+					})
+					this.tasksByUid[task.uid] = task
+
+					const collapseState = collectCollapseState(this.areas)
+					const areas = this.areaInputs.length > 0
+						? this.areaInputs
+						: this.areas.map((area) => ({
+								name: area.name,
+								calendar: area.calendar || { url: area.calendarUrl, displayName: area.name },
+							}))
+					const tree = buildTree(areas, Object.values(this.tasksByUid).map((t) => toRaw(t)))
+					restoreCollapseState(tree.areas, collapseState)
+					this.areas = tree.areas
+					this.orphans = tree.orphans
+					this.untaggedParents = tree.untaggedParents
+				}
+			} catch {
+				// Keep current state when a task cannot be refreshed.
+			}
+		},
+		/**
+		 * Reload a task after a ConflictError (412) and show one quiet notice.
+		 *
+		 * @param {import('../services/dav.js').ConflictError|string|{url?: string}} error the error or task URL
+		 */
+		async handleConflict(error) {
+			const url = typeof error === 'string' ? error : error?.url
+			if (!url) {
+				return
+			}
+			return queueConflictReload(() => this.reloadTask(url))
 		},
 		/**
 		 * @param {string} projectUid the project
@@ -129,15 +280,24 @@ export const useProjectsStore = defineStore('projects', {
 				this.tasksByUid[task.uid] = task
 
 				const allTasks = Object.values(this.tasksByUid)
-				const tree = buildTree(this.areas.map((area) => ({
-					name: area.name,
-					calendar: { url: area.calendarUrl },
-				})), allTasks)
+				const areas = this.areaInputs.length > 0
+					? this.areaInputs
+					: this.areas.map((area) => ({
+							name: area.name,
+							calendar: area.calendar || { url: area.calendarUrl, displayName: area.name },
+						}))
+				const collapseState = collectCollapseState(this.areas)
+				const tree = buildTree(areas, allTasks)
+				restoreCollapseState(tree.areas, collapseState)
 				this.areas = tree.areas
 				this.orphans = tree.orphans
 				this.untaggedParents = tree.untaggedParents
 				return task.uid
-			} catch {
+			} catch (error) {
+				if (error instanceof ConflictError) {
+					await this.handleConflict(error)
+					return null
+				}
 				showError('Could not add the task')
 				return null
 			}
@@ -200,12 +360,20 @@ export const useProjectsStore = defineStore('projects', {
 				const stored = await createTodo(areaCalendar, task.toIcs(), this.davSession)
 				const created = Task.fromIcs(stored.ics, { url: stored.url, etag: stored.etag, calendarUrl: stored.calendarUrl })
 				this.tasksByUid[created.uid] = created
-				const areas = this.areas.map((item) => ({ name: item.name, calendar: { url: item.calendarUrl } }))
+				const areas = this.areaInputs.length > 0
+					? this.areaInputs
+					: this.areas.map((item) => ({ name: item.name, calendar: { url: item.calendarUrl } }))
+				const collapseState = collectCollapseState(this.areas)
 				const tree = buildTree(areas, Object.values(this.tasksByUid))
+				restoreCollapseState(tree.areas, collapseState)
 				this.areas = tree.areas
 				this.orphans = tree.orphans
 				this.untaggedParents = tree.untaggedParents
 			} catch (error) {
+				if (error instanceof ConflictError) {
+					await this.handleConflict(error)
+					return
+				}
 				showError('Could not create the project')
 				throw error
 			}
