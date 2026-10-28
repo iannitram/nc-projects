@@ -95,13 +95,14 @@ describe('projects store reorder (partial failure and optimistic tree)', () => {
 		putTodo
 			.mockResolvedValueOnce({ etag: '"c-e2"' })
 			.mockRejectedValueOnce(new Error('network down'))
+			.mockResolvedValue({ etag: '"c-e1"' })
 
 		await store.reorder('P', 'Garden', 'c', 1).catch(() => {})
 
-		expect(putTodo).toHaveBeenCalledTimes(2)
+		expect(putTodo).toHaveBeenCalledTimes(3)
 		expect(showError).toHaveBeenCalledWith('Could not save the new order')
-		expect(store.tasksByUid.c.sortOrder).toBe(11)
-		expect(store.tasksByUid.c.etag).toBe('"c-e2"')
+		expect(store.tasksByUid.c.sortOrder).toBe(12)
+		expect(store.tasksByUid.c.etag).toBe('"c-e1"')
 		expect(store.tasksByUid.b.sortOrder).toBe(11)
 		expect(store.tasksByUid.b.etag).toBe('"b-e1"')
 	})

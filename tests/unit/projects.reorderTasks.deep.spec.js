@@ -148,16 +148,16 @@ describe('projects store reorder (third-level tasks)', () => {
 		putTodo
 			.mockResolvedValueOnce({ etag: '"z-e2"' })
 			.mockRejectedValueOnce(new Error('network down'))
+			.mockResolvedValue({ etag: '"z-e1"' })
 
 		await store.reorder('a1', 'Garden', 'z', 1).catch(() => {})
 
-		expect(putTodo).toHaveBeenCalledTimes(2)
+		expect(putTodo).toHaveBeenCalledTimes(3)
 		expect(showError).toHaveBeenCalledWith('Could not save the new order')
-		expect(store.tasksByUid.z.sortOrder).toBe(11)
-		expect(store.tasksByUid.z.etag).toBe('"z-e2"')
+		expect(store.tasksByUid.z.sortOrder).toBe(12)
+		expect(store.tasksByUid.z.etag).toBe('"z-e1"')
 		expect(store.tasksByUid.y.sortOrder).toBe(11)
 		expect(store.tasksByUid.y.etag).toBe('"y-e1"')
-		// y and z now both sit at 11: a tie, which keeps load order
 		expect(level3Children(store)).toEqual(['x', 'y', 'z'])
 	})
 
