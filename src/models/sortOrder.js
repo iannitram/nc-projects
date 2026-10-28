@@ -1,3 +1,5 @@
+import ICAL from 'ical.js'
+
 /**
  * Order math, a copy of Tasks 0.18.1's rule (P08, P09; CODE_MAP §Facts and rule 6). Pure.
  */
@@ -20,30 +22,7 @@ export function effectiveSortOrder(task) {
 		if (task.created instanceof Date) {
 			ms = task.created.getTime()
 		} else if (typeof task.created.year === 'number') {
-			const tzid = task.created.zone?.tzid
-			if (tzid === 'UTC' || tzid === 'Z' || !task.created.zone) {
-				ms = Date.UTC(
-					task.created.year,
-					(task.created.month || 1) - 1,
-					task.created.day || 1,
-					task.created.hour || 0,
-					task.created.minute || 0,
-					task.created.second || 0,
-				)
-			} else {
-				try {
-					ms = task.created.toUnixTime() * 1000
-				} catch {
-					ms = Date.UTC(
-						task.created.year,
-						(task.created.month || 1) - 1,
-						task.created.day || 1,
-						task.created.hour || 0,
-						task.created.minute || 0,
-						task.created.second || 0,
-					)
-				}
-			}
+			ms = createdMilliseconds(task, task.created)
 		} else if (typeof task.created.toUnixTime === 'function') {
 			try {
 				ms = task.created.toUnixTime() * 1000
@@ -60,6 +39,67 @@ export function effectiveSortOrder(task) {
 	}
 
 	return 0
+}
+
+/**
+ * Resolve CREATED without mutating its Time or registering a global timezone.
+ * The property parameter survives even when ical.js resolves an unknown TZID as floating.
+ *
+ * @param {object} task the task and its original calendar resource
+ * @param {object} created date/time fields (possibly reactive)
+ * @return {number} milliseconds since the Unix epoch
+ */
+function createdMilliseconds(task, created) {
+	const fields = {
+		year: created.year,
+		month: created.month || 1,
+		day: created.day || 1,
+		hour: created.hour || 0,
+		minute: created.minute || 0,
+		second: created.second || 0,
+	}
+	const wall = Date.UTC(fields.year, fields.month - 1, fields.day, fields.hour, fields.minute, fields.second)
+	const tzid = task.vtodo?.getFirstProperty('created')?.getParameter('tzid') || created.zone?.tzid
+	if (!tzid || ['UTC', 'Z', 'floating'].includes(tzid)) {
+		return wall
+	}
+
+	// Construct a private zone: its transition expansion cannot change the resource or global service.
+	const component = task.component?.getAllSubcomponents('vtimezone')
+		.find((zone) => zone.getFirstPropertyValue('tzid') === tzid)
+	if (component) {
+		const zone = new ICAL.Timezone({ component: new ICAL.Component(component.toJSON()), tzid })
+		return new ICAL.Time(fields, zone).toUnixTime() * 1000
+	}
+
+	try {
+		const formatter = new Intl.DateTimeFormat('en-US', {
+			timeZone: tzid,
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+			hourCycle: 'h23',
+		})
+		let instant = wall
+		// Re-evaluate at the candidate instant so offsets near a transition use the local date.
+		for (let attempt = 0; attempt < 4; attempt++) {
+			const parts = Object.fromEntries(formatter.formatToParts(instant)
+				.map(({ type, value }) => [type, value]))
+			const local = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second)
+			const next = instant + wall - local
+			if (next === instant) {
+				return instant
+			}
+			instant = next
+		}
+		return instant
+	} catch {
+		// Unknown, resource-less TZIDs retain the previous floating-time behavior.
+		return wall
+	}
 }
 
 /**
