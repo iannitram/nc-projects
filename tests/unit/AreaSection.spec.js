@@ -86,6 +86,76 @@ describe('AreaSection', () => {
 		expect(projectsEl.compareDocumentPosition(doneStripEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 	})
 
+	it('renders empty area state with one line, new project button, and DoneStrip', () => {
+		const area = {
+			name: 'Studio',
+			calendarUrl: '/studio/',
+			projects: [],
+			done: [
+				{
+					task: { uid: 'p-done', summary: 'Done Project', categories: ['project'] },
+					children: [],
+					progress: { done: 1, total: 1 },
+				},
+			],
+		}
+
+		const wrapper = mount(AreaSection, {
+			props: { area },
+		})
+
+		expect(wrapper.find('h3').text()).toBe('Studio')
+		expect(wrapper.find('.cc-area-section__meta').text()).toBe('no open projects')
+		expect(wrapper.text()).toContain('Nothing open in Studio. Start a project, or tag an existing task as a project in Tasks.')
+		const newBtn = wrapper.find('.cc-area-section__empty-new-btn')
+		expect(newBtn.exists()).toBe(true)
+		expect(newBtn.text()).toContain('New project in Studio')
+		const doneStrip = wrapper.findComponent(DoneStrip)
+		expect(doneStrip.exists()).toBe(true)
+		expect(doneStrip.text()).toContain('Done (1)')
+	})
+
+	it('renders skeleton rows under the area heading when loading is true', () => {
+		const area = {
+			name: 'Studio',
+			calendarUrl: '/studio/',
+			projects: [],
+			done: [],
+		}
+
+		const wrapper = mount(AreaSection, {
+			props: { area, loading: true },
+		})
+
+		expect(wrapper.find('h3').text()).toBe('Studio')
+		const skeletons = wrapper.findAll('.cc-skeleton-row')
+		expect(skeletons).toHaveLength(3)
+		expect(wrapper.find('.cc-area-section__empty').exists()).toBe(false)
+	})
+
+	it('focuses the new project input when the empty new project button is clicked', async () => {
+		const area = {
+			name: 'Studio',
+			calendarUrl: '/studio/',
+			projects: [],
+			done: [],
+		}
+
+		const wrapper = mount(AreaSection, {
+			props: { area },
+			attachTo: document.body,
+		})
+
+		const newBtn = wrapper.find('.cc-area-section__empty-new-btn')
+		const input = wrapper.find('input')
+		const focusSpy = vi.spyOn(input.element, 'focus')
+
+		await newBtn.trigger('click')
+		expect(focusSpy).toHaveBeenCalled()
+
+		wrapper.unmount()
+	})
+
 	describe('new project field', () => {
 		const area = { name: 'Home', calendarUrl: '/list-a/', projects: [], done: [] }
 

@@ -1,5 +1,6 @@
 <script setup>
-import { NcTextField } from '@nextcloud/vue'
+import { mdiPlus } from '@mdi/js'
+import { NcButton, NcIconSvgWrapper, NcTextField } from '@nextcloud/vue'
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import DoneStrip from './DoneStrip.vue'
@@ -11,11 +12,14 @@ import { useProjectsStore } from '../store/projects.js'
 const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').AreaNode>} */
 	area: { type: Object, required: true },
+	/** Whether tasks/projects are currently loading */
+	loading: { type: Boolean, default: false },
 })
 
 const store = useProjectsStore()
 const newProject = ref('')
 const creating = ref(false)
+const newProjectInputRef = ref(null)
 
 const sortableProjects = computed(() => {
 	return (props.area?.projects || []).filter((project) => !isSomeday(project.task))
@@ -23,6 +27,10 @@ const sortableProjects = computed(() => {
 
 const somedayProjects = computed(() => {
 	return (props.area?.projects || []).filter((project) => isSomeday(project.task))
+})
+
+const hasOpenProjects = computed(() => {
+	return (props.area?.projects || []).length > 0
 })
 
 const sortOptions = computed(() => ({
@@ -103,14 +111,30 @@ function clearProject() {
 	newProject.value = ''
 }
 
+/**
+ * Focus the new project input field.
+ */
+function focusNewProject() {
+	const el = newProjectInputRef.value?.$el?.querySelector('input') || newProjectInputRef.value
+	el?.focus?.()
+}
+
 </script>
 
 <template>
 	<section :id="`area-${areaSlug(area.name)}`" class="cc-area-section">
-		<h3 class="cc-area-section__title">
-			{{ area.name }}
-		</h3>
-		<div class="cc-area-section__projects">
+		<div class="cc-area-section__header">
+			<h3 class="cc-area-section__title">
+				{{ area.name }}
+			</h3>
+			<span v-if="!loading && !hasOpenProjects" class="cc-area-section__meta">
+				no open projects
+			</span>
+		</div>
+		<div v-if="loading" class="cc-skeleton-rows" aria-busy="true">
+			<div v-for="i in 3" :key="i" class="cc-skeleton-row" />
+		</div>
+		<div v-else-if="hasOpenProjects" class="cc-area-section__projects">
 			<Sortable
 				tag="div"
 				class="cc-area-section__sortable"
@@ -131,8 +155,22 @@ function clearProject() {
 				:project="project"
 				:areaName="area.name" />
 		</div>
+		<div v-else class="cc-area-section__empty">
+			<p class="cc-area-section__empty-text">
+				Nothing open in {{ area.name }}. Start a project, or tag an existing task as a project in Tasks.
+			</p>
+			<NcButton
+				class="cc-area-section__empty-new-btn"
+				@click="focusNewProject">
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiPlus" :size="16" />
+				</template>
+				New project in {{ area.name }}
+			</NcButton>
+		</div>
 		<DoneStrip :projects="area.done || []" />
 		<NcTextField
+			ref="newProjectInputRef"
 			v-model="newProject"
 			class="cc-area-section__new-project"
 			placeholder="+ New project"
@@ -147,10 +185,22 @@ function clearProject() {
 	margin-bottom: calc(var(--default-grid-baseline, 4px) * 6);
 }
 
-.cc-area-section__title {
+.cc-area-section__header {
+	display: flex;
+	align-items: baseline;
+	gap: calc(var(--default-grid-baseline, 4px) * 2.5);
 	margin-bottom: calc(var(--default-grid-baseline, 4px) * 3);
+}
+
+.cc-area-section__title {
+	margin: 0;
 	font-size: 1.25rem;
 	font-weight: 600;
+}
+
+.cc-area-section__meta {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
 }
 
 .cc-area-section__projects {
@@ -163,5 +213,39 @@ function clearProject() {
 	display: flex;
 	flex-direction: column;
 	gap: calc(var(--default-grid-baseline, 4px) * 3);
+}
+
+.cc-area-section__empty {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	text-align: left;
+	padding: calc(var(--default-grid-baseline, 4px) * 3) 0 calc(var(--default-grid-baseline, 4px) * 3) calc(var(--default-grid-baseline, 4px) * 1);
+	gap: calc(var(--default-grid-baseline, 4px) * 1.5);
+}
+
+.cc-area-section__empty-text {
+	margin: 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+	text-wrap: pretty;
+}
+
+.cc-area-section__empty-new-btn {
+	margin-top: calc(var(--default-grid-baseline, 4px) * 1);
+}
+
+.cc-skeleton-rows {
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--default-grid-baseline, 4px) * 2);
+	margin-bottom: calc(var(--default-grid-baseline, 4px) * 3);
+}
+
+.cc-skeleton-row {
+	height: 44px;
+	border-radius: var(--border-radius-element, 8px);
+	background: var(--color-background-dark, #ededed);
+	opacity: 0.6;
 }
 </style>

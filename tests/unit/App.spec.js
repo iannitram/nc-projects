@@ -93,6 +93,46 @@ describe('App', () => {
 		expect(store.settingsOpen).toBe(true)
 	})
 
+	it('shows skeleton rows under area headings while loading and no spinner', async () => {
+		const pinia = createPinia()
+		setActivePinia(pinia)
+		const store = useProjectsStore()
+		vi.spyOn(store, 'load').mockImplementation(async () => {
+			store.loading = true
+		})
+		const wrapper = mount(App, { global: { plugins: [pinia] } })
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.find('.cc-projects__loading').exists()).toBe(true)
+		expect(wrapper.findAll('.cc-skeleton-area')).toHaveLength(3)
+		expect(wrapper.findAll('.cc-skeleton-row').length).toBeGreaterThanOrEqual(9)
+		// Centered spinner should not exist
+		expect(wrapper.find('.loading-icon').exists()).toBe(false)
+	})
+
+	it('shows NcEmptyContent on load error with reassurance and retry button', async () => {
+		const pinia = createPinia()
+		setActivePinia(pinia)
+		const store = useProjectsStore()
+		const loadSpy = vi.spyOn(store, 'load').mockImplementation(async () => {
+			store.error = 'The server didn\'t answer'
+		})
+		const wrapper = mount(App, { global: { plugins: [pinia] } })
+		await wrapper.vm.$nextTick()
+
+		const errorBlock = wrapper.find('.cc-projects__error')
+		expect(errorBlock.exists()).toBe(true)
+		expect(errorBlock.text()).toContain("Couldn't load your task lists")
+		expect(errorBlock.text()).toContain("The server didn't answer. Your tasks are safe; nothing was changed.")
+
+		const retryBtn = errorBlock.find('button')
+		expect(retryBtn.exists()).toBe(true)
+		expect(retryBtn.text()).toContain('Try again')
+
+		await retryBtn.trigger('click')
+		expect(loadSpy).toHaveBeenCalledTimes(2)
+	})
+
 	it('calls store.refresh() when window receives focus', async () => {
 		vi.useFakeTimers()
 		const pinia = createPinia()
