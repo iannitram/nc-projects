@@ -408,7 +408,7 @@ export const useProjectsStore = defineStore('projects', {
 				const task = this.tasksByUid[uid]
 				if (task) {
 					before.set(uid, { ics: toRaw(task).toIcs(), where: toRaw(task).where })
-					toRaw(task).sortOrder = sortOrder
+					task.sortOrder = sortOrder
 				}
 			}
 			this.rebuildTree()
@@ -468,7 +468,7 @@ export const useProjectsStore = defineStore('projects', {
 			})
 
 			for (const planUid of plan) {
-				toRaw(this.tasksByUid[planUid]).completed = done
+				this.tasksByUid[planUid].completed = done
 			}
 			this.rebuildTree()
 
@@ -596,7 +596,7 @@ export const useProjectsStore = defineStore('projects', {
 			const raw = toRaw(task)
 			const before = { uid, ics: raw.toIcs(), where: raw.where }
 
-			raw.categories = [...raw.categories, 'project']
+			task.categories = [...task.categories, 'project']
 			this.rebuildTree()
 
 			try {
