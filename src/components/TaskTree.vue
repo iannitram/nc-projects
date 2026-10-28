@@ -23,7 +23,9 @@ export function isTaskClosed(task) {
 </script>
 
 <script setup>
+import { mdiChevronDown } from '@mdi/js'
 import { showInfo } from '@nextcloud/dialogs'
+import { NcIconSvgWrapper } from '@nextcloud/vue'
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import TaskRow from './TaskRow.vue'
@@ -104,6 +106,17 @@ function hasVisibleChildren(node) {
 		return true
 	}
 	return node.children.some((child) => !isTaskClosed(child?.task))
+}
+
+/**
+ * Count the subtasks a collapsed parent hides (closed ones only when showDone is on).
+ *
+ * @param {import('../models/tree.js').TaskNode} node The task node
+ * @return {number} The number of direct subtasks
+ */
+function subtaskCount(node) {
+	const children = node?.children || []
+	return props.showDone ? children.length : children.filter((child) => !isTaskClosed(child?.task)).length
 }
 
 const visibleNodes = computed(() => {
@@ -255,8 +268,7 @@ function onDrop(evt) {
 		<template #item="{ element: node }">
 			<li
 				class="cc-task-tree__item"
-				:class="{ 'is-closed': isTaskClosed(node?.task), 'cc-task-tree__item--closed': isTaskClosed(node?.task) }"
-				:style="isTaskClosed(node?.task) ? { opacity: 0.6 } : undefined">
+				:class="{ 'is-closed': isTaskClosed(node?.task), 'cc-task-tree__item--closed': isTaskClosed(node?.task) }">
 				<div
 					class="cc-task-tree__row-wrapper drag-handle"
 					:class="{ 'is-closed': isTaskClosed(node?.task) }"
@@ -268,10 +280,20 @@ function onDrop(evt) {
 						:aria-expanded="!isCollapsed(node)"
 						:aria-label="isCollapsed(node) ? 'Expand subtasks' : 'Collapse subtasks'"
 						@click="toggleCollapse(node)">
-						<span class="cc-task-tree__collapse-icon">{{ isCollapsed(node) ? '▶' : '▼' }}</span>
+						<NcIconSvgWrapper
+							class="cc-task-tree__collapse-icon"
+							:class="{ 'is-collapsed': isCollapsed(node) }"
+							:path="mdiChevronDown"
+							:size="20"
+							inline />
 					</button>
 					<span v-else class="cc-task-tree__collapse-placeholder" />
 					<TaskRow :node="node" />
+					<span
+						v-if="hasVisibleChildren(node) && isCollapsed(node)"
+						class="cc-task-tree__subtask-count">
+						{{ subtaskCount(node) }} {{ subtaskCount(node) === 1 ? 'subtask' : 'subtasks' }}
+					</span>
 				</div>
 				<div
 					v-if="hasVisibleChildren(node) && !isCollapsed(node)"
@@ -299,9 +321,10 @@ function onDrop(evt) {
 	margin: calc(var(--default-grid-baseline, 4px) * 1) 0;
 }
 
-.cc-task-tree__item.is-closed,
-.cc-task-tree__item--closed {
-	opacity: 0.6;
+/* Done rows: secondary text colour and a strike-through, never opacity (it stacks on nested rows). */
+.cc-task-tree__row-wrapper.is-closed :deep(.cc-task-row__title) {
+	color: var(--color-text-maxcontrast);
+	text-decoration: line-through;
 }
 
 .cc-task-tree__row-wrapper {
@@ -319,9 +342,27 @@ function onDrop(evt) {
 	align-items: center;
 	justify-content: center;
 	color: var(--color-text-maxcontrast, #777);
-	font-size: 0.75rem;
 	width: 20px;
 	height: 20px;
+}
+
+.cc-task-tree__collapse-toggle:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+}
+
+.cc-task-tree__collapse-icon {
+	transition: transform 0.15s;
+}
+
+.cc-task-tree__collapse-icon.is-collapsed {
+	transform: rotate(-90deg);
+}
+
+.cc-task-tree__subtask-count {
+	flex-shrink: 0;
+	font-size: 0.85rem;
+	color: var(--color-text-maxcontrast);
+	white-space: nowrap;
 }
 
 .cc-task-tree__collapse-placeholder {
@@ -330,8 +371,11 @@ function onDrop(evt) {
 	display: inline-block;
 }
 
+/* 24 px per level: 10 px margin, the 1 px guide (under the chevron), 13 px padding. */
 .cc-task-tree__children {
-	margin-left: calc(var(--default-grid-baseline, 4px) * 5);
+	margin-left: 10px;
+	padding-left: 13px;
+	border-left: 1px solid var(--color-border);
 }
 
 @media (max-width: 600px) {

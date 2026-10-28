@@ -57,6 +57,59 @@ describe('TaskTree', () => {
 		expect(wrapper.text()).toContain('Child Subtask')
 	})
 
+	describe('icons and done styling', () => {
+		const parent = (extra = {}) => [
+			{
+				task: { uid: 'p', summary: 'Parent', completed: false, ...extra },
+				children: [
+					{ task: { uid: 'c1', summary: 'Child 1', completed: false }, children: [], deeper: 0 },
+					{ task: { uid: 'c2', summary: 'Child 2', completed: false }, children: [], deeper: 0 },
+				],
+				deeper: 0,
+			},
+		]
+
+		it('uses a chevron icon, rotated only when collapsed, and keeps the accessible name', async () => {
+			const wrapper = mount(TaskTree, { props: { nodes: parent() } })
+			const toggle = wrapper.find('.cc-task-tree__collapse-toggle')
+
+			expect(toggle.text()).not.toMatch(/[▶▼]/)
+			expect(toggle.find('svg').exists()).toBe(true)
+			expect(toggle.find('.cc-task-tree__collapse-icon').classes()).not.toContain('is-collapsed')
+			expect(toggle.attributes('aria-label')).toBe('Collapse subtasks')
+
+			await toggle.trigger('click')
+
+			expect(toggle.find('.cc-task-tree__collapse-icon').classes()).toContain('is-collapsed')
+			expect(toggle.attributes('aria-label')).toBe('Expand subtasks')
+		})
+
+		it('shows "N subtasks" only while a parent is collapsed', async () => {
+			const wrapper = mount(TaskTree, { props: { nodes: parent() } })
+
+			expect(wrapper.find('.cc-task-tree__subtask-count').exists()).toBe(false)
+
+			await wrapper.find('.cc-task-tree__collapse-toggle').trigger('click')
+
+			expect(wrapper.find('.cc-task-tree__subtask-count').text()).toBe('2 subtasks')
+		})
+
+		it('puts no opacity below 1 on a done subtask under a done parent', () => {
+			const nodes = parent({ completed: true })
+			nodes[0].children[0].task.completed = true
+			const wrapper = mount(TaskTree, { props: { nodes, showDone: true }, attachTo: document.body })
+
+			// The checkbox component hides its native input with opacity 0 (it is the real, focusable control).
+			for (const element of wrapper.element.querySelectorAll('*:not(.checkbox-radio-switch__input)')) {
+				const opacity = getComputedStyle(element).opacity
+				expect(opacity === '' || Number(opacity) === 1).toBe(true)
+				expect(element.getAttribute('style') || '').not.toContain('opacity')
+			}
+			expect(wrapper.findAll('.cc-task-tree__row-wrapper.is-closed')).toHaveLength(2)
+			wrapper.unmount()
+		})
+	})
+
 	describe('show done toggle behavior', () => {
 		const sampleNodes = [
 			{
@@ -117,7 +170,7 @@ describe('TaskTree', () => {
 			expect(wrapper.text()).not.toContain('Closed Level 3 Subtask')
 		})
 
-		it('shows closed tasks at every level greyed (opacity 0.6) and in sort position when showDone=true', () => {
+		it('shows closed tasks at every level struck through (no opacity) and in sort position when showDone=true', () => {
 			const wrapper = mount(TaskTree, {
 				props: {
 					nodes: sampleNodes,
@@ -142,12 +195,12 @@ describe('TaskTree', () => {
 			expect(level1Items[2].text()).toContain('Cancelled Task 1')
 			expect(level1Items[3].text()).toContain('Open Task 2')
 
-			// Check closed tasks have is-closed class and opacity 0.6
+			// Check closed tasks have the is-closed class and no opacity at all
 			expect(level1Items[1].classes()).toContain('is-closed')
-			expect(level1Items[1].attributes('style')).toContain('opacity: 0.6')
+			expect(level1Items[1].attributes('style')).toBeUndefined()
 
 			expect(level1Items[2].classes()).toContain('is-closed')
-			expect(level1Items[2].attributes('style')).toContain('opacity: 0.6')
+			expect(level1Items[2].attributes('style')).toBeUndefined()
 
 			// Open task does not have is-closed class or opacity style
 			expect(level1Items[0].classes()).not.toContain('is-closed')
