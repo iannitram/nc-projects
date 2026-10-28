@@ -245,7 +245,7 @@ async function submitNewProject() {
 @media (max-width: 600px) {
 	.cc-top-bar {
 		min-height: 52px;
-		padding: 0 calc(var(--default-grid-baseline, 4px) * 1.5) 0 calc(var(--default-grid-baseline, 4px) * 1);
+		padding: 0 calc(var(--default-grid-baseline, 4px) * 1.5) 0 calc(var(--default-clickable-area, 34px) + var(--default-grid-baseline, 4px) * 2);
 		gap: calc(var(--default-grid-baseline, 4px) * 0.5);
 	}
 
