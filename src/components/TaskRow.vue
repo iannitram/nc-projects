@@ -224,7 +224,7 @@ function setPriority(value) {
 			:class="`cc-task-row__checkbox--${priorityLevel}`"
 			:isChecked="isCompleted"
 			:modelValue="isCompleted"
-			aria-label="Task completed"
+			:aria-label="isCompleted ? `Reopen ${summary}` : `Check off ${summary}`"
 			@update:modelValue="onCompletionChange" />
 		<NcTextField
 			v-if="editing"
@@ -266,7 +266,7 @@ function setPriority(value) {
 		</a>
 		<NcActions
 			class="cc-task-row__menu cc-no-drag"
-			aria-label="Task actions"
+			:aria-label="`Actions for ${summary}`"
 			@mousedown.stop
 			@pointerdown.stop
 			@touchstart.stop>
@@ -340,6 +340,45 @@ function setPriority(value) {
 }
 
 .cc-task-row.is-completed .cc-task-row__title {
+	text-decoration: line-through;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Priority ring, as in Tasks. NcCheckboxRadioSwitch draws the box as an inline
+ * SVG that carries its own fill, so colour the SVG and its path (not only the
+ * wrapper). Strong text-level variables: --color-error is a pale tint here.
+ * The checked state is left alone.
+ */
+.cc-task-row__checkbox--high,
+.cc-task-row__checkbox--medium,
+.cc-task-row__checkbox--low {
+	--cc-priority-color: var(--color-primary-element);
+}
+
+.cc-task-row__checkbox--high {
+	--cc-priority-color: var(--color-error-text);
+}
+
+.cc-task-row__checkbox--medium {
+	--cc-priority-color: var(--color-warning-text);
+}
+
+.cc-task-row__checkbox--low {
+	--cc-priority-color: var(--color-primary-element);
+}
+
+.cc-task-row__checkbox--high :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg),
+.cc-task-row__checkbox--medium :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg),
+.cc-task-row__checkbox--low :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg),
+.cc-task-row__checkbox--high :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg path),
+.cc-task-row__checkbox--medium :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg path),
+.cc-task-row__checkbox--low :deep(.checkbox-content__icon:not(.checkbox-content__icon--checked) svg path) {
+	color: var(--cc-priority-color);
+	fill: var(--cc-priority-color);
+}
+
+.cc-task-row__title {
 	text-decoration: line-through;
 	color: var(--color-text-maxcontrast);
 }

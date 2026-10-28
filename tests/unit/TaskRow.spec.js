@@ -1,4 +1,6 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { createPinia, setActivePinia } from 'pinia'
 import { describe, expect, it, vi } from 'vitest'
 import TaskRow, { getTasksDeepLink } from '../../src/components/TaskRow.vue'
@@ -9,6 +11,8 @@ vi.mock('@nextcloud/router', async (importOriginal) => ({
 	generateUrl: vi.fn((route) => `/${route}`),
 }))
 
+const TaskRowSource = readFileSync(resolve(process.cwd(), 'src/components/TaskRow.vue'), 'utf8')
+
 describe('TaskRow', () => {
 	it('checks off and reopens the task through the store', async () => {
 		setActivePinia(createPinia())
@@ -17,6 +21,28 @@ describe('TaskRow', () => {
 		const wrapper = mount(TaskRow, { props: { node: { task: { uid: 't1', completed: false } } } })
 		await wrapper.findComponent({ name: 'NcCheckboxRadioSwitch' }).vm.$emit('update:modelValue', true)
 		expect(setCompleted).toHaveBeenCalledWith('t1', true)
+	})
+
+	it.each([[1, 'high', 'error-text'], [5, 'medium', 'warning-text'], [9, 'low', 'primary-element']])(
+		'marks priority %i as %s on the checkbox with the strong colour hook',
+		(priority, level, variable) => {
+			const wrapper = mount(TaskRow, { props: { node: { task: { uid: 't1', summary: 'A', priority } } } })
+			const box = wrapper.find('.cc-task-row__checkbox')
+			expect(box.classes()).toContain(`cc-task-row__checkbox--${level}`)
+			expect(wrapper.classes()).toContain(`cc-task-row--priority-${level}`)
+			// The ring is drawn on the SVG; the style must target it, with strong variables.
+			const source = TaskRowSource
+			expect(source).toContain(`.cc-task-row__checkbox--${level} {\n\t--cc-priority-color: var(--color-${variable});`)
+			expect(source).toMatch(new RegExp(`checkbox--${level} :deep\\(\\.checkbox-content__icon:not\\(\\.checkbox-content__icon--checked\\) svg\\)`))
+			expect(source).toContain('fill: var(--cc-priority-color)')
+		},
+	)
+
+	it('names the checkbox after the task and its state', () => {
+		const open = mount(TaskRow, { props: { node: { task: { uid: 't1', summary: 'Fix it', completed: false } } } })
+		expect(open.find('[aria-label="Check off Fix it"]').exists()).toBe(true)
+		const done = mount(TaskRow, { props: { node: { task: { uid: 't1', summary: 'Fix it', completed: true } } } })
+		expect(done.find('[aria-label="Reopen Fix it"]').exists()).toBe(true)
 	})
 
 	it('renders the task summary', () => {

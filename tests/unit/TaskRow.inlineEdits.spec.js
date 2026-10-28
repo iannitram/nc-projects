@@ -327,10 +327,10 @@ describe('TaskRow inline edits', () => {
 		expect(link.attributes('href')).toBe('/apps/tasks/calendars/list-a/tasks/t1.ics')
 	})
 
-	it('has a "Task actions" menu button name', () => {
+	it('names the menu button after the task', () => {
 		const wrapper = mount(TaskRow, { props: { node: node() } })
 
-		expect(wrapper.find('[aria-label="Task actions"]').exists()).toBe(true)
+		expect(wrapper.find(`[aria-label="Actions for ${node().task.summary}"]`).exists()).toBe(true)
 	})
 
 	it('does not let mousedown on an edit control bubble to the row', async () => {
