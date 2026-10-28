@@ -19,6 +19,9 @@ let pendingConflictReloads = 0
 let successfulConflictReloads = 0
 let noticeScheduled = false
 
+/** How long a row a conflict reloaded stays tinted (#125), in milliseconds. */
+export const CONFLICT_HIGHLIGHT_MS = 4000
+
 /**
  * Queue a task reload caused by a ConflictError and show one quiet notice.
  *
@@ -243,6 +246,13 @@ export const useProjectsStore = defineStore('projects', {
 		lastRefreshedAt: null,
 		/** @type {Set<string>} */
 		collapsedProjects: new Set(),
+		/**
+		 * Rows a conflict reloaded (#125): uid -> the time it was marked. TaskRow and
+		 * ProjectCard tint these for CONFLICT_HIGHLIGHT_MS.
+		 *
+		 * @type {Record<string, number>}
+		 */
+		conflictReloaded: {},
 	}),
 	getters: {
 		/**
@@ -517,6 +527,7 @@ export const useProjectsStore = defineStore('projects', {
 		 *
 		 * @param {string[]} urls the tasks' URLs
 		 * @param {boolean} [useSession] whether to pass session to fetchTodo
+		 * @return {Promise<string[]|undefined>} the uids that were reloaded
 		 */
 		async reloadTasks(urls, useSession = false) {
 			const urlList = (Array.isArray(urls) ? urls : [urls]).filter(Boolean)
@@ -527,6 +538,7 @@ export const useProjectsStore = defineStore('projects', {
 				this.davSession ??= markRaw(getDavSession())
 			}
 			const storedList = await Promise.all(urlList.map((url) => (useSession ? fetchTodo(url, this.davSession) : fetchTodo(url))))
+			const uids = []
 			for (const stored of storedList) {
 				if (stored?.ics) {
 					const task = Task.fromIcs(stored.ics, {
@@ -535,9 +547,31 @@ export const useProjectsStore = defineStore('projects', {
 						calendarUrl: stored.calendarUrl,
 					})
 					this.tasksByUid[task.uid] = task
+					uids.push(task.uid)
 				}
 			}
 			this.rebuildTree()
+			return uids
+		},
+		/**
+		 * Mark rows a conflict reloaded, so they are tinted for a few seconds (#125).
+		 * Each mark clears itself after CONFLICT_HIGHLIGHT_MS unless a newer mark replaced it.
+		 *
+		 * @param {string[]} uids the reloaded tasks
+		 */
+		markConflictReloaded(uids) {
+			const now = Date.now()
+			for (const uid of uids || []) {
+				if (!uid) {
+					continue
+				}
+				this.conflictReloaded[uid] = now
+				setTimeout(() => {
+					if (this.conflictReloaded[uid] === now) {
+						delete this.conflictReloaded[uid]
+					}
+				}, CONFLICT_HIGHLIGHT_MS)
+			}
 		},
 		/**
 		 * Reload a single task by URL and rebuild the tree.
@@ -566,7 +600,9 @@ export const useProjectsStore = defineStore('projects', {
 			if (urls.length === 0) {
 				return
 			}
-			return queueConflictReload(() => this.reloadTasks(urls, !isArray))
+			return queueConflictReload(async () => {
+				this.markConflictReloaded(await this.reloadTasks(urls, !isArray))
+			})
 		},
 		/**
 		 * @param {string} projectUid the project

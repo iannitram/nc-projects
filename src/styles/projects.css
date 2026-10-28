@@ -68,6 +68,22 @@
 }
 
 /*
+ * A row a conflict reloaded (#125, mockup a): warning tint and a left edge while the store
+ * marks it (about 4 s), then the tint fades out. The toast stays as it is.
+ */
+.cc-task-row,
+.cc-project-card__header {
+	transition: background-color 0.8s ease, box-shadow 0.8s ease;
+}
+
+/* !important: it must beat the rows' own hover, focus and someday backgrounds while it lasts. */
+.cc-column .cc-conflict-reloaded {
+	background-color: color-mix(in srgb, var(--color-warning) 18%, var(--color-main-background)) !important;
+	box-shadow: inset 3px 0 0 var(--color-warning) !important;
+	transition: none;
+}
+
+/*
  * Phone and touch (#123, mockup f): one block. It sets the row height (48 px) and the
  * touch target (44 px); the rules below only read those two variables. Rows never wrap
  * their controls: long text is cut with an ellipsis. "⋯" is always visible and the drag

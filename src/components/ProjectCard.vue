@@ -229,6 +229,9 @@ watch(() => props.project.task.uid, (uid) => {
 	}
 }, { immediate: true })
 
+/** A conflict just reloaded the project task (#125): tint the band for a few seconds. */
+const isConflictReloaded = computed(() => Boolean(store?.conflictReloaded[props.project.task.uid]))
+
 const isCollapsed = computed(() => store?.collapsedProjects.has(props.project.task.uid) ?? false)
 
 /**
@@ -246,6 +249,7 @@ function toggleCollapsed() {
 		:class="{ 'cc-project-card--someday': isSomeday }">
 		<header
 			class="cc-project-card__header drag-handle"
+			:class="{ 'cc-conflict-reloaded': isConflictReloaded }"
 			:data-uid="project.task?.uid">
 			<span class="cc-project-card__grip" aria-hidden="true">
 				<NcIconSvgWrapper :path="mdiDragVertical" :size="20" />

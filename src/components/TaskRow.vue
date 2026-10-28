@@ -48,6 +48,7 @@ export function getTasksDeepLink(task) {
 <script setup>
 import { mdiDotsHorizontal } from '@mdi/js'
 import { NcActionButton, NcActionInput, NcActionLink, NcActionRadio, NcActions, NcActionSeparator, NcCheckboxRadioSwitch, NcIconSvgWrapper, NcTextField } from '@nextcloud/vue'
+import { getActivePinia } from 'pinia'
 import { computed, nextTick, ref, toRaw } from 'vue'
 import { useProjectsStore } from '../store/projects.js'
 
@@ -88,6 +89,12 @@ const isCompleted = computed(() => {
 		return true
 	}
 	return Boolean(task.value.completed)
+})
+
+/** A conflict just reloaded this task (#125): tint the row for a few seconds. */
+const isConflictReloaded = computed(() => {
+	const uid = task.value?.uid
+	return Boolean(uid && getActivePinia() && useProjectsStore().conflictReloaded[uid])
 })
 
 const tasksDeepLink = computed(() => getTasksDeepLink(task.value))
@@ -218,7 +225,7 @@ function setPriority(value) {
 <template>
 	<div
 		class="cc-task-row"
-		:class="{ 'is-completed': isCompleted, [`cc-task-row--priority-${priorityLevel}`]: true }">
+		:class="{ 'is-completed': isCompleted, 'cc-conflict-reloaded': isConflictReloaded, [`cc-task-row--priority-${priorityLevel}`]: true }">
 		<NcCheckboxRadioSwitch
 			class="cc-task-row__checkbox"
 			:class="`cc-task-row__checkbox--${priorityLevel}`"
