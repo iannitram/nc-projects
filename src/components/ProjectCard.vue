@@ -471,8 +471,10 @@ function onHeaderDragLeave(evt) {
 }
 
 .cc-project-card__badge--blocked {
-	background-color: var(--color-error);
-	color: var(--color-main-background);
+	/* Error text on a light error tint: --color-error-text is the theme's readable error colour on
+	   the page background, in light and dark (#145). */
+	background-color: color-mix(in srgb, var(--color-error) 12%, var(--color-main-background));
+	color: var(--color-error-text);
 }
 
 .cc-project-card__badge--someday {

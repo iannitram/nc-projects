@@ -91,7 +91,7 @@ describe('AreaSection', () => {
 
 		const doneStrip = wrapper.findComponent(DoneStrip)
 		expect(doneStrip.exists()).toBe(true)
-		expect(doneStrip.text()).toContain('1 done projects')
+		expect(doneStrip.text()).toContain('1 done project')
 
 		// Verify DOM order: ProjectCards container is before DoneStrip
 		const projectsEl = wrapper.find('.cc-area-section__projects').element
