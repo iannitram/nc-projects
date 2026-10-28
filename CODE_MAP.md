@@ -2,7 +2,7 @@
 
 Describes commit: eb3b328 (2026-10-28)
 
-**Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`), the panel (`App.vue`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`) and the store's `load`, `addTask`, `calendarOf` and `createProject` are **present**; the rest of the store, `useRefresh.js`, `useDrag.js`'s drop wiring and `DoneStrip.vue` are **stubs**: their exported names, signatures and JSDoc are the contract, and their bodies throw `notImplemented` (`src/notImplemented.js`) or render an empty element until their roadmap issue lands. When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
+**Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`), the panel (`App.vue`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`) and store actions for loading, refreshing, adding, ordering, completion, quick edits and project creation are **present**; `moveToProject` and `reorder` for projects within an area remain **stubs**. When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
 
 ## Shape in one picture
 
@@ -36,13 +36,13 @@ Server (PHP): serves the page only. No data endpoints.
 | Path | Job | IDs |
 |---|---|---|
 | `src/services/dav.js` | **Present** (`listTaskCalendars`, `fetchTodos`, `fetchTodo`, `putTodo`, `createTodo`, `ConflictError`); **stub**: `moveTodo` (P12). `@nextcloud/cdav-library` client, made per call (`getClient`) with `rootUrl: generateRemoteUrl('dav')` (an absolute URL, #49) and the request token from `@nextcloud/auth`: discover calendars, REPORT VTODOs, PUT with If-Match, create with a random-UUID file name, MOVE between calendars (with If-Match; re-read after, since the etag is stale). A 412 on a PUT or create throws `ConflictError`. Known: `createTodo` uses `crypto.randomUUID()`, which fails over plain HTTP (#53); one connection per page is #54 | P02, P07, P10, P12 |
-| `src/services/areas.js` | **Present** (`AREA_NAMES`, `isExcluded`, `pickAreas`). Which calendars are areas: only lists that hold tasks (VTODO), then the 8 display names, plus the exclusions (lists shared by other people, today Farm Boy; `*_shared_by_*`, `app-generated--deck--*`) | P02 |
+| `src/services/areas.js` | **Present** (`AREA_NAMES`, `isExcluded`, `pickAreas`). Which calendars are areas: only lists that hold tasks (VTODO), then the 8 display names, plus the exclusions (lists shared by other people; `*_shared_by_*`, `app-generated--deck--*`) | P02 |
 | `src/models/Task.js` | **Present.** `ical.js` wrapper for one VTODO (`Task.fromIcs`, `Task.create`, `toIcs`): typed getters and setters for the fields the app uses; **keeps every other property and parameter untouched on write** | P03 |
 | `src/models/tree.js` | **Present** (`buildTree`). Pure function: tasks → areas → projects → task tree (follows RELATED-TO across lists, max depth 3, with a count of what lies deeper for "+N deeper"; progress counts every descendant). Also returns orphans and untagged parents for the tray | P04, P15 |
 | `src/models/completion.js` | **Present** (`planCompletion`). Pure: which tasks a check-off or reopen changes, following Tasks' cascades (checking off closes the task and its open descendants breadth-first; reopening opens the task and its closed ancestors up to the first project). Changes no task | P06, P13 |
 | `src/notImplemented.js` | The stubs' placeholder error; delete once nothing imports it (today `dav.js` for `moveTodo`, `store/projects.js`, `useRefresh.js`) | P01 |
 | `src/models/sortOrder.js` | **Present** (`APPLE_EPOCH_MS`, `effectiveSortOrder`, `placeMoved`). Pure order math, a copy of Tasks' rule (§Facts): effective order, place a moved task at neighbour ±1, bump later colliding siblings. `CREATED` may be a `Date` or an `ICAL.Time` (also through a store proxy): it is turned into ms before the Apple-epoch maths (#50). Open: a `CREATED` with a TZID sorts an hour off (#68) | P08, P09 |
-| `src/store/projects.js` | **Present**: state (`areas`, `orphans`, `untaggedParents`, `tasksByUid`, `ctags`, `loading`, `error`), `load` (a failure leaves a non-empty `error`, #49), `refresh` (P10: re-reads lists whose ctag changed), `handleConflict` / `reloadTask` (reloads a task on ConflictError with a quiet notice), `addTask` (P07: creates the task on the project's list with `parentUid`, rebuilds the tree, shows an error toast on failure and returns `null`), `calendarOf`, `createProject` (P14: `project` category on the area's list; rethrows after the toast). **Stubs**: `reorder`, `moveToProject`, `setCompleted`, `updateTask`, `makeProject`. Pinia store: load, refresh by etag/ctag, optimistic updates with rollback, 412 handling | P05, P07, P10, P14 |
+| `src/store/projects.js` | **Present**: state (`areas`, `orphans`, `untaggedParents`, `tasksByUid`, `ctags`, `loading`, `error`), load/refresh, one batched conflict reload and quiet notice, add task, reorder, Tasks-style completion cascades and quick edits with optimistic updates and rollback, `calendarOf`, make project, and create project. **Stubs**: `moveToProject`, and `reorder` for projects within an area | P05, P07, P08, P10, P13, P14 |
 
 ### UI (Vue 3 + `@nextcloud/vue`)
 
@@ -51,9 +51,9 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/main.js` | Creates the app, installs Pinia, mounts on `#cc_projects` | P01 |
 | `src/App.vue` | `NcContent` / `NcAppContent` shell; calls the store's `load` on mount, shows a spinner, the error text, or one `AreaSection` per area; calls `useRefresh(store.refresh)` (P10) | P01, P05, P10 |
 | `src/components/AreaSection.vue` | Present: one area with its project cards, rendered in order, and the "+ New project" field (Enter calls `store.createProject`, Esc clears) | P05, P14 |
-| `src/components/ProjectCard.vue` | Present: project title, task tree and the `AddTaskInput` under it | P05, P07 |
+| `src/components/ProjectCard.vue` | Present: project title, completion checkbox (calls `setCompleted`), task tree and the `AddTaskInput` under it | P05, P07, P13 |
 | `src/components/TaskTree.vue` | Present: collapsible nested task list, three levels, then a "+N deeper" Tasks link | P05 |
-| `src/components/TaskRow.vue` | Present: task completion checkbox (display only until `setCompleted` lands), inline quick edits (click the title to rename; due date; priority high/medium/low/none as 1/5/9/0) calling `store.updateTask`, an Open in Tasks link, and "+N deeper" Tasks link (built with `generateUrl`) when descendants exceed the rendered depth. The edit controls carry `cc-no-drag` and stop mousedown/pointerdown/touchstart | P05, P13 |
+| `src/components/TaskRow.vue` | Present: task completion checkbox (calls `setCompleted`), inline quick edits (click the title to rename; due date; priority high/medium/low/none as 1/5/9/0) calling `store.updateTask`, an Open in Tasks link, and "+N deeper" Tasks link (built with `generateUrl`) when descendants exceed the rendered depth. The edit controls carry `cc-no-drag` and stop mousedown/pointerdown/touchstart | P05, P13 |
 | `src/components/AddTaskInput.vue` | Present: inline "+ Add task" field under a project; Enter calls `store.addTask` (one submit at a time), Esc clears | P07 |
 | `src/components/DoneStrip.vue` | **Stub** (empty element; not mounted anywhere yet). Collapsed list of completed projects in an area | P06 |
 | `src/components/NeedsFilingTray.vue` | **Present** (not mounted anywhere yet): orphans and untagged parents in two lists with counts; each item has a "Make project" button that calls `store.makeProject`; hidden when both lists are empty | P15 |
@@ -86,7 +86,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `package-lock.json`, `composer.lock` | Committed lockfiles; CI installs with `npm ci` |
 | `package.json`, `vite.config.mjs`, `vitest.config.mjs`, `eslint.config.mjs` | Build with `@nextcloud/vite-config`; test with Vitest (jsdom, `tests/unit/**/*.spec.js`); lint with `@nextcloud/eslint-config` |
 | `composer.json` | PHP autoload (`OCA\CcProjects\` to `lib/`), phpunit and `nextcloud/ocp` for tests |
-| `.github/workflows/check.yml` | CI on self-hosted runners: lint, tests, PHP lint and PHP tests on Linux and Windows (`check` job); `npm run build` on Linux (`build` job). No macOS job until a Mac runner exists |
+| `.github/workflows/check.yml` | CI on GitHub-hosted runners: lint, tests, PHP lint and PHP tests on Linux and Windows (`check` job); `npm run build` on Linux (`build` job) |
 | `.gitattributes` | LF line endings in every checkout |
 | `scripts/fetch-tasks-ref.sh` | Shallow-clone Nextcloud Tasks (default v0.18.1) into git-ignored `reference/tasks` for reading |
 | `scripts/dav-get.sh` | Print one stored task's raw iCalendar from the **test** container (CalDAV GET), for the spec's "read the stored task" checks |
@@ -118,7 +118,7 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 
 - **Browsers:** current Firefox, Chrome, Safari and Edge on Mac, Windows and Linux, plus Safari on iOS and Chrome on Android for the phone layout (P11). Nextcloud's own browser list is the floor.
 - **Server:** any Nextcloud 33–35 host; nothing in the app depends on the host OS.
-- **Building:** Node 24 and PHP 8.4 on any OS. CI (`.github/workflows/check.yml`, self-hosted runners) runs lint and tests on Linux and Windows; macOS is not covered yet (no Mac runner), so Mac is checked by hand until one exists. PHP comes from `setup-php` on Linux and from the runner's own install on Windows. Bounding the Vitest workers on those runners is #67.
+- **Building:** Node 24 and PHP 8.4 on any OS. CI (`.github/workflows/check.yml`, GitHub-hosted runners) runs lint and tests on Linux and Windows; macOS is not covered yet, so Mac is checked by hand until one exists. PHP comes from `setup-php` on Linux and from the runner's own install on Windows. Bounding the Vitest workers on those runners is #67.
 - **Line endings:** LF everywhere (`.gitattributes`); the lint config rejects CRLF.
 - **Scripts:** `scripts/*.sh` and `test-env/*.sh` are bash: on Windows run them in Git Bash or WSL. Node scripts build paths with `node:path`, never string joins with `/` or `\`.
 - **Test container:** needs Docker (Docker Desktop on Mac and Windows). `tests/tools/php.mjs` falls back to it when no PHP 8.4 is installed.
@@ -129,7 +129,7 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 2. **Write bare `RELATED-TO:<uid>`** (PARENT by default), as `nc_helpers` does. Never add `RELTYPE`.
 3. **Every write is If-Match.** A 412 means someone else changed it: reload, never retry blind.
 4. **Areas by display name, never URI segment.**
-5. **Exclusions are fixed:** lists shared by other people (today Farm Boy), agent queues (`*_shared_by_*`), Deck boards (`app-generated--deck--*`).
+5. **Exclusions are fixed:** lists shared by other people (for example, a list a colleague shares), agent queues (`*_shared_by_*`), Deck boards (`app-generated--deck--*`).
 6. **Order like Tasks does:** write the moved task, plus only the later siblings Tasks' rule bumps. Never renumber a whole project.
 7. **No data on the server side.** If a feature seems to need a PHP endpoint, stop and ask.
 
@@ -139,10 +139,10 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 |---|---|---|
 | How Tasks 0.18.1 writes `X-APPLE-SORT-ORDER` | Integer, ascending (lower first). Missing → effective value = seconds from 2001-01-01T00:00 to CREATED (0 if no CREATED); nothing is written until a drag. Drag: moved task = next sibling − 1 if that is above the previous sibling, else previous + 1, floor 0; then each later sibling whose value is ≤ the one before is set to that + 1 (a bump, written). Ties keep load order. Manual sort ignores pinned and completion | `src/models/task.js` 163-167, 807-822, 901-918; `src/components/TaskDragContainer.vue` 95-157; `src/store/storeHelper.js` 228-286, 452 (tag v0.18.1) |
 | Tasks deep-link URL for one task | `<generateUrl('apps/tasks')>/calendars/<calendar URI segment>/tasks/<task file name incl. .ics>` (history routing, no `#`). Without the calendar: `/apps/tasks/collections/all/tasks/<file>.ics`. Don't copy the stale `/#/` form in `TaskCreateDialog.vue` | `src/views/Dashboard.vue` 205; `src/router.js` 33-93; `src/store/tasks.js` 159-171 |
-| How much data the panel shows | 61 project roots exist; 22 are on the owner's own lists (what the panel shows), 39 on agent queues the owner's account cannot see | Count while speccing, 2026-10-23 |
-| Deck lists in CalDAV | Deck publishes its boards as `app-generated--deck--*` task lists (47 boards, 344 open cards when counted), so area discovery must filter them | Count while speccing, 2026-10-23 |
+| How much data the panel shows | 61 project roots exist; 22 are on the owner's own lists (what the panel shows), 39 on agent queues the owner's account cannot see | Observed while speccing, 2026-10-23 |
+| Deck lists in CalDAV | Deck publishes its boards as `app-generated--deck--*` task lists (many boards), so area discovery must filter them | Observed while speccing, 2026-10-23 |
 | `cdav-library` MOVE support | Yes. `VObject.move(calendar, overwrite=false, headers={})` sends MOVE with `Overwrite: F`; `headers` carries `If-Match`. Keeps the file name; refuses same list, other collection type, read-only target. Updates `url` but not `etag`, so re-read after | `@nextcloud/cdav-library` 2.6.2 `dist/index.mjs` (DavObject.move), checked 2026-10-26 |
-| Test container recipe | `test-env/` (see its README): compose project `nc-projects-test`, Nextcloud 33.0.10 + Tasks 0.18.1, SQLite, `127.0.0.1:$NC_TEST_PORT` (default 8089); `setup.sh` installs, makes users `owner`/`other`/`agent`, seeds the fixture lists with `seed.py`. Passed 2026-10-26 on a Windows 11 Docker host (Docker 29.9.2) with NC_TEST_PORT=8099: Nextcloud 33.0.10, Tasks 0.18.1 (pinned release), Deck 1.17.8 (app store), users and fixture lists seeded; first run hit a SQLite 'database is locked' on user:add, now retried | `test-env/` |
+| Test container recipe | `test-env/` (see its README): compose project `nc-projects-test`, Nextcloud 33.0.10 + Tasks 0.18.1, SQLite, `127.0.0.1:$NC_TEST_PORT` (default 8089); `setup.sh` installs, makes users `owner`/`other`/`agent`, seeds the fixture lists with `seed.py`. Passed 2026-10-26 on a Windows 11 Docker host with NC_TEST_PORT=8099: Nextcloud 33.0.10, Tasks 0.18.1 (pinned release), Deck 1.17.8 (app store), users and fixture lists seeded; first run hit a SQLite 'database is locked' on user:add, now retried | `test-env/` |
 
 ### How Tasks behaves (read from v0.18.1 source, 2026-10-26)
 
@@ -158,4 +158,4 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 - **Show completed subtasks** is per task (`X-OC-HIDECOMPLETEDSUBTASKS`); Projects' "show done" does not write it (ADR 0019).
 - **Shell to copy:** Vite via `@nextcloud/vite-config` `createAppConfig({ main: 'src/main.js' })`, Vue 3, vue-router history mode with a catch-all page route, `@nextcloud/vue` 9.8.2, `@nextcloud/eslint-config/vue3`, Vitest + happy-dom, Node 24; PageController passes initial state and renders a template that loads `<app>-main.js`.
 
-Known on 2026-10-23 (installed Tasks 0.18.1 on the live server): it ships `@nextcloud/vue` 9.8.2 (Vue 3), `@nextcloud/cdav-library` 2.6.2, `ical.js` 2.2.1, `sortablejs` 1.15.6 (through `sortablejs-vue3`), `vuex` 4.1.0, and supports Nextcloud 31–35. The live server is 33.0.10. We use Pinia rather than Vuex: it is the current Vue 3 default and the store is small.
+Known on 2026-10-23 (installed Tasks 0.18.1 on the production server): it ships `@nextcloud/vue` 9.8.2 (Vue 3), `@nextcloud/cdav-library` 2.6.2, `ical.js` 2.2.1, `sortablejs` 1.15.6 (through `sortablejs-vue3`), `vuex` 4.1.0, and supports Nextcloud 31–35. The production server runs Nextcloud 33. We use Pinia rather than Vuex: it is the current Vue 3 default and the store is small.

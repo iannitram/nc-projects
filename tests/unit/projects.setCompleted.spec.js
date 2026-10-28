@@ -199,7 +199,7 @@ describe('projects store setCompleted', () => {
 
 	it('shows "Could not save the change" and no "reloaded" notice when the conflict reload fails', async () => {
 		const store = await loadStore(open())
-		putTodo.mockRejectedValue(new ConflictError('/van/A.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-b/A.ics'))
 		fetchTodo.mockRejectedValue(new Error('reload failed'))
 
 		await store.setCompleted('A', true).catch(() => {})

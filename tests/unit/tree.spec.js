@@ -5,7 +5,7 @@ import { buildTree } from '../../src/models/tree.js'
 describe('tree', () => {
 	const areas = [
 		{ name: 'Home', calendar: { url: '/remote.php/dav/calendars/owner/list-a/' } },
-		{ name: 'Work', calendar: { url: '/remote.php/dav/calendars/owner/the-channel/' } },
+		{ name: 'Work', calendar: { url: '/remote.php/dav/calendars/owner/list-work/' } },
 		{ name: 'Garden', calendar: { url: '/remote.php/dav/calendars/owner/list-b/' } },
 	]
 
@@ -186,7 +186,7 @@ describe('tree', () => {
 				{
 					uid: 't1',
 					parentUid: 'proj-1',
-					calendarUrl: '/remote.php/dav/calendars/owner/the-channel/',
+					calendarUrl: '/remote.php/dav/calendars/owner/list-work/',
 				},
 				{
 					uid: 't2',
@@ -308,7 +308,7 @@ describe('tree', () => {
 				{ uid: 't1', parentUid: 'proj', completed: true, calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 				{ uid: 't2', parentUid: 'proj', completed: false, calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
 				{ uid: 't3', parentUid: 't2', completed: true, calendarUrl: '/remote.php/dav/calendars/owner/list-b/' },
-				{ uid: 't4', parentUid: 't3', completed: false, calendarUrl: '/remote.php/dav/calendars/owner/the-channel/' },
+				{ uid: 't4', parentUid: 't3', completed: false, calendarUrl: '/remote.php/dav/calendars/owner/list-work/' },
 			]
 
 			const result = buildTree(areas, tasks)

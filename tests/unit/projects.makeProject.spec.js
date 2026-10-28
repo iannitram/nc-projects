@@ -169,7 +169,7 @@ describe('projects store makeProject', () => {
 
 	it('shows "Could not make the project" and no "reloaded" notice when the conflict reload fails', async () => {
 		const store = await loadStore(todos())
-		putTodo.mockRejectedValue(new ConflictError('/van/U.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-b/U.ics'))
 		fetchTodo.mockRejectedValue(new Error('reload failed'))
 
 		await store.makeProject('U').catch(() => {})

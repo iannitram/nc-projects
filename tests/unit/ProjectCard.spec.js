@@ -1,8 +1,10 @@
 import { NcCheckboxRadioSwitch, NcProgressBar } from '@nextcloud/vue'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProjectCard from '../../src/components/ProjectCard.vue'
 import TaskTree from '../../src/components/TaskTree.vue'
+import { useProjectsStore } from '../../src/store/projects.js'
 
 const AddTaskInputStub = {
 	props: ['projectUid'],
@@ -10,6 +12,19 @@ const AddTaskInputStub = {
 }
 
 describe('ProjectCard', () => {
+	it('checks off and reopens the project through the store', async () => {
+		setActivePinia(createPinia())
+		const store = useProjectsStore()
+		const setCompleted = vi.spyOn(store, 'setCompleted').mockResolvedValue()
+		const wrapper = mount(ProjectCard, {
+			props: { project: { task: { uid: 'p1', completed: false }, children: [] } },
+			global: { stubs: { AddTaskInput: AddTaskInputStub } },
+		})
+		const completion = wrapper.findComponent('.cc-project-card__completion')
+		await completion.vm.$emit('update:modelValue', true)
+		expect(setCompleted).toHaveBeenCalledWith('p1', true)
+	})
+
 	beforeEach(() => {
 		window.localStorage.clear()
 		vi.restoreAllMocks()
