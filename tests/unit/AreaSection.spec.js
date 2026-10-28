@@ -138,6 +138,23 @@ describe('AreaSection', () => {
 			expect(input.element.disabled).toBe(false)
 		})
 
+		it('keeps the field open, empty and focused after creation so a second project can be typed', async () => {
+			const store = useProjectsStore()
+			store.createProject = vi.fn().mockResolvedValue(undefined)
+			const wrapper = mount(AreaSection, { props: { area }, attachTo: document.body })
+
+			const input = await typeAndSubmit(wrapper, 'First')
+
+			expect(input.element.value).toBe('')
+			expect(document.activeElement).toBe(input.element)
+			await input.setValue('Second')
+			await input.trigger('keydown.enter')
+			await flushPromises()
+			expect(store.createProject).toHaveBeenCalledTimes(2)
+			expect(store.createProject).toHaveBeenLastCalledWith('Home', 'Second')
+			wrapper.unmount()
+		})
+
 		it('clears the field after creation succeeds', async () => {
 			const store = useProjectsStore()
 			store.createProject = vi.fn().mockResolvedValue(undefined)

@@ -1,7 +1,7 @@
 <script setup>
 import { mdiPlus } from '@mdi/js'
 import { NcButton, NcIconSvgWrapper, NcTextField } from '@nextcloud/vue'
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 const props = defineProps({
 	label: { type: String, required: true },
@@ -19,6 +19,14 @@ async function activate() {
 	await nextTick()
 	field.value?.focus()
 }
+
+/** A disabled input loses focus, so take it back once creation finishes. */
+watch(() => props.disabled, async (now, before) => {
+	if (before && !now && editing.value) {
+		await nextTick()
+		field.value?.focus()
+	}
+})
 
 /** Cancel a draft and return focus to its creation button. */
 async function cancel() {

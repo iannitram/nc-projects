@@ -42,6 +42,22 @@ describe('AddTaskInput', () => {
 		expect(input.element.value).toBe('')
 	})
 
+	it('stays open, empty and focused after adding so a second task can be typed', async () => {
+		const wrapper = await mountInput()
+		const input = wrapper.find('input')
+		await input.setValue('one')
+		await input.trigger('keydown', { key: 'Enter' })
+		await flushPromises()
+
+		expect(input.element.value).toBe('')
+		expect(document.activeElement).toBe(input.element)
+		await input.setValue('two')
+		await input.trigger('keydown', { key: 'Enter' })
+		await flushPromises()
+		expect(store.addTask).toHaveBeenCalledTimes(2)
+		expect(store.addTask).toHaveBeenLastCalledWith('p1', 'two')
+	})
+
 	it('keeps the typed title when the add fails', async () => {
 		store.addTask.mockResolvedValue(null)
 		const wrapper = await mountInput()
