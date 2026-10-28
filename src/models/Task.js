@@ -4,12 +4,15 @@
  * Stub: signatures only.
  */
 import ICAL from 'ical.js'
+import { toRaw } from 'vue'
 
 export class Task {
 	constructor(component, vtodo, ics, where) {
 		this.component = component
 		this.vtodo = vtodo
 		this.ics = ics
+		// Vue tracks this field; ICAL components must always be accessed raw.
+		this.revision = 0
 		this.changed = false
 		this.where = where
 	}
@@ -78,127 +81,212 @@ export class Task {
 	 * @return {string}
 	 */
 	toIcs() {
-		return this.changed ? this.component.toString() : this.ics
+		const self = toRaw(this)
+		return self.changed ? self.component.toString() : self.ics
 	}
 
-	get uid() { return this.propertyValue('uid') }
-	get summary() { return this.propertyValue('summary') }
-	set summary(value) { this.setValue('summary', value) }
-	get status() { return this.propertyValue('status') }
-	get completed() { return this.vtodo.hasProperty('completed') }
+	get uid() {
+		void this.revision
+		return toRaw(this).propertyValue('uid')
+	}
+
+	get summary() {
+		void this.revision
+		return toRaw(this).propertyValue('summary')
+	}
+
+	set summary(value) {
+		const self = toRaw(this)
+		self.setValue('summary', value)
+		this.revision++
+	}
+
+	get status() {
+		void this.revision
+		return toRaw(this).propertyValue('status')
+	}
+
+	get completed() {
+		void this.revision
+		const self = toRaw(this)
+		return self.vtodo.hasProperty('completed')
+	}
+
 	set completed(value) {
+		const self = toRaw(this)
 		if (value) {
-			this.setValue('status', 'COMPLETED')
-			this.setValue('completed', utcTime(new Date()))
-			this.setValue('percent-complete', 100)
+			self.setValue('status', 'COMPLETED')
+			self.setValue('completed', utcTime(new Date()))
+			self.setValue('percent-complete', 100)
 		} else {
-			this.setValue('status', 'NEEDS-ACTION')
-			this.removeProperties('completed', 'percent-complete')
+			self.setValue('status', 'NEEDS-ACTION')
+			self.removeProperties('completed', 'percent-complete')
 		}
-		this.touch()
+		self.touch()
+		this.revision++
 	}
 
-	get closed() { return this.completed || this.status === 'CANCELLED' }
-	get due() { return this.propertyValue('due') }
+	get closed() {
+		void this.revision
+		const self = toRaw(this)
+		return self.completed || self.status === 'CANCELLED'
+	}
+
+	get due() {
+		void this.revision
+		return toRaw(this).propertyValue('due')
+	}
+
 	set due(value) {
+		const self = toRaw(this)
 		if (value === null) {
-			this.removeProperties('due')
+			self.removeProperties('due')
 		} else {
-			this.setValue('due', value instanceof Date ? utcTime(value) : value)
+			self.setValue('due', value instanceof Date ? utcTime(value) : value)
 		}
-		this.touch()
+		self.touch()
+		this.revision++
 	}
 
 	get priority() {
-		const value = this.propertyValue('priority')
+		void this.revision
+		const value = toRaw(this).propertyValue('priority')
 		return value === null ? null : Number(value)
 	}
 
 	set priority(value) {
+		const self = toRaw(this)
 		if (value === 0 || value === null) {
-			this.removeProperties('priority')
+			self.removeProperties('priority')
 		} else {
-			this.setValue('priority', value)
+			self.setValue('priority', value)
 		}
-		this.touch()
+		self.touch()
+		this.revision++
 	}
 
 	get categories() {
-		return this.vtodo.getAllProperties('categories').flatMap((property) => property.getValues())
+		void this.revision
+		const self = toRaw(this)
+		return self.vtodo.getAllProperties('categories').flatMap((property) => property.getValues())
 	}
 
 	set categories(values) {
-		this.removeProperties('categories')
+		const self = toRaw(this)
+		self.removeProperties('categories')
 		if (values?.length) {
 			const property = new ICAL.Property('categories')
 			property.setValues(values)
-			this.vtodo.addProperty(property)
+			self.vtodo.addProperty(property)
 		}
-		this.touch()
+		self.touch()
+		this.revision++
 	}
 
-	get isProject() { return this.categories.includes('project') }
+	get isProject() {
+		void this.revision
+		const self = toRaw(this)
+		return self.categories.includes('project')
+	}
+
 	get parentUid() {
-		const property = this.parentProperty()
+		void this.revision
+		const self = toRaw(this)
+		const property = self.parentProperty()
 		return property ? property.getFirstValue() : null
 	}
 
 	set parentUid(value) {
-		const parent = this.parentProperty()
+		const self = toRaw(this)
+		const parent = self.parentProperty()
 		if (parent) {
-			this.vtodo.removeProperty(parent)
+			self.vtodo.removeProperty(parent)
 		}
 		if (value !== null) {
-			this.vtodo.addPropertyWithValue('related-to', value)
+			self.vtodo.addPropertyWithValue('related-to', value)
 		}
-		this.touch()
+		self.touch()
+		this.revision++
 	}
 
 	get sortOrder() {
-		const value = this.propertyValue('x-apple-sort-order')
+		void this.revision
+		const value = toRaw(this).propertyValue('x-apple-sort-order')
 		return value === null ? null : Number(value)
 	}
 
 	set sortOrder(value) {
+		const self = toRaw(this)
 		if (value === null) {
-			this.removeProperties('x-apple-sort-order')
+			self.removeProperties('x-apple-sort-order')
 		} else {
-			this.setValue('x-apple-sort-order', value)
+			self.setValue('x-apple-sort-order', value)
 		}
-		this.touch()
+		self.touch()
+		this.revision++
 	}
 
-	get created() { return this.propertyValue('created') }
-	get url() { return this.where.url }
-	get etag() { return this.where.etag }
-	get calendarUrl() { return this.where.calendarUrl }
+	get created() {
+		void this.revision
+		return toRaw(this).propertyValue('created')
+	}
 
-	propertyValue(name) { return this.vtodo.getFirstPropertyValue(name) }
+	get url() {
+		void this.revision
+		const self = toRaw(this)
+		return self.where.url
+	}
+
+	get etag() {
+		void this.revision
+		const self = toRaw(this)
+		return self.where.etag
+	}
+
+	get calendarUrl() {
+		void this.revision
+		const self = toRaw(this)
+		return self.where.calendarUrl
+	}
+
+	propertyValue(name) {
+		void this.revision
+		const self = toRaw(this)
+		return self.vtodo.getFirstPropertyValue(name)
+	}
 
 	setValue(name, value) {
-		this.removeProperties(name)
-		this.vtodo.addPropertyWithValue(name, value)
-		this.touch()
+		const self = toRaw(this)
+		self.removeProperties(name)
+		self.vtodo.addPropertyWithValue(name, value)
+		self.touch()
+		this.revision++
 	}
 
 	removeProperties(...names) {
+		const self = toRaw(this)
 		for (const name of names) {
-			for (const property of this.vtodo.getAllProperties(name)) {
-				this.vtodo.removeProperty(property)
+			for (const property of self.vtodo.getAllProperties(name)) {
+				self.vtodo.removeProperty(property)
 			}
 		}
+		this.revision++
 	}
 
 	touch() {
+		const self = toRaw(this)
 		const now = utcTime(new Date())
-		this.removeProperties('last-modified', 'dtstamp')
-		this.vtodo.addPropertyWithValue('last-modified', now)
-		this.vtodo.addPropertyWithValue('dtstamp', now)
-		this.changed = true
+		self.removeProperties('last-modified', 'dtstamp')
+		self.vtodo.addPropertyWithValue('last-modified', now)
+		self.vtodo.addPropertyWithValue('dtstamp', now)
+		self.changed = true
+		this.revision++
 	}
 
 	parentProperty() {
-		return this.vtodo.getAllProperties('related-to').find((property) => {
+		void this.revision
+		const self = toRaw(this)
+		return self.vtodo.getAllProperties('related-to').find((property) => {
 			const reltype = property.getFirstParameter('reltype')
 			return reltype === undefined || reltype.toUpperCase() === 'PARENT'
 		})

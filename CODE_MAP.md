@@ -2,7 +2,7 @@
 
 Describes commit: eb3b328 (2026-10-28)
 
-**Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`), the panel (`App.vue`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`) and the store's `load`, `addTask`, `calendarOf` and `createProject` are **present**; the rest of the store, `useRefresh.js`, `useDrag.js`'s drop wiring and `DoneStrip.vue` are **stubs**: their exported names, signatures and JSDoc are the contract, and their bodies throw `notImplemented` (`src/notImplemented.js`) or render an empty element until their roadmap issue lands. When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
+**Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`), the panel (`App.vue`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`) and store actions for loading, refreshing, adding, ordering, completion, quick edits and project creation are **present**; `moveToProject` and `reorder` for projects within an area remain **stubs**. When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
 
 ## Shape in one picture
 
@@ -42,18 +42,18 @@ Server (PHP): serves the page only. No data endpoints.
 | `src/models/completion.js` | **Present** (`planCompletion`). Pure: which tasks a check-off or reopen changes, following Tasks' cascades (checking off closes the task and its open descendants breadth-first; reopening opens the task and its closed ancestors up to the first project). Changes no task | P06, P13 |
 | `src/notImplemented.js` | The stubs' placeholder error; delete once nothing imports it (today `dav.js` for `moveTodo`, `store/projects.js`, `useRefresh.js`) | P01 |
 | `src/models/sortOrder.js` | **Present** (`APPLE_EPOCH_MS`, `effectiveSortOrder`, `placeMoved`). Pure order math, a copy of Tasks' rule (§Facts): effective order, place a moved task at neighbour ±1, bump later colliding siblings. `CREATED` may be a `Date` or an `ICAL.Time` (also through a store proxy): it is turned into ms before the Apple-epoch maths (#50). Open: a `CREATED` with a TZID sorts an hour off (#68) | P08, P09 |
-| `src/store/projects.js` | **Present**: state (`areas`, `orphans`, `untaggedParents`, `tasksByUid`, `ctags`, `loading`, `error`), `load` (a failure leaves a non-empty `error`, #49), `addTask` (P07: creates the task on the project's list with `parentUid`, rebuilds the tree, shows an error toast on failure and returns `null`), `calendarOf`, `createProject` (P14: `project` category on the area's list; rethrows after the toast). **Stubs**: `refresh`, `reorder`, `moveToProject`, `setCompleted`, `updateTask`, `makeProject`. Pinia store: load, refresh by etag/ctag, optimistic updates with rollback, 412 handling | P05, P07, P10, P14 |
+| `src/store/projects.js` | **Present**: state (`areas`, `orphans`, `untaggedParents`, `tasksByUid`, `ctags`, `loading`, `error`), load/refresh, one batched conflict reload and quiet notice, add task, reorder, Tasks-style completion cascades and quick edits with optimistic updates and rollback, `calendarOf`, make project, and create project. **Stubs**: `moveToProject`, and `reorder` for projects within an area | P05, P07, P08, P10, P13, P14 |
 
 ### UI (Vue 3 + `@nextcloud/vue`)
 
 | Path | Job | IDs |
 |---|---|---|
 | `src/main.js` | Creates the app, installs Pinia, mounts on `#cc_projects` | P01 |
-| `src/App.vue` | `NcContent` / `NcAppContent` shell; calls the store's `load` on mount, shows a spinner, the error text, or one `AreaSection` per area. Does not call `useRefresh` yet (P10) | P01, P05 |
+| `src/App.vue` | `NcContent` / `NcAppContent` shell; calls the store's `load` on mount, shows a spinner, the error text, or one `AreaSection` per area; calls `useRefresh(store.refresh)` (P10) | P01, P05, P10 |
 | `src/components/AreaSection.vue` | Present: one area with its project cards, rendered in order, and the "+ New project" field (Enter calls `store.createProject`, Esc clears) | P05, P14 |
-| `src/components/ProjectCard.vue` | Present: project title, task tree and the `AddTaskInput` under it | P05, P07 |
+| `src/components/ProjectCard.vue` | Present: project title, completion checkbox (calls `setCompleted`), task tree and the `AddTaskInput` under it | P05, P07, P13 |
 | `src/components/TaskTree.vue` | Present: collapsible nested task list, three levels, then a "+N deeper" Tasks link | P05 |
-| `src/components/TaskRow.vue` | Present: task completion checkbox (display only until `setCompleted` lands) and title; "+N deeper" Tasks link (built with `generateUrl`) when descendants exceed the rendered depth | P05 |
+| `src/components/TaskRow.vue` | Present: task completion checkbox (calls `setCompleted`), inline quick edits (click the title to rename; due date; priority high/medium/low/none as 1/5/9/0) calling `store.updateTask`, an Open in Tasks link, and "+N deeper" Tasks link (built with `generateUrl`) when descendants exceed the rendered depth. The edit controls carry `cc-no-drag` and stop mousedown/pointerdown/touchstart | P05, P13 |
 | `src/components/AddTaskInput.vue` | Present: inline "+ Add task" field under a project; Enter calls `store.addTask` (one submit at a time), Esc clears | P07 |
 | `src/components/DoneStrip.vue` | **Stub** (empty element; not mounted anywhere yet). Collapsed list of completed projects in an area | P06 |
 | `src/components/NeedsFilingTray.vue` | **Present** (not mounted anywhere yet): orphans and untagged parents in two lists with counts; each item has a "Make project" button that calls `store.makeProject`; hidden when both lists are empty | P15 |
@@ -68,7 +68,7 @@ Server (PHP): serves the page only. No data endpoints.
 | Path | Job |
 |---|---|
 | `tests/unit/App.spec.js` | The app mounts and shows its heading |
-| `tests/unit/AreaSection.spec.js`, `ProjectCard.spec.js`, `TaskTree.spec.js`, `TaskRow.spec.js`, `AddTaskInput.spec.js` | The panel components render their props, depth and links; `AddTaskInput` submits through the store |
+| `tests/unit/AreaSection.spec.js`, `ProjectCard.spec.js`, `TaskTree.spec.js`, `TaskRow.spec.js`, `TaskRow.inlineEdits.spec.js`, `AddTaskInput.spec.js` | The panel components render their props, depth and links; `AddTaskInput` submits through the store; `TaskRow` edits through `updateTask` and keeps edit controls out of the drag |
 | `tests/php/PageControllerTest.php` | Smoke test: the page route returns the `main` template (skeleton) |
 | `tests/tools/php.mjs` | Runs PHP lint and phpunit with a local PHP 8.4+, else a throwaway `nextcloud:33.0.10-apache` container |
 | `tests/unit/areas.spec.js` | `isExcluded` and `pickAreas`: the eight areas by display name, the exclusions |
@@ -92,7 +92,7 @@ Server (PHP): serves the page only. No data endpoints.
 | `scripts/dav-get.sh` | Print one stored task's raw iCalendar from the **test** container (CalDAV GET), for the spec's "read the stored task" checks |
 | `scripts/check-dav-real.mjs` | **Real-library check (#34):** against the test container it proves `fetchTodo`'s relative-path `find()`, `createTodo`'s `createObject(name, headers, data)`, and a stale-etag write; the library files every HTTP error as status -1, so `dav.js` re-reads the etag to throw `ConflictError` |
 | `test-env/` | The test container: `compose.yaml`, `setup.sh`, `reset.sh`, `seed.py` (fixture lists and tasks) |
-| `scripts/deploy-test.sh` (planned, #4) | Build and copy into the **test** container, then `occ app:enable cc_projects` there |
+| `scripts/deploy-test.sh` | Build and copy into the **test** container, `occ app:enable cc_projects` there, then bump the theming cachebuster (never the app version) |
 | `.gitignore` | `node_modules/`, `vendor/`, `js/` and `css/` build output, `reference/` |
 
 Live install (copy into the live `custom_apps/cc_projects` + `occ app:enable cc_projects`) has no script on purpose: it happens by hand, on the owner's yes, every time.
