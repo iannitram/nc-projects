@@ -327,7 +327,7 @@ function setPriority(value) {
 	display: flex;
 	align-items: center;
 	gap: calc(var(--default-grid-baseline, 4px) * 2);
-	min-height: var(--default-clickable-area, 44px);
+	min-height: var(--cc-row-height, var(--default-clickable-area, 44px));
 	padding: 0 6px;
 	border-radius: var(--border-radius-element, 4px);
 	flex: 1;
@@ -421,7 +421,7 @@ function setPriority(value) {
 	font-weight: 600;
 }
 
-/* The menu shows on hover or focus with a pointer, always on touch. */
+/* The menu shows on hover or focus with a pointer; always on touch (projects.css, #123). */
 .cc-task-row__menu {
 	flex-shrink: 0;
 	visibility: hidden;
@@ -431,12 +431,6 @@ function setPriority(value) {
 .cc-task-row:focus-within .cc-task-row__menu,
 .cc-task-row__menu:has([aria-expanded='true']) {
 	visibility: visible;
-}
-
-@media (hover: none) {
-	.cc-task-row__menu {
-		visibility: visible;
-	}
 }
 
 .cc-no-drag {

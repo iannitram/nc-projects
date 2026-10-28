@@ -29,7 +29,7 @@ import { NcIconSvgWrapper } from '@nextcloud/vue'
 import { Sortable } from 'sortablejs-vue3'
 import { computed, ref } from 'vue'
 import TaskRow from './TaskRow.vue'
-import { DRAG_OPTIONS, fullIndexForDrop, onSiblingDrop } from '../composables/useDrag.js'
+import { DRAG_OPTIONS, fullIndexForDrop, onLongPressChoose, onLongPressRelease, onSiblingDrop } from '../composables/useDrag.js'
 import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -264,6 +264,8 @@ function onDrop(evt) {
 		:data-area-name="depth === 1 ? areaName : null"
 		:data-all-uids="(nodes || []).map((node) => node.task?.uid).filter(Boolean).join(',')"
 		:data-visible-uids="visibleNodes.map((node) => node.task?.uid).filter(Boolean).join(',')"
+		@choose="onLongPressChoose"
+		@unchoose="onLongPressRelease"
 		@end="onDrop">
 		<template #item="{ element: node }">
 			<li
@@ -378,13 +380,5 @@ function onDrop(evt) {
 	margin-left: 10px;
 	padding-left: 13px;
 	border-left: 1px solid var(--color-border);
-}
-
-@media (max-width: 600px) {
-	.cc-task-tree__collapse-toggle,
-	button.cc-task-tree__collapse-toggle {
-		min-height: 44px;
-		min-width: 44px;
-	}
 }
 </style>

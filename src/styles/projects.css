@@ -26,12 +26,9 @@
 	margin: 0 auto;
 	padding: 0 calc(var(--default-grid-baseline, 4px) * 5);
 	box-sizing: border-box;
-}
-
-@media (max-width: 600px) {
-	.cc-column {
-		padding: 0 calc(var(--default-grid-baseline, 4px) * 2);
-	}
+	/* Row height and touch target: desktop values here, phone and touch values below. */
+	--cc-row-height: var(--default-clickable-area, 34px);
+	--cc-target: var(--default-clickable-area, 34px);
 }
 
 .cc-projects {
@@ -40,184 +37,167 @@
 	box-sizing: border-box;
 }
 
-@media (max-width: 600px) {
+/* Drag (#123): the lifted row is Sortable's chosen element, the landing spot its ghost. */
+.cc-drag-chosen > .cc-task-tree__row-wrapper,
+.cc-drag-chosen > .cc-project-card__header {
+	transform: scale(1.02);
+	background: var(--color-main-background);
+	box-shadow: 0 6px 24px var(--color-box-shadow);
+	border-radius: var(--border-radius-element, 8px);
+	position: relative;
+	z-index: 5;
+}
+
+.cc-drag-ghost {
+	position: relative;
+}
+
+.cc-drag-ghost > * {
+	opacity: 0;
+}
+
+.cc-drag-ghost::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	height: 2px;
+	border-radius: 2px;
+	background: var(--color-primary-element);
+}
+
+/*
+ * Phone and touch (#123, mockup f): one block. It sets the row height (48 px) and the
+ * touch target (44 px); the rules below only read those two variables. Rows never wrap
+ * their controls: long text is cut with an ellipsis. "⋯" is always visible and the drag
+ * grip is hidden, because a long press on the row is the drag. NcActions opens its own
+ * bottom sheet and NcAppNavigation its own drawer here; nothing below touches either.
+ */
+@media (max-width: 600px), (pointer: coarse) {
+	/* On the app root too, so the navigation drawer's items and toggle get 44 px targets. */
+	#content-vue,
+	.cc-column {
+		--cc-row-height: 48px;
+		--cc-target: 44px;
+		--default-clickable-area: var(--cc-target);
+	}
+
+	.cc-column {
+		padding: 0 calc(var(--default-grid-baseline, 4px) * 2);
+	}
+
+	.cc-projects-scroll {
+		overflow-x: hidden;
+	}
+
+	.cc-column,
+	.cc-projects,
+	.cc-projects__areas,
+	.cc-area-section,
+	.cc-project-card,
+	.cc-task-tree,
+	.cc-task-tree__item,
+	.cc-task-tree__row-wrapper,
+	.cc-task-row {
+		max-width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+	}
+
 	.cc-projects {
 		padding: calc(var(--default-grid-baseline, 4px) * 2) 0;
-		max-width: 100%;
-		box-sizing: border-box;
 	}
 
-	.cc-projects__areas {
-		display: flex;
-		flex-direction: column;
-		width: 100%;
-		box-sizing: border-box;
+	/* A long press drags the row: no text selection or callout on the way. */
+	.drag-handle {
+		user-select: none;
+		-webkit-user-select: none;
+		-webkit-touch-callout: none;
 	}
 
-	.cc-area-section {
-		width: 100%;
-		box-sizing: border-box;
-		margin-bottom: calc(var(--default-grid-baseline, 4px) * 4);
-	}
-
-	.cc-area-section__projects {
-		display: flex;
-		flex-direction: column;
-		width: 100%;
-		box-sizing: border-box;
-		gap: calc(var(--default-grid-baseline, 4px) * 2);
-	}
-
-	.cc-project-card {
-		width: 100%;
-		max-width: 100%;
-		box-sizing: border-box;
-		padding: calc(var(--default-grid-baseline, 4px) * 2);
-	}
-
-	.cc-project-card__title {
-		max-width: 100%;
-		word-break: break-word;
-		overflow-wrap: anywhere;
-		white-space: normal;
-	}
-
-	.cc-project-card__header {
-		flex-wrap: wrap;
-		gap: calc(var(--default-grid-baseline, 4px) * 2);
-	}
-
-	.cc-project-card__header-actions {
-		flex-wrap: wrap;
-		gap: calc(var(--default-grid-baseline, 4px) * 2);
-	}
-
-	.cc-task-tree {
-		width: 100%;
-		max-width: 100%;
-		box-sizing: border-box;
-	}
-
-	.cc-task-tree__item {
-		width: 100%;
-		max-width: 100%;
-		box-sizing: border-box;
-	}
-
-	.cc-task-tree__row-wrapper {
-		width: 100%;
-		max-width: 100%;
-		box-sizing: border-box;
-		align-items: flex-start;
+	/* Rows: one line, 48 px tall. */
+	.cc-task-tree__row-wrapper,
+	.cc-task-row {
+		flex-wrap: nowrap;
+		min-height: var(--cc-row-height);
 	}
 
 	.cc-task-tree__children {
-		margin-left: calc(var(--default-grid-baseline, 4px) * 4);
+		margin-left: calc(var(--cc-target) / 2 - 1px);
+		padding-left: calc(var(--default-grid-baseline, 4px) * 1);
 	}
 
-	.cc-task-tree__collapse-toggle,
-	button.cc-task-tree__collapse-toggle {
-		min-height: 44px;
-		min-width: 44px;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.cc-task-tree__collapse-placeholder {
-		min-height: 44px;
-	}
-
-	.cc-task-row {
-		flex-wrap: wrap;
-		width: 100%;
-		max-width: 100%;
-		box-sizing: border-box;
-		gap: calc(var(--default-grid-baseline, 4px) * 1) calc(var(--default-grid-baseline, 4px) * 2);
-	}
-
-	/* Tap target height: 44 px minimum */
-	.cc-task-row__checkbox,
-	.cc-task-row__checkbox label {
-		min-height: 44px;
-		min-width: 44px;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
+	.cc-task-row__title,
+	.cc-project-card__title,
+	.cc-done-strip__project-title {
+		display: block;
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow-wrap: normal;
 	}
 
 	.cc-task-row__title {
-		flex: 1 1 calc(100% - 60px);
-		min-width: 0;
-		min-height: 44px;
-		display: inline-flex;
-		align-items: center;
-		word-break: break-word;
-		overflow-wrap: anywhere;
-		white-space: normal;
+		line-height: var(--cc-target);
 	}
 
-	.cc-task-row__title-input,
-	.cc-task-row__title-input input {
-		min-height: 44px;
-	}
-
-	.cc-task-row__title-input {
-		flex: 1 1 calc(100% - 60px);
+	.cc-project-card__heading {
+		flex-wrap: nowrap;
 		min-width: 0;
 	}
 
-	.cc-task-row__title-input .input-field__input,
-	.cc-task-row__title-input .input-field__main-wrapper {
-		min-height: 44px;
+	.cc-task-row__due,
+	.cc-task-deeper,
+	.cc-task-tree__subtask-count {
+		white-space: nowrap;
+		flex-shrink: 0;
 	}
 
+	/* Touch targets: 44 x 44. */
+	button.cc-task-tree__collapse-toggle,
+	.cc-task-tree__collapse-placeholder,
+	.cc-task-row__checkbox,
 	.cc-task-row__menu,
-	.cc-task-row__menu button,
 	.cc-task-row__menu .action-item__menutoggle {
-		min-height: 44px;
-		min-width: 44px;
+		min-width: var(--cc-target);
+		min-height: var(--cc-target);
+		flex-shrink: 0;
+	}
+
+	button.cc-task-tree__collapse-toggle,
+	.cc-task-row__checkbox,
+	.cc-task-row__menu {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 	}
 
-	.cc-task-open-in-tasks {
-		min-height: 44px;
-		display: inline-flex;
-		align-items: center;
-		white-space: normal;
-		word-break: break-word;
-	}
-
-	.cc-task-deeper {
-		min-height: 44px;
-		display: inline-flex;
-		align-items: center;
-	}
-
-	.cc-project-card__show-done,
-	.cc-project-card__show-done label {
-		min-height: 44px;
-		display: inline-flex;
-		align-items: center;
-	}
-
-	.cc-add-task-input,
-	.cc-add-task-input input {
-		min-height: 44px;
-	}
-
-	.cc-area-section__new-project,
-	.cc-area-section__new-project input,
-	.cc-area-section input {
-		min-height: 44px;
-	}
-
+	.cc-task-deeper,
+	.cc-task-row__title-input .input-field__input,
+	.cc-add-task-input input,
+	.cc-area-section input,
 	.cc-done-strip__toggle {
-		min-height: 44px;
-		display: inline-flex;
-		align-items: center;
+		min-height: var(--cc-target);
+	}
+
+	/* "⋯" always visible (beats the hover-only rules in the components). */
+	.cc-column .cc-task-row .cc-task-row__menu,
+	.cc-column .cc-project-card__header .cc-project-card__menu .action-item__menutoggle > * {
+		visibility: visible;
+	}
+
+	/* No grip: the long press is the drag. */
+	.cc-column .cc-project-card__header .cc-project-card__grip,
+	.cc-column .cc-project-card__header .cc-project-card__progress-bar {
+		display: none;
+	}
+
+	.cc-column .cc-project-card .cc-project-card__header {
+		grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+		gap: 0;
+		min-height: var(--cc-row-height);
+		padding: 0;
 	}
 }

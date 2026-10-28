@@ -1,10 +1,21 @@
 import { mount } from '@vue/test-utils'
 import fs from 'node:fs'
 import path from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { Sortable } from 'sortablejs-vue3'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import TaskRow from '../../src/components/TaskRow.vue'
-import { DRAG_OPTIONS } from '../../src/composables/useDrag.js'
+import TaskTree from '../../src/components/TaskTree.vue'
+import {
+	DRAG_OPTIONS,
+	LONG_PRESS_HINT_KEY,
+	LONG_PRESS_MS,
+	longPressHintVisible,
+	onLongPressChoose,
+	onLongPressRelease,
+} from '../../src/composables/useDrag.js'
+import { useProjectsStore } from '../../src/store/projects.js'
 
 vi.mock('@nextcloud/router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -41,12 +52,210 @@ function sampleNode() {
 	}
 }
 
-describe('phone layout and touch interaction (issue #22)', () => {
-	it('DRAG_OPTIONS still has delay 500 with delayOnTouchOnly', () => {
-		expect(DRAG_OPTIONS.delay).toBe(500)
-		expect(DRAG_OPTIONS.delayOnTouchOnly).toBe(true)
-		expect(DRAG_OPTIONS.touchStartThreshold).toBe(3)
-		expect(DRAG_OPTIONS.handle).toBe('.drag-handle')
+const css = fs.readFileSync(path.resolve(__dirname, '../../src/styles/projects.css'), 'utf8')
+const PHONE_QUERY = '@media (max-width: 600px), (pointer: coarse)'
+
+/**
+ * The text of the phone and touch block (between its braces).
+ *
+ * @return {string} the block body
+ */
+function phoneBlock() {
+	const open = css.indexOf('{', css.indexOf(PHONE_QUERY))
+	let depth = 0
+	for (let i = open; i < css.length; i++) {
+		if (css[i] === '{') {
+			depth++
+		} else if (css[i] === '}' && --depth === 0) {
+			return css.slice(open + 1, i)
+		}
+	}
+	throw new Error('unclosed block')
+}
+
+/**
+ * The declarations of every rule in the phone block whose selector list holds `selector`.
+ *
+ * @param {string} selector the selector to look for
+ * @return {string} the declarations
+ */
+function ruleFor(selector) {
+	const rules = [...phoneBlock().replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+	const matching = rules.filter(([, selectors]) => selectors.split(',').some((s) => s.trim() === selector))
+	expect(matching.length, selector).toBeGreaterThan(0)
+	return matching.map((rule) => rule[2]).join(' ')
+}
+
+describe('phone layout and long-press drag (#123)', () => {
+	describe('the stylesheet', () => {
+		it('has exactly one phone and touch block, and no other media query', () => {
+			expect(css.split(PHONE_QUERY)).toHaveLength(2)
+			expect(css.match(/@media/g)).toHaveLength(1)
+		})
+
+		it('sets the row height to 48 px and the touch target to 44 px as variables', () => {
+			const column = ruleFor('.cc-column')
+			expect(column).toMatch(/--cc-row-height:\s*48px/)
+			expect(column).toMatch(/--cc-target:\s*44px/)
+			expect(column).toMatch(/--default-clickable-area:\s*var\(--cc-target\)/)
+		})
+
+		it('replaces the per-element 44 px overrides with the variables', () => {
+			expect(css).not.toMatch(/min-(height|width):\s*44px/)
+			for (const selector of [
+				'button.cc-task-tree__collapse-toggle',
+				'.cc-task-row__checkbox',
+				'.cc-task-row__menu',
+				'.cc-task-row__menu .action-item__menutoggle',
+			]) {
+				expect(ruleFor(selector)).toMatch(/min-width:\s*var\(--cc-target\)/)
+				expect(ruleFor(selector)).toMatch(/min-height:\s*var\(--cc-target\)/)
+			}
+			for (const selector of [
+				'.cc-task-deeper',
+				'.cc-add-task-input input',
+				'.cc-done-strip__toggle',
+				'.cc-task-row__title-input .input-field__input',
+			]) {
+				expect(ruleFor(selector)).toMatch(/min-height:\s*var\(--cc-target\)/)
+			}
+			expect(ruleFor('.cc-task-row')).toMatch(/min-height:\s*var\(--cc-row-height\)/)
+		})
+
+		it('never wraps a row: titles are cut with an ellipsis', () => {
+			expect(phoneBlock()).not.toMatch(/flex-wrap:\s*wrap/)
+			expect(phoneBlock()).not.toMatch(/white-space:\s*normal/)
+			expect(ruleFor('.cc-task-row')).toMatch(/flex-wrap:\s*nowrap/)
+			const title = ruleFor('.cc-task-row__title')
+			expect(title).toMatch(/white-space:\s*nowrap/)
+			expect(title).toMatch(/text-overflow:\s*ellipsis/)
+			expect(title).toMatch(/overflow:\s*hidden/)
+		})
+
+		it('keeps the page from scrolling sideways', () => {
+			expect(ruleFor('.cc-projects-scroll')).toMatch(/overflow-x:\s*hidden/)
+			expect(ruleFor('.cc-task-row')).toMatch(/max-width:\s*100%/)
+		})
+
+		it('always shows the menu and hides the grip', () => {
+			expect(ruleFor('.cc-column .cc-task-row .cc-task-row__menu')).toMatch(/visibility:\s*visible/)
+			expect(ruleFor('.cc-column .cc-project-card__header .cc-project-card__grip')).toMatch(/display:\s*none/)
+		})
+
+		it('styles the lifted row (chosenClass) and the drop line (ghostClass)', () => {
+			expect(css).toMatch(/\.cc-drag-chosen > \.cc-task-tree__row-wrapper[^{]*\{[^}]*transform:\s*scale\(1\.02\)[^}]*box-shadow/)
+			expect(css).toMatch(/\.cc-drag-ghost::before\s*\{[^}]*height:\s*2px[^}]*background:\s*var\(--color-primary-element\)/)
+		})
+
+		it('leaves no phone-width overrides in the row, tree and card components', () => {
+			for (const file of ['TaskRow.vue', 'TaskTree.vue', 'ProjectCard.vue']) {
+				const source = fs.readFileSync(path.resolve(__dirname, `../../src/components/${file}`), 'utf8')
+				expect(source, file).not.toMatch(/@media/)
+			}
+		})
+	})
+
+	describe('long press', () => {
+		let store
+
+		beforeEach(() => {
+			vi.useFakeTimers()
+			setActivePinia(createPinia())
+			store = useProjectsStore()
+			store.reorder = vi.fn().mockResolvedValue(undefined)
+			window.localStorage.clear()
+			longPressHintVisible.value = false
+		})
+
+		afterEach(() => {
+			vi.useRealTimers()
+			vi.restoreAllMocks()
+		})
+
+		it('waits about 300 ms, on touch only, and names the lift and drop classes', () => {
+			expect(LONG_PRESS_MS).toBe(300)
+			expect(DRAG_OPTIONS).toMatchObject({
+				delay: 300,
+				delayOnTouchOnly: true,
+				touchStartThreshold: 3,
+				handle: '.drag-handle',
+				chosenClass: 'cc-drag-chosen',
+				ghostClass: 'cc-drag-ghost',
+			})
+		})
+
+		/**
+		 * Put a finger down on an element, the way Sortable listens for it in this browser.
+		 *
+		 * @param {HTMLElement} element the element under the finger
+		 */
+		function fingerDown(element) {
+			const usePointer = 'PointerEvent' in window
+			const evt = new Event(usePointer ? 'pointerdown' : 'touchstart', { bubbles: true, cancelable: true })
+			const point = { clientX: 10, clientY: 10 }
+			Object.assign(evt, usePointer ? { ...point, pointerType: 'touch', button: 0 } : { touches: [{ ...point, target: element }] })
+			element.dispatchEvent(evt)
+		}
+
+		it('lifts a row after a 300 ms press, shows the hint, then reorders on the drop', async () => {
+			const nodes = ['t1', 't2', 't3'].map((uid) => ({
+				task: { uid, summary: uid, completed: false, parentUid: 'p1' },
+				children: [],
+				deeper: 0,
+			}))
+			const wrapper = mount(TaskTree, { props: { nodes }, attachTo: document.body })
+			await nextTick()
+			const list = wrapper.find('ul').element
+			const item = list.children[0]
+
+			fingerDown(item.querySelector('.drag-handle'))
+			vi.advanceTimersByTime(LONG_PRESS_MS - 1)
+			expect(item.classList.contains('cc-drag-chosen')).toBe(false)
+			expect(longPressHintVisible.value).toBe(false)
+
+			vi.advanceTimersByTime(1)
+			expect(item.classList.contains('cc-drag-chosen')).toBe(true)
+			expect(longPressHintVisible.value).toBe(true)
+
+			// The drop: Sortable reports the move, the tree turns it into a reorder.
+			const sortable = wrapper.findComponent(Sortable)
+			sortable.vm.$emit('unchoose', { item })
+			sortable.vm.$emit('end', { item, from: list, to: list, oldIndex: 0, newIndex: 2 })
+			await nextTick()
+			expect(longPressHintVisible.value).toBe(false)
+			expect(store.reorder).toHaveBeenCalledWith('p1', null, 't1', 2)
+			wrapper.unmount()
+		})
+
+		it('shows the hint for the first three long presses only', () => {
+			const touch = { originalEvent: { type: 'touchstart', touches: [{}] } }
+			const shown = []
+			for (let i = 0; i < 5; i++) {
+				onLongPressChoose(touch)
+				shown.push(longPressHintVisible.value)
+				onLongPressRelease()
+			}
+			expect(shown).toEqual([true, true, true, false, false])
+			expect(window.localStorage.getItem(LONG_PRESS_HINT_KEY)).toBe('3')
+		})
+
+		it('counts a touch pointer as a long press, but not a mouse', () => {
+			onLongPressChoose({ originalEvent: { type: 'pointerdown', pointerType: 'mouse' } })
+			expect(longPressHintVisible.value).toBe(false)
+			onLongPressChoose({ originalEvent: { type: 'pointerdown', pointerType: 'touch' } })
+			expect(longPressHintVisible.value).toBe(true)
+		})
+
+		it('does not throw when storage is blocked', () => {
+			vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+				throw new Error('blocked')
+			})
+			vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+				throw new Error('blocked')
+			})
+			expect(() => onLongPressChoose({ originalEvent: { type: 'touchstart', touches: [{}] } })).not.toThrow()
+			expect(longPressHintVisible.value).toBe(false)
+		})
 	})
 
 	it('a touchstart on an edit control does not reach the row', async () => {
@@ -83,56 +292,5 @@ describe('phone layout and touch interaction (issue #22)', () => {
 		expect(titleInput.exists()).toBe(true)
 		await titleInput.trigger('touchstart')
 		expect(rowTouchstart).not.toHaveBeenCalled()
-	})
-
-	it('has phone media query with the 44 px minimum (read the stylesheet as text)', () => {
-		const cssPath = path.resolve(__dirname, '../../src/styles/projects.css')
-		const css = fs.readFileSync(cssPath, 'utf8')
-
-		// Media query at max-width 600px exists
-		expect(css).toMatch(/@media\s*\(\s*max-width:\s*600px\s*\)/)
-
-		// 44 px minimum is specified in the stylesheet
-		expect(css).toMatch(/min-height:\s*44px/)
-
-		// Check every tap target is styled for 44px minimum height
-		const tapTargetSelectors = [
-			'.cc-task-row__checkbox',
-			'.cc-task-row__title',
-			'.cc-task-row__menu',
-			'.cc-task-open-in-tasks',
-			'.cc-project-card__show-done',
-			'.cc-add-task-input',
-			'.cc-area-section__new-project',
-		]
-
-		for (const selector of tapTargetSelectors) {
-			expect(css).toContain(selector)
-		}
-
-		// Ensure panel is one column and controls wrap under title
-		expect(css).toContain('flex-direction: column')
-		expect(css).toContain('flex-wrap: wrap')
-
-		// Round 2 tap targets: native date input and subtask collapse toggle
-		expect(css).toContain('.input-field__input')
-		expect(css).toContain('button.cc-task-tree__collapse-toggle')
-		expect(css).toMatch(/\.input-field__input[\s\S]*?min-height:\s*44px/)
-		expect(css).toMatch(/button\.cc-task-tree__collapse-toggle[\s\S]*?min-height:\s*44px/)
-		expect(css).toMatch(/button\.cc-task-tree__collapse-toggle[\s\S]*?min-width:\s*44px/)
-	})
-
-	it('makes native date input and subtask collapse toggle at least 44 px in phone media query', () => {
-		const cssPath = path.resolve(__dirname, '../../src/styles/projects.css')
-		const css = fs.readFileSync(cssPath, 'utf8')
-
-		// The rename input is styled with min-height 44px
-		expect(css).toContain('.input-field__input')
-		expect(css).toMatch(/\.input-field__input[\s\S]*?min-height:\s*44px/)
-
-		// Subtask collapse toggle has min-height and min-width of 44px
-		expect(css).toContain('button.cc-task-tree__collapse-toggle')
-		expect(css).toMatch(/button\.cc-task-tree__collapse-toggle[\s\S]*?min-height:\s*44px/)
-		expect(css).toMatch(/button\.cc-task-tree__collapse-toggle[\s\S]*?min-width:\s*44px/)
 	})
 })

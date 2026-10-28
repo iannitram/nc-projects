@@ -425,22 +425,5 @@ function toggleCollapsed() {
 	visibility: visible;
 }
 
-@media (hover: none), (pointer: coarse) {
-	.cc-project-card__menu :deep(.action-item__menutoggle > *) {
-		visibility: visible;
-	}
-}
-
-@media (max-width: 600px) {
-	.cc-project-card__header {
-		grid-template-columns: auto auto minmax(0, 1fr) auto auto;
-		gap: 0;
-		padding: 4px 0;
-	}
-
-	.cc-project-card__grip,
-	.cc-project-card__progress-bar {
-		display: none;
-	}
-}
+/* Phone and touch layout of the header: projects.css (#123). */
 </style>

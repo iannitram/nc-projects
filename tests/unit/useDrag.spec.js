@@ -60,10 +60,12 @@ describe('useDrag', () => {
 
 	it('keeps the Tasks drag options', () => {
 		expect(DRAG_OPTIONS).toEqual({
-			delay: 500,
+			delay: 300,
 			delayOnTouchOnly: true,
 			touchStartThreshold: 3,
 			handle: '.drag-handle',
+			chosenClass: 'cc-drag-chosen',
+			ghostClass: 'cc-drag-ghost',
 		})
 	})
 })
