@@ -11,6 +11,8 @@ export class Task {
 		this.component = component
 		this.vtodo = vtodo
 		this.ics = ics
+		// Vue tracks this field; ICAL components must always be accessed raw.
+		this.revision = 0
 		this.changed = false
 		this.where = where
 	}
@@ -83,15 +85,29 @@ export class Task {
 		return self.changed ? self.component.toString() : self.ics
 	}
 
-	get uid() { return this.propertyValue('uid') }
-	get summary() { return this.propertyValue('summary') }
+	get uid() {
+		void this.revision
+		return toRaw(this).propertyValue('uid')
+	}
+
+	get summary() {
+		void this.revision
+		return toRaw(this).propertyValue('summary')
+	}
+
 	set summary(value) {
 		const self = toRaw(this)
 		self.setValue('summary', value)
+		this.revision++
 	}
 
-	get status() { return this.propertyValue('status') }
+	get status() {
+		void this.revision
+		return toRaw(this).propertyValue('status')
+	}
+
 	get completed() {
+		void this.revision
 		const self = toRaw(this)
 		return self.vtodo.hasProperty('completed')
 	}
@@ -107,14 +123,20 @@ export class Task {
 			self.removeProperties('completed', 'percent-complete')
 		}
 		self.touch()
+		this.revision++
 	}
 
 	get closed() {
+		void this.revision
 		const self = toRaw(this)
 		return self.completed || self.status === 'CANCELLED'
 	}
 
-	get due() { return this.propertyValue('due') }
+	get due() {
+		void this.revision
+		return toRaw(this).propertyValue('due')
+	}
+
 	set due(value) {
 		const self = toRaw(this)
 		if (value === null) {
@@ -123,10 +145,12 @@ export class Task {
 			self.setValue('due', value instanceof Date ? utcTime(value) : value)
 		}
 		self.touch()
+		this.revision++
 	}
 
 	get priority() {
-		const value = this.propertyValue('priority')
+		void this.revision
+		const value = toRaw(this).propertyValue('priority')
 		return value === null ? null : Number(value)
 	}
 
@@ -138,9 +162,11 @@ export class Task {
 			self.setValue('priority', value)
 		}
 		self.touch()
+		this.revision++
 	}
 
 	get categories() {
+		void this.revision
 		const self = toRaw(this)
 		return self.vtodo.getAllProperties('categories').flatMap((property) => property.getValues())
 	}
@@ -154,14 +180,17 @@ export class Task {
 			self.vtodo.addProperty(property)
 		}
 		self.touch()
+		this.revision++
 	}
 
 	get isProject() {
+		void this.revision
 		const self = toRaw(this)
 		return self.categories.includes('project')
 	}
 
 	get parentUid() {
+		void this.revision
 		const self = toRaw(this)
 		const property = self.parentProperty()
 		return property ? property.getFirstValue() : null
@@ -177,10 +206,12 @@ export class Task {
 			self.vtodo.addPropertyWithValue('related-to', value)
 		}
 		self.touch()
+		this.revision++
 	}
 
 	get sortOrder() {
-		const value = this.propertyValue('x-apple-sort-order')
+		void this.revision
+		const value = toRaw(this).propertyValue('x-apple-sort-order')
 		return value === null ? null : Number(value)
 	}
 
@@ -192,25 +223,34 @@ export class Task {
 			self.setValue('x-apple-sort-order', value)
 		}
 		self.touch()
+		this.revision++
 	}
 
-	get created() { return this.propertyValue('created') }
+	get created() {
+		void this.revision
+		return toRaw(this).propertyValue('created')
+	}
+
 	get url() {
+		void this.revision
 		const self = toRaw(this)
 		return self.where.url
 	}
 
 	get etag() {
+		void this.revision
 		const self = toRaw(this)
 		return self.where.etag
 	}
 
 	get calendarUrl() {
+		void this.revision
 		const self = toRaw(this)
 		return self.where.calendarUrl
 	}
 
 	propertyValue(name) {
+		void this.revision
 		const self = toRaw(this)
 		return self.vtodo.getFirstPropertyValue(name)
 	}
@@ -220,6 +260,7 @@ export class Task {
 		self.removeProperties(name)
 		self.vtodo.addPropertyWithValue(name, value)
 		self.touch()
+		this.revision++
 	}
 
 	removeProperties(...names) {
@@ -229,6 +270,7 @@ export class Task {
 				self.vtodo.removeProperty(property)
 			}
 		}
+		this.revision++
 	}
 
 	touch() {
@@ -238,9 +280,11 @@ export class Task {
 		self.vtodo.addPropertyWithValue('last-modified', now)
 		self.vtodo.addPropertyWithValue('dtstamp', now)
 		self.changed = true
+		this.revision++
 	}
 
 	parentProperty() {
+		void this.revision
 		const self = toRaw(this)
 		return self.vtodo.getAllProperties('related-to').find((property) => {
 			const reltype = property.getFirstParameter('reltype')

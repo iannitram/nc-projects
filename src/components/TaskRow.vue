@@ -54,6 +54,9 @@ const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').TaskNode>} */
 	node: { type: Object, required: true },
 })
+function onCompletionChange() {
+	useProjectsStore().setCompleted(props.node?.task?.uid, !isCompleted.value)
+}
 
 const PRIORITY_OPTIONS = [
 	{ value: 1, label: 'High' },
@@ -197,8 +200,8 @@ function setPriority(value) {
 			class="cc-task-row__checkbox"
 			:isChecked="isCompleted"
 			:modelValue="isCompleted"
-			:disabled="true"
-			aria-label="Task completed" />
+			aria-label="Task completed"
+			@update:modelValue="onCompletionChange" />
 		<NcTextField
 			v-if="editing"
 			ref="titleInput"
