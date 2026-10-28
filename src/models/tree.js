@@ -62,7 +62,7 @@ export function areaSlug(name) {
 	return String(name || '')
 		.toLowerCase()
 		.trim()
-		.replace(/[\s\W-]+/g, '-')
+		.replace(/[^\p{L}\p{N}]+/gu, '-')
 		.replace(/^-+|-+$/g, '')
 }
 

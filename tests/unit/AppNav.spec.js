@@ -1,9 +1,26 @@
+import { emit } from '@nextcloud/event-bus'
 import { NcAppNavigationItem } from '@nextcloud/vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppNav from '../../src/components/AppNav.vue'
 import { useProjectsStore } from '../../src/store/projects.js'
+
+const mobile = vi.hoisted(() => ({ value: true }))
+
+vi.mock('@nextcloud/event-bus', async (importOriginal) => ({
+	...(await importOriginal()),
+	emit: vi.fn(),
+}))
+
+vi.mock('@nextcloud/vue', async (importOriginal) => ({
+	...(await importOriginal()),
+	useIsMobile: () => ({
+		get value() {
+			return mobile.value
+		},
+	}),
+}))
 
 describe('AppNav', () => {
 	let pinia
@@ -13,6 +30,8 @@ describe('AppNav', () => {
 		pinia = createPinia()
 		setActivePinia(pinia)
 		store = useProjectsStore()
+		emit.mockClear()
+		mobile.value = true
 	})
 
 	it('renders one item per area with the right count and colour dot, and Needs filing shows orphans + untaggedParents', async () => {
@@ -61,7 +80,8 @@ describe('AppNav', () => {
 		expect(bubbles.length).toBeGreaterThanOrEqual(3)
 
 		// Home has 2 open projects
-		expect(wrapper.find('[data-area-name="Home"] .counter-bubble__counter, [aria-label*="Home"] .counter-bubble__counter, .app-navigation-entry:has(.cc-app-nav__dot) .counter-bubble__counter').exists()).toBe(true)
+		const homeItem = wrapper.findAllComponents(NcAppNavigationItem).find((entry) => entry.props('name') === 'Home')
+		expect(homeItem.find('.counter-bubble__counter').text()).toBe('2')
 
 		// Verify Needs filing counter shows 3 (2 orphans + 1 untaggedParent)
 		const needsFilingItem = wrapper.findAll('.app-navigation-entry').find((entry) => entry.text().includes('Needs filing'))
@@ -108,6 +128,34 @@ describe('AppNav', () => {
 		} finally {
 			sectionEl.remove()
 		}
+	})
+
+	it('closes the navigation drawer when an area is tapped at phone width', async () => {
+		mobile.value = true
+		store.areas = [{ name: 'Home', calendarUrl: '/home/', projects: [], done: [] }]
+
+		const wrapper = mount(AppNav, {
+			global: { plugins: [pinia] },
+		})
+
+		const homeItem = wrapper.findAllComponents(NcAppNavigationItem).find((entry) => entry.props('name') === 'Home')
+		await homeItem.find('a.app-navigation-entry-link').trigger('click')
+
+		expect(emit).toHaveBeenCalledWith('toggle-navigation', { open: false })
+	})
+
+	it('leaves the navigation drawer open when an area is tapped at desktop width', async () => {
+		mobile.value = false
+		store.areas = [{ name: 'Home', calendarUrl: '/home/', projects: [], done: [] }]
+
+		const wrapper = mount(AppNav, {
+			global: { plugins: [pinia] },
+		})
+
+		const homeItem = wrapper.findAllComponents(NcAppNavigationItem).find((entry) => entry.props('name') === 'Home')
+		await homeItem.find('a.app-navigation-entry-link').trigger('click')
+
+		expect(emit).not.toHaveBeenCalledWith('toggle-navigation', { open: false })
 	})
 
 	it('switches view to needs-filing on clicking Needs filing, and All areas switches back', async () => {
