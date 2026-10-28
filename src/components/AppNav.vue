@@ -12,7 +12,7 @@ import {
 } from '@nextcloud/vue'
 import { getActivePinia } from 'pinia'
 import { computed, nextTick } from 'vue'
-import { areaSlug } from '../models/tree.js'
+import { areaId } from '../models/tree.js'
 import { useProjectsStore } from '../store/projects.js'
 
 const store = getActivePinia() ? useProjectsStore() : null
@@ -53,14 +53,18 @@ function selectAllAreas() {
  * Scroll the matching area section into view without filtering.
  *
  * @param {string} areaName the area's display name
+ * @param {number} [index] the area's index in the list
  */
-function selectArea(areaName) {
+function selectArea(areaName, index) {
 	closeDrawerOnPhone()
 	if (store) {
 		store.view = 'areas'
 	}
 	nextTick(() => {
-		const id = `area-${areaSlug(areaName)}`
+		const idx = typeof index === 'number'
+			? index
+			: areas.value.findIndex((a) => a.name === areaName)
+		const id = areaId(areaName, idx >= 0 ? idx : 0, areas.value)
 		const el = document.getElementById(id)
 		if (typeof el?.scrollIntoView === 'function') {
 			el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -103,10 +107,10 @@ function openSettings() {
 			<NcAppNavigationCaption name="Areas" />
 
 			<NcAppNavigationItem
-				v-for="area in areas"
-				:key="area.name"
+				v-for="(area, index) in areas"
+				:key="area.calendarUrl || `${area.name}-${index}`"
 				:name="area.name"
-				@click="selectArea(area.name)">
+				@click="selectArea(area.name, index)">
 				<template #icon>
 					<span
 						class="cc-app-nav__dot"
