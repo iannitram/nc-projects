@@ -11,19 +11,7 @@ import { Task } from '../models/Task.js'
 import { buildTree } from '../models/tree.js'
 import { notImplemented } from '../notImplemented.js'
 import { pickAreas } from '../services/areas.js'
-import * as dav from '../services/dav.js'
-import { ConflictError, createTodo, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../services/dav.js'
-
-/**
- * @return {object} the page's DAV session, or an empty one when unavailable
- */
-function getDavSession() {
-	try {
-		return dav.getDavSession()
-	} catch {
-		return {}
-	}
-}
+import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
 
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
