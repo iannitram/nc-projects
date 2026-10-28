@@ -114,7 +114,7 @@ describe('projects store addTask failures', () => {
 		expect(fetchTodo).toHaveBeenCalledWith('/van/conflict.ics', expect.anything())
 		expect(store.tasksByUid.c1.summary).toBe('Server task')
 		expect(showInfo).toHaveBeenCalledTimes(1)
-		expect(showInfo).toHaveBeenCalledWith('Reloaded')
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 		expect(showError).not.toHaveBeenCalled()
 	})
 
@@ -142,7 +142,7 @@ describe('projects store addTask failures', () => {
 		expect(fetchTodo).toHaveBeenCalledWith('/van/c1.ics', expect.anything())
 		expect(fetchTodo).toHaveBeenCalledWith('/van/c2.ics', expect.anything())
 		expect(showInfo).toHaveBeenCalledTimes(1)
-		expect(showInfo).toHaveBeenCalledWith('Reloaded')
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 		expect(showError).not.toHaveBeenCalled()
 	})
 })

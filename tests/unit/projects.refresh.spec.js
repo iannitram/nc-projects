@@ -23,7 +23,7 @@ vi.mock('@nextcloud/dialogs', () => ({
 }))
 
 import { showInfo } from '@nextcloud/dialogs'
-import { ConflictError, fetchTodo, fetchTodos, listTaskCalendars } from '../../src/services/dav.js'
+import { ConflictError, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
 import { useProjectsStore } from '../../src/store/projects.js'
 
 function deepFreeze(value) {
@@ -215,7 +215,7 @@ describe('projects store refresh', () => {
 		expect(store.tasksByUid.t1.etag).toBe('"t1-e2"')
 		expect(store.tasksByUid.t1.sortOrder).toBe(50)
 		expect(showInfo).toHaveBeenCalledTimes(1)
-		expect(showInfo).toHaveBeenCalledWith('Reloaded')
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 	})
 
 	it('shows only a single notice when several ConflictErrors arrive together', async () => {
@@ -234,7 +234,28 @@ describe('projects store refresh', () => {
 
 		expect(fetchTodo).toHaveBeenCalledTimes(2)
 		expect(showInfo).toHaveBeenCalledTimes(1)
-		expect(showInfo).toHaveBeenCalledWith('Reloaded')
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
+	})
+
+	it('shows only a single notice when two ConflictErrors from different actions arrive at once (e.g. setCompleted and reorder)', async () => {
+		const store = await loaded()
+		putTodo.mockImplementation(async (url) => {
+			throw new ConflictError(url)
+		})
+		fetchTodo.mockImplementation(async (url) => deepFreeze({
+			url,
+			etag: '"new-etag"',
+			calendarUrl: '/van/',
+			ics: vtodo({ uid: url.includes('t1') ? 't1' : 't2', parent: 'P', summary: 'reloaded' }),
+		}))
+
+		await Promise.all([
+			store.setCompleted('t1', true),
+			store.reorder('P', 'Van', 't2', 0),
+		])
+
+		expect(showInfo).toHaveBeenCalledTimes(1)
+		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 	})
 
 	it('reloadTask updates task and rebuilds tree without showing a notice', async () => {

@@ -32,7 +32,7 @@ function queueConflictReload(reloadFn) {
 			Promise.resolve().then(() => {
 				noticeScheduled = false
 				if (pendingConflictReloads === 0) {
-					showInfo('Reloaded')
+					showInfo('Someone else changed this; reloaded')
 				}
 			})
 		}
@@ -48,8 +48,7 @@ function queueConflictReload(reloadFn) {
 function collectCollapseState(areas) {
 	const state = new Map()
 	/**
-	 *
-	 * @param nodes
+	 * @param {import('../models/tree.js').TaskNode[]} nodes the task nodes
 	 */
 	function walk(nodes) {
 		for (const node of nodes || []) {
@@ -83,8 +82,7 @@ function restoreCollapseState(areas, state) {
 		return
 	}
 	/**
-	 *
-	 * @param nodes
+	 * @param {import('../models/tree.js').TaskNode[]} nodes the task nodes
 	 */
 	function walk(nodes) {
 		for (const node of nodes || []) {
@@ -146,12 +144,9 @@ export const useProjectsStore = defineStore('projects', {
 					etag: todo.etag,
 					calendarUrl: todo.calendarUrl,
 				}))
-				const tree = buildTree(areas, tasks)
-				this.areas = tree.areas
-				this.orphans = tree.orphans
-				this.untaggedParents = tree.untaggedParents
 				this.tasksByUid = Object.fromEntries(tasks.filter((task) => task.uid).map((task) => [task.uid, task]))
 				this.ctags = Object.fromEntries(areas.map((area) => [area.calendar.url, area.calendar.ctag]))
+				this.rebuildTree(tasks)
 			} catch (error) {
 				this.error = (error instanceof Error ? (error.message || error.name) : String(error)) || 'Could not load the task lists'
 			} finally {
@@ -188,19 +183,66 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 
-				const collapseState = collectCollapseState(this.areas)
-				const tree = buildTree(areas, Object.values(tasksByUid).map((task) => toRaw(task)))
-				restoreCollapseState(tree.areas, collapseState)
-				this.areas = tree.areas
-				this.orphans = tree.orphans
-				this.untaggedParents = tree.untaggedParents
 				this.tasksByUid = tasksByUid
 				this.ctags = {
 					...this.ctags,
 					...Object.fromEntries(changedAreas.map((area) => [area.calendar.url, area.calendar.ctag])),
 				}
+				this.rebuildTree()
 			} catch {
 				// Keep the current state when a list cannot be refreshed.
+			}
+		},
+		/**
+		 * Rebuild the area tree from tasks, preserving collapse state across rebuilds.
+		 *
+		 * @param {import('../models/Task.js').Task[]} [tasks] optional tasks to build from; defaults to all tasks in store
+		 */
+		rebuildTree(tasks) {
+			const taskSource = tasks || Object.values(this.tasksByUid)
+			const taskList = taskSource.map((task) => toRaw(task))
+			const areas = this.areaInputs.length > 0
+				? this.areaInputs
+				: this.areas.map((area) => ({
+						name: area.name,
+						calendar: area.calendar || { url: area.calendarUrl, displayName: area.name },
+					}))
+			const collapseState = collectCollapseState(this.areas)
+			const tree = buildTree(areas, taskList)
+			restoreCollapseState(tree.areas, collapseState)
+			this.areas = tree.areas
+			this.orphans = tree.orphans
+			this.untaggedParents = tree.untaggedParents
+		},
+		/**
+		 * Reload tasks by URLs and rebuild the tree.
+		 *
+		 * @param {string[]} urls the tasks' URLs
+		 * @param {boolean} [useSession] whether to pass session to fetchTodo
+		 */
+		async reloadTasks(urls, useSession = false) {
+			const urlList = (Array.isArray(urls) ? urls : [urls]).filter(Boolean)
+			if (urlList.length === 0) {
+				return
+			}
+			if (useSession) {
+				this.davSession ??= markRaw(getDavSession())
+			}
+			try {
+				const storedList = await Promise.all(urlList.map((url) => (useSession ? fetchTodo(url, this.davSession) : fetchTodo(url))))
+				for (const stored of storedList) {
+					if (stored?.ics) {
+						const task = Task.fromIcs(stored.ics, {
+							url: stored.url,
+							etag: stored.etag,
+							calendarUrl: stored.calendarUrl,
+						})
+						this.tasksByUid[task.uid] = task
+					}
+				}
+				this.rebuildTree()
+			} catch {
+				// Keep current state when tasks cannot be refreshed.
 			}
 		},
 		/**
@@ -209,48 +251,27 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {string} url the task's URL
 		 */
 		async reloadTask(url) {
-			if (!url) {
-				return
-			}
-			this.davSession ??= markRaw(getDavSession())
-			try {
-				const stored = await fetchTodo(url, this.davSession)
-				if (stored?.ics) {
-					const task = Task.fromIcs(stored.ics, {
-						url: stored.url,
-						etag: stored.etag,
-						calendarUrl: stored.calendarUrl,
-					})
-					this.tasksByUid[task.uid] = task
-
-					const collapseState = collectCollapseState(this.areas)
-					const areas = this.areaInputs.length > 0
-						? this.areaInputs
-						: this.areas.map((area) => ({
-								name: area.name,
-								calendar: area.calendar || { url: area.calendarUrl, displayName: area.name },
-							}))
-					const tree = buildTree(areas, Object.values(this.tasksByUid).map((t) => toRaw(t)))
-					restoreCollapseState(tree.areas, collapseState)
-					this.areas = tree.areas
-					this.orphans = tree.orphans
-					this.untaggedParents = tree.untaggedParents
-				}
-			} catch {
-				// Keep current state when a task cannot be refreshed.
-			}
+			return this.reloadTasks([url], true)
 		},
 		/**
-		 * Reload a task after a ConflictError (412) and show one quiet notice.
+		 * Reload tasks after a ConflictError (412) and show one quiet notice.
 		 *
-		 * @param {import('../services/dav.js').ConflictError|string|{url?: string}} error the error or task URL
+		 * @param {import('../services/dav.js').ConflictError|string|string[]|{url?: string}[]} errorOrUrls the error or task URL(s)
 		 */
-		async handleConflict(error) {
-			const url = typeof error === 'string' ? error : error?.url
-			if (!url) {
+		async handleConflict(errorOrUrls) {
+			const isArray = Array.isArray(errorOrUrls)
+			let urls = []
+			if (isArray) {
+				urls = errorOrUrls.map((item) => (typeof item === 'string' ? item : item?.url)).filter(Boolean)
+			} else if (typeof errorOrUrls === 'string') {
+				urls = [errorOrUrls]
+			} else if (errorOrUrls?.url) {
+				urls = [errorOrUrls.url]
+			}
+			if (urls.length === 0) {
 				return
 			}
-			return queueConflictReload(() => this.reloadTask(url))
+			return queueConflictReload(() => this.reloadTasks(urls, !isArray))
 		},
 		/**
 		 * @param {string} projectUid the project
@@ -280,20 +301,7 @@ export const useProjectsStore = defineStore('projects', {
 					calendarUrl: created.calendarUrl,
 				}
 				this.tasksByUid[task.uid] = task
-
-				const allTasks = Object.values(this.tasksByUid)
-				const areas = this.areaInputs.length > 0
-					? this.areaInputs
-					: this.areas.map((area) => ({
-							name: area.name,
-							calendar: area.calendar || { url: area.calendarUrl, displayName: area.name },
-						}))
-				const collapseState = collectCollapseState(this.areas)
-				const tree = buildTree(areas, allTasks)
-				restoreCollapseState(tree.areas, collapseState)
-				this.areas = tree.areas
-				this.orphans = tree.orphans
-				this.untaggedParents = tree.untaggedParents
+				this.rebuildTree()
 				return task.uid
 			} catch (error) {
 				if (error instanceof ConflictError) {
@@ -305,7 +313,8 @@ export const useProjectsStore = defineStore('projects', {
 			}
 		},
 		/**
-		 * @param {import('../models/Task.js').Task} task
+		 * @param {import('../models/Task.js').Task} task the task
+		 * @return {object} calendar object
 		 */
 		calendarOf(task) {
 			const area = this.areas.find((candidate) => candidate.calendarUrl === task.calendarUrl)
@@ -373,16 +382,6 @@ export const useProjectsStore = defineStore('projects', {
 				return
 			}
 
-			const rebuild = () => {
-				const tree = buildTree(this.areas.map((area) => ({
-					name: area.name,
-					calendar: { url: area.calendarUrl },
-				})), Object.values(this.tasksByUid))
-				this.areas = tree.areas
-				this.orphans = tree.orphans
-				this.untaggedParents = tree.untaggedParents
-			}
-
 			// Optimistic: keep each task's original resource, then apply the new
 			// sort orders and rebuild the tree before the first write is awaited
 			const before = new Map()
@@ -393,7 +392,7 @@ export const useProjectsStore = defineStore('projects', {
 					toRaw(task).sortOrder = sortOrder
 				}
 			}
-			rebuild()
+			this.rebuildTree()
 
 			// A landed write keeps its new sort order and new etag; only the failed
 			// write and the ones not yet sent are rolled back
@@ -410,26 +409,7 @@ export const useProjectsStore = defineStore('projects', {
 			} catch (error) {
 				// Handle ConflictError differently: reload every task of the change
 				if (error instanceof ConflictError) {
-					try {
-						for (const { uid } of toUpdate) {
-							const task = this.tasksByUid[uid]
-							if (task) {
-								const stored = await fetchTodo(task.url)
-								const updatedTask = Task.fromIcs(stored.ics, {
-									url: stored.url,
-									etag: stored.etag,
-									calendarUrl: stored.calendarUrl,
-								})
-								this.tasksByUid[uid] = updatedTask
-							}
-						}
-
-						rebuild()
-						showInfo('Someone else changed this; reloaded')
-					} catch {
-						// If reload fails, show error
-						showError('Could not save the new order')
-					}
+					await this.handleConflict(toUpdate.map(({ uid }) => this.tasksByUid[uid]?.url).filter(Boolean))
 					return
 				}
 
@@ -438,7 +418,7 @@ export const useProjectsStore = defineStore('projects', {
 						this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
 					}
 				}
-				rebuild()
+				this.rebuildTree()
 				showError('Could not save the new order')
 			}
 		},
@@ -460,16 +440,6 @@ export const useProjectsStore = defineStore('projects', {
 				return
 			}
 
-			const rebuild = () => {
-				const tree = buildTree(this.areas.map((area) => ({
-					name: area.name,
-					calendar: { url: area.calendarUrl },
-				})), Object.values(this.tasksByUid))
-				this.areas = tree.areas
-				this.orphans = tree.orphans
-				this.untaggedParents = tree.untaggedParents
-			}
-
 			const before = plan.map((planUid) => {
 				const task = this.tasksByUid[planUid]
 				return { uid: planUid, ics: toRaw(task).toIcs(), where: toRaw(task).where }
@@ -478,7 +448,7 @@ export const useProjectsStore = defineStore('projects', {
 			for (const planUid of plan) {
 				toRaw(this.tasksByUid[planUid]).completed = done
 			}
-			rebuild()
+			this.rebuildTree()
 
 			try {
 				for (const planUid of plan) {
@@ -488,24 +458,14 @@ export const useProjectsStore = defineStore('projects', {
 				}
 			} catch (error) {
 				if (error instanceof ConflictError) {
-					const stored = await Promise.all(plan.map((planUid) => fetchTodo(this.tasksByUid[planUid].url)))
-					for (const todo of stored) {
-						const reloaded = Task.fromIcs(todo.ics, {
-							url: todo.url,
-							etag: todo.etag,
-							calendarUrl: todo.calendarUrl,
-						})
-						this.tasksByUid[reloaded.uid] = reloaded
-					}
-					rebuild()
-					showInfo('Someone else changed this; reloaded')
+					await this.handleConflict(plan.map((planUid) => this.tasksByUid[planUid]?.url).filter(Boolean))
 					return
 				}
 
 				for (const saved of before) {
 					this.tasksByUid[saved.uid] = Task.fromIcs(saved.ics, saved.where)
 				}
-				rebuild()
+				this.rebuildTree()
 				showError('Could not save the change')
 			}
 		},
@@ -536,15 +496,7 @@ export const useProjectsStore = defineStore('projects', {
 				const stored = await createTodo(areaCalendar, task.toIcs(), this.davSession)
 				const created = Task.fromIcs(stored.ics, { url: stored.url, etag: stored.etag, calendarUrl: stored.calendarUrl })
 				this.tasksByUid[created.uid] = created
-				const areas = this.areaInputs.length > 0
-					? this.areaInputs
-					: this.areas.map((item) => ({ name: item.name, calendar: { url: item.calendarUrl } }))
-				const collapseState = collectCollapseState(this.areas)
-				const tree = buildTree(areas, Object.values(this.tasksByUid))
-				restoreCollapseState(tree.areas, collapseState)
-				this.areas = tree.areas
-				this.orphans = tree.orphans
-				this.untaggedParents = tree.untaggedParents
+				this.rebuildTree()
 			} catch (error) {
 				if (error instanceof ConflictError) {
 					await this.handleConflict(error)
@@ -566,38 +518,20 @@ export const useProjectsStore = defineStore('projects', {
 			const raw = toRaw(task)
 			const before = { uid, ics: raw.toIcs(), where: raw.where }
 
-			const rebuild = () => {
-				const tree = buildTree(this.areas.map((area) => ({
-					name: area.name,
-					calendar: { url: area.calendarUrl },
-				})), Object.values(this.tasksByUid))
-				this.areas = tree.areas
-				this.orphans = tree.orphans
-				this.untaggedParents = tree.untaggedParents
-			}
-
 			raw.categories = [...raw.categories, 'project']
-			rebuild()
+			this.rebuildTree()
 
 			try {
 				const stored = await putTodo(raw.url, raw.toIcs(), raw.etag)
 				toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
 			} catch (error) {
 				if (error instanceof ConflictError) {
-					const stored = await fetchTodo(raw.url)
-					const reloaded = Task.fromIcs(stored.ics, {
-						url: stored.url,
-						etag: stored.etag,
-						calendarUrl: stored.calendarUrl,
-					})
-					this.tasksByUid[reloaded.uid] = reloaded
-					rebuild()
-					showInfo('Someone else changed this; reloaded')
+					await this.handleConflict([raw.url])
 					return
 				}
 
 				this.tasksByUid[uid] = Task.fromIcs(before.ics, before.where)
-				rebuild()
+				this.rebuildTree()
 				showError('Could not make the project')
 			}
 		},

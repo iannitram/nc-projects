@@ -196,4 +196,17 @@ describe('projects store setCompleted', () => {
 		expect(store.tasksByUid.A1.etag).toBe('"A1-fresh"')
 		expect(store.tasksByUid.A.completed).toBe(false)
 	})
+
+	it('preserves node collapse state across a setCompleted rebuild', async () => {
+		const store = await loadStore(open())
+		const nodeA = store.areas[0].projects[0].children[0]
+		expect(nodeA.task.uid).toBe('A')
+		nodeA.collapsed = true
+
+		await store.setCompleted('B', true)
+
+		const updatedNodeA = store.areas[0].projects[0].children[0]
+		expect(updatedNodeA.task.uid).toBe('A')
+		expect(updatedNodeA.collapsed).toBe(true)
+	})
 })
