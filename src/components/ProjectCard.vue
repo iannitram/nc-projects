@@ -1,9 +1,10 @@
 <script setup>
 import { NcCheckboxRadioSwitch, NcProgressBar } from '@nextcloud/vue'
+import { getActivePinia } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import AddTaskInput from './AddTaskInput.vue'
 import TaskTree from './TaskTree.vue'
-import { useProjectsStore } from '../store/projects.js'
+import { readProjectCollapsed, useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').ProjectNode>} */
@@ -105,6 +106,19 @@ const isSomeday = computed(() => {
 	return categories.value.some((cat) => typeof cat === 'string' && cat.toLowerCase() === 'someday')
 })
 
+const store = getActivePinia() ? useProjectsStore() : null
+
+const isCollapsed = computed(() => {
+	const uid = props.project?.task?.uid
+	if (!uid) {
+		return false
+	}
+	if (store?.collapsedProjects?.has(uid)) {
+		return true
+	}
+	return readProjectCollapsed(uid)
+})
+
 </script>
 
 <template>
@@ -150,7 +164,7 @@ const isSomeday = computed(() => {
 					@update:modelValue="onCompletionChange" />
 			</div>
 		</header>
-		<div class="cc-project-card__content">
+		<div v-if="!isCollapsed" class="cc-project-card__content">
 			<TaskTree
 				:nodes="project.children || []"
 				:showDone="showDone"

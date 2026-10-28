@@ -107,5 +107,116 @@ describe('projects store getters', () => {
 			}
 			expect(store.openProjectCount(area)).toBe(1)
 		})
+
+		it('returns total count across all areas when called without arguments', () => {
+			store.areas = [
+				{
+					name: 'Home',
+					projects: [{ task: { uid: 'p1' } }, { task: { uid: 'p2' } }],
+					done: [{ task: { uid: 'p-done' } }],
+				},
+				{
+					name: 'Work',
+					projects: [{ task: { uid: 'p3' } }],
+					done: [],
+				},
+			]
+			expect(store.openProjectCount()).toBe(3)
+			expect(store.totalOpenProjects).toBe(3)
+		})
+	})
+
+	describe('openTaskCount and totalOpenTasks', () => {
+		it('counts open tasks from progress (total - done) across open projects', () => {
+			store.areas = [
+				{
+					name: 'Home',
+					projects: [
+						{ task: { uid: 'p1' }, progress: { done: 2, total: 5 } }, // 3 open
+						{ task: { uid: 'p2' }, progress: { done: 1, total: 4 } }, // 3 open
+					],
+					done: [
+						{ task: { uid: 'pd1' }, progress: { done: 3, total: 3 } }, // excluded
+					],
+				},
+				{
+					name: 'Work',
+					projects: [
+						{ task: { uid: 'p3' }, progress: { done: 0, total: 2 } }, // 2 open
+					],
+					done: [],
+				},
+			]
+
+			expect(store.openTaskCount('Home')).toBe(6)
+			expect(store.openTaskCount('Work')).toBe(2)
+			expect(store.openTaskCount()).toBe(8)
+			expect(store.totalOpenTasks).toBe(8)
+		})
+
+		it('falls back to recursive children walk when progress is not provided', () => {
+			store.areas = [
+				{
+					name: 'Garden',
+					projects: [
+						{
+							task: { uid: 'p1' },
+							children: [
+								{
+									task: { uid: 't1', completed: false, status: 'NEEDS-ACTION' },
+									children: [
+										{ task: { uid: 't1-1', completed: false } },
+										{ task: { uid: 't1-2', completed: true, status: 'COMPLETED' } },
+									],
+								},
+								{
+									task: { uid: 't2', completed: false, status: 'CANCELLED' },
+									children: [],
+								},
+							],
+						},
+					],
+				},
+			]
+
+			// t1 (open) + t1-1 (open) = 2 open tasks (t1-2 is completed, t2 is cancelled)
+			expect(store.openTaskCount('Garden')).toBe(2)
+			expect(store.totalOpenTasks).toBe(2)
+		})
+	})
+
+	describe('allCollapsed', () => {
+		it('returns false when no projects exist', () => {
+			store.areas = []
+			expect(store.allCollapsed).toBe(false)
+		})
+
+		it('returns false when any open project is expanded', () => {
+			store.areas = [
+				{
+					name: 'Home',
+					projects: [
+						{ task: { uid: 'p1' } },
+						{ task: { uid: 'p2' } },
+					],
+				},
+			]
+			store.collapsedProjects = new Set(['p1'])
+			expect(store.allCollapsed).toBe(false)
+		})
+
+		it('returns true when all open projects are collapsed', () => {
+			store.areas = [
+				{
+					name: 'Home',
+					projects: [
+						{ task: { uid: 'p1' } },
+						{ task: { uid: 'p2' } },
+					],
+				},
+			]
+			store.collapsedProjects = new Set(['p1', 'p2'])
+			expect(store.allCollapsed).toBe(true)
+		})
 	})
 })

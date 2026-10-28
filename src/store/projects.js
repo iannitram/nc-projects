@@ -136,6 +136,82 @@ function findNode(nodes, uid) {
 	return null
 }
 
+/**
+ * Read the collapsed preference for a project from localStorage.
+ *
+ * @param {string | undefined | null} uid The project task UID
+ * @return {boolean} Whether the project is collapsed (default false on failure/missing)
+ */
+export function readProjectCollapsed(uid) {
+	if (!uid) {
+		return false
+	}
+	try {
+		const storage = typeof window !== 'undefined' ? window.localStorage : null
+		return storage ? storage.getItem(`cc_projects:collapsed:${uid}`) === '1' : false
+	} catch {
+		return false
+	}
+}
+
+/**
+ * Persist the collapsed preference for a project to localStorage.
+ *
+ * @param {string | undefined | null} uid The project task UID
+ * @param {boolean} val The new preference value
+ * @return {boolean} Whether storage succeeded
+ */
+export function writeProjectCollapsed(uid, val) {
+	if (!uid) {
+		return false
+	}
+	try {
+		const storage = typeof window !== 'undefined' ? window.localStorage : null
+		if (!storage) {
+			return false
+		}
+		storage.setItem(`cc_projects:collapsed:${uid}`, val ? '1' : '0')
+		return true
+	} catch {
+		return false
+	}
+}
+
+/**
+ * Count open tasks under a project at all depths.
+ *
+ * @param {import('../models/tree.js').ProjectNode} project The project node
+ * @return {number} Count of open tasks
+ */
+function countProjectOpenTasks(project) {
+	if (project?.progress && typeof project.progress.total === 'number' && typeof project.progress.done === 'number') {
+		return Math.max(0, project.progress.total - project.progress.done)
+	}
+	let count = 0
+	/**
+	 * Walk task tree nodes recursively.
+	 *
+	 * @param {import('../models/tree.js').TaskNode[]} nodes The task nodes to traverse
+	 */
+	function walk(nodes) {
+		for (const node of nodes || []) {
+			const task = node.task || node
+			const completed = task.completed === true || (typeof task.status === 'string' && task.status.toUpperCase() === 'COMPLETED')
+			const cancelled = typeof task.status === 'string' && task.status.toUpperCase() === 'CANCELLED'
+			if (!completed && !cancelled) {
+				count++
+			}
+			if (node.children?.length) {
+				walk(node.children)
+			}
+		}
+	}
+	if (project?.children) {
+		walk(project.children)
+	}
+	return count
+}
+
 export const useProjectsStore = defineStore('projects', {
 	state: () => ({
 		/** @type {import('../models/tree.js').AreaNode[]} */
@@ -162,6 +238,10 @@ export const useProjectsStore = defineStore('projects', {
 		error: null,
 		/** @type {'areas'|'needs-filing'} */
 		view: 'areas',
+		/** @type {number|null} */
+		lastRefreshedAt: null,
+		/** @type {Set<string>} */
+		collapsedProjects: new Set(),
 	}),
 	getters: {
 		/**
@@ -187,18 +267,85 @@ export const useProjectsStore = defineStore('projects', {
 		},
 
 		/**
-		 * Count of open projects for an area (someday included, done excluded).
+		 * Count of open projects for an area (someday included, done excluded),
+		 * or total open projects across all areas if nameOrArea is omitted.
 		 *
 		 * @param {object} state the store state
-		 * @return {(nameOrArea: string | { name: string, projects?: unknown[] }) => number} getter function
+		 * @return {(nameOrArea?: string | { name: string, projects?: unknown[] }) => number} getter function
 		 */
 		openProjectCount: (state) => (nameOrArea) => {
 			if (typeof nameOrArea === 'object' && nameOrArea !== null && Array.isArray(nameOrArea.projects)) {
 				return nameOrArea.projects.length
 			}
-			const name = typeof nameOrArea === 'object' && nameOrArea !== null ? nameOrArea.name : nameOrArea
-			const area = state.areas?.find((a) => a.name === name)
-			return area?.projects?.length ?? 0
+			if (typeof nameOrArea === 'string' || (typeof nameOrArea === 'object' && nameOrArea !== null)) {
+				const name = typeof nameOrArea === 'object' ? nameOrArea.name : nameOrArea
+				const area = state.areas?.find((a) => a.name === name)
+				return area?.projects?.length ?? 0
+			}
+			return (state.areas || []).reduce((sum, area) => sum + (area.projects?.length || 0), 0)
+		},
+
+		/**
+		 * Total count of open projects across all areas.
+		 *
+		 * @param {object} state the store state
+		 * @return {number}
+		 */
+		totalOpenProjects: (state) => (state.areas || []).reduce((sum, area) => sum + (area.projects?.length || 0), 0),
+
+		/**
+		 * Count of open tasks (not completed, under open projects, all depths) for an area,
+		 * or across all areas if nameOrArea is omitted.
+		 *
+		 * @param {object} state the store state
+		 * @return {(nameOrArea?: string | { name: string, projects?: unknown[] }) => number} getter function
+		 */
+		openTaskCount: (state) => (nameOrArea) => {
+			/**
+			 * Count open tasks for an area node.
+			 *
+			 * @param {import('../models/tree.js').AreaNode} area The area node
+			 * @return {number}
+			 */
+			function countAreaTasks(area) {
+				return (area?.projects || []).reduce((sum, project) => sum + countProjectOpenTasks(project), 0)
+			}
+			if (typeof nameOrArea === 'object' && nameOrArea !== null && Array.isArray(nameOrArea.projects)) {
+				return countAreaTasks(nameOrArea)
+			}
+			if (typeof nameOrArea === 'string' || (typeof nameOrArea === 'object' && nameOrArea !== null)) {
+				const name = typeof nameOrArea === 'object' ? nameOrArea.name : nameOrArea
+				const area = state.areas?.find((a) => a.name === name)
+				return area ? countAreaTasks(area) : 0
+			}
+			return (state.areas || []).reduce((sum, area) => sum + countAreaTasks(area), 0)
+		},
+
+		/**
+		 * Total count of open tasks across all open projects in all areas.
+		 *
+		 * @param {object} state the store state
+		 * @return {number}
+		 */
+		totalOpenTasks: (state) => (state.areas || []).reduce((sum, area) => sum + (area?.projects || []).reduce((pSum, project) => pSum + countProjectOpenTasks(project), 0), 0),
+
+		/**
+		 * Check whether a project is collapsed.
+		 *
+		 * @param {object} state the store state
+		 * @return {(uid: string) => boolean}
+		 */
+		isProjectCollapsed: (state) => (uid) => state.collapsedProjects.has(uid),
+
+		/**
+		 * Whether every open project is collapsed.
+		 *
+		 * @param {object} state the store state
+		 * @return {boolean}
+		 */
+		allCollapsed: (state) => {
+			const projects = (state.areas || []).flatMap((area) => area.projects || [])
+			return projects.length > 0 && projects.every((project) => state.collapsedProjects.has(project.task?.uid))
 		},
 	},
 	actions: {
@@ -222,6 +369,7 @@ export const useProjectsStore = defineStore('projects', {
 				this.tasksByUid = Object.fromEntries(tasks.filter((task) => task.uid).map((task) => [task.uid, task]))
 				this.ctags = Object.fromEntries(areas.map((area) => [area.calendar.url, area.calendar.ctag]))
 				this.rebuildTree(tasks)
+				this.lastRefreshedAt = Date.now()
 			} catch (error) {
 				this.error = (error instanceof Error ? (error.message || error.name) : String(error)) || 'Could not load the task lists'
 			} finally {
@@ -237,6 +385,7 @@ export const useProjectsStore = defineStore('projects', {
 				this.areaInputs = areas
 				const changedAreas = areas.filter((area) => this.ctags[area.calendar.url] !== area.calendar.ctag)
 				if (changedAreas.length === 0) {
+					this.lastRefreshedAt = Date.now()
 					return
 				}
 
@@ -264,9 +413,61 @@ export const useProjectsStore = defineStore('projects', {
 					...Object.fromEntries(changedAreas.map((area) => [area.calendar.url, area.calendar.ctag])),
 				}
 				this.rebuildTree()
+				this.lastRefreshedAt = Date.now()
 			} catch {
 				// Keep the current state when a list cannot be refreshed.
 			}
+		},
+		/**
+		 * Toggle collapsed state of a single project.
+		 *
+		 * @param {string} uid the project UID
+		 */
+		toggleProjectCollapsed(uid) {
+			if (!uid) {
+				return
+			}
+			const next = new Set(this.collapsedProjects)
+			if (next.has(uid)) {
+				next.delete(uid)
+				writeProjectCollapsed(uid, false)
+			} else {
+				next.add(uid)
+				writeProjectCollapsed(uid, true)
+			}
+			this.collapsedProjects = next
+		},
+		/**
+		 * Collapse all open projects across all areas.
+		 */
+		collapseAll() {
+			const next = new Set(this.collapsedProjects)
+			for (const area of this.areas || []) {
+				for (const project of area.projects || []) {
+					const uid = project.task?.uid
+					if (uid) {
+						next.add(uid)
+						writeProjectCollapsed(uid, true)
+					}
+				}
+			}
+			this.collapsedProjects = next
+		},
+		/**
+		 * Expand all open projects across all areas.
+		 */
+		expandAll() {
+			const next = new Set(this.collapsedProjects)
+			for (const area of this.areas || []) {
+				for (const project of area.projects || []) {
+					const uid = project.task?.uid
+					if (uid) {
+						next.delete(uid)
+						writeProjectCollapsed(uid, false)
+					}
+				}
+			}
+			this.collapsedProjects = next
 		},
 		async saveAreaLists(urls) {
 			try {
@@ -300,6 +501,14 @@ export const useProjectsStore = defineStore('projects', {
 			})
 			this.orphans = tree.orphans
 			this.untaggedParents = tree.untaggedParents
+			for (const area of this.areas || []) {
+				for (const project of area.projects || []) {
+					const uid = project.task?.uid
+					if (uid && readProjectCollapsed(uid)) {
+						this.collapsedProjects.add(uid)
+					}
+				}
+			}
 		},
 		/**
 		 * Reload tasks by URLs and rebuild the tree.

@@ -1,0 +1,263 @@
+<script setup>
+import { mdiPlus, mdiUnfoldLessHorizontal, mdiUnfoldMoreHorizontal } from '@mdi/js'
+import { NcButton, NcIconSvgWrapper, NcSelect, NcTextField } from '@nextcloud/vue'
+import { getActivePinia } from 'pinia'
+import { computed, ref } from 'vue'
+import { useProjectsStore } from '../store/projects.js'
+
+const store = getActivePinia() ? useProjectsStore() : null
+
+const isCreating = ref(false)
+const chosenArea = ref(null)
+const newProjectTitle = ref('')
+const creating = ref(false)
+
+const totalProjects = computed(() => {
+	if (!store) {
+		return 0
+	}
+	if (typeof store.totalOpenProjects === 'number') {
+		return store.totalOpenProjects
+	}
+	return typeof store.openProjectCount === 'function' ? store.openProjectCount() : 0
+})
+
+const projectCountText = computed(() => {
+	const count = totalProjects.value
+	return `${count} ${count === 1 ? 'project' : 'projects'}`
+})
+
+const anyProjectExpanded = computed(() => {
+	const projects = (store?.areas || []).flatMap((area) => area.projects || [])
+	if (projects.length === 0) {
+		return false
+	}
+	return projects.some((project) => !store?.collapsedProjects?.has(project.task?.uid))
+})
+
+const collapseLabel = computed(() => (anyProjectExpanded.value ? 'Collapse all' : 'Expand all'))
+const collapseIcon = computed(() => (anyProjectExpanded.value ? mdiUnfoldLessHorizontal : mdiUnfoldMoreHorizontal))
+
+/**
+ * Toggle collapse state across all projects.
+ */
+function onToggleCollapse() {
+	if (!store) {
+		return
+	}
+	if (anyProjectExpanded.value) {
+		store.collapseAll()
+	} else {
+		store.expandAll()
+	}
+}
+
+const areaOptions = computed(() => {
+	const areas = store?.areas || []
+	return areas.map((area) => ({
+		id: area.name,
+		label: area.name,
+	}))
+})
+
+/**
+ * Open the new project creation form.
+ */
+function openNewProject() {
+	isCreating.value = true
+	chosenArea.value = null
+	newProjectTitle.value = ''
+}
+
+/**
+ * Cancel project creation and close form.
+ */
+function cancelNewProject() {
+	isCreating.value = false
+	chosenArea.value = null
+	newProjectTitle.value = ''
+	creating.value = false
+}
+
+/**
+ * Handle area selection.
+ *
+ * @param {string | { id?: string, label?: string, name?: string } | null} val The selected option
+ */
+function onSelectArea(val) {
+	if (!val) {
+		chosenArea.value = null
+		return
+	}
+	chosenArea.value = typeof val === 'object' ? (val.id || val.label || val.name || String(val)) : String(val)
+}
+
+/**
+ * Submit and create new project.
+ */
+async function submitNewProject() {
+	const summary = newProjectTitle.value.trim()
+	if (!summary || !chosenArea.value || creating.value || !store) {
+		return
+	}
+	creating.value = true
+	try {
+		await store.createProject(chosenArea.value, summary)
+		cancelNewProject()
+	} catch {
+		// The store already showed the error toast; keep the typed title.
+	} finally {
+		creating.value = false
+	}
+}
+</script>
+
+<template>
+	<div class="cc-top-bar">
+		<h1 class="cc-top-bar__title">
+			All areas
+		</h1>
+		<span class="cc-top-bar__meta">
+			{{ projectCountText }}
+		</span>
+		<div class="cc-top-bar__spacer" />
+		<div class="cc-top-bar__actions">
+			<NcButton
+				class="cc-top-bar__collapse-btn"
+				variant="tertiary"
+				:aria-label="collapseLabel"
+				:title="collapseLabel"
+				@click="onToggleCollapse">
+				<template #icon>
+					<NcIconSvgWrapper :path="collapseIcon" :size="20" />
+				</template>
+			</NcButton>
+
+			<!-- Creation area: closed state -->
+			<NcButton
+				v-if="!isCreating"
+				class="cc-top-bar__new-project-btn"
+				variant="primary"
+				aria-label="New project"
+				@click="openNewProject">
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiPlus" :size="20" />
+				</template>
+				New project
+			</NcButton>
+
+			<!-- Creation area: pick an area -->
+			<div
+				v-else-if="!chosenArea"
+				class="cc-top-bar__area-picker">
+				<NcSelect
+					class="cc-top-bar__select"
+					:options="areaOptions"
+					:modelValue="chosenArea"
+					placeholder="Select area"
+					aria-label="Select area"
+					@update:modelValue="onSelectArea"
+					@keydown.esc="cancelNewProject" />
+				<NcButton
+					aria-label="Cancel"
+					@click="cancelNewProject">
+					Cancel
+				</NcButton>
+			</div>
+
+			<!-- Creation area: enter title -->
+			<div
+				v-else
+				class="cc-top-bar__title-form">
+				<NcTextField
+					v-model="newProjectTitle"
+					class="cc-top-bar__title-input"
+					:placeholder="`New project in ${chosenArea}`"
+					aria-label="New project title"
+					:disabled="creating"
+					autofocus
+					@keydown.enter.prevent="submitNewProject"
+					@keydown.esc="cancelNewProject" />
+				<NcButton
+					aria-label="Cancel"
+					:disabled="creating"
+					@click="cancelNewProject">
+					Cancel
+				</NcButton>
+			</div>
+		</div>
+	</div>
+</template>
+
+<style scoped>
+.cc-top-bar {
+	display: flex;
+	align-items: center;
+	gap: calc(var(--default-grid-baseline, 4px) * 2);
+	min-height: 52px;
+	padding: 0 calc(var(--default-grid-baseline, 4px) * 3) 0 calc(var(--default-grid-baseline, 4px) * 5);
+	border-bottom: 1px solid var(--color-border);
+	flex: none;
+	box-sizing: border-box;
+	background: var(--color-main-background);
+}
+
+.cc-top-bar__title {
+	font-size: 20px;
+	font-weight: 650;
+	margin: 0;
+	line-height: 1.2;
+	color: var(--color-main-text);
+}
+
+.cc-top-bar__meta {
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+	white-space: nowrap;
+}
+
+.cc-top-bar__spacer {
+	flex: 1;
+}
+
+.cc-top-bar__actions {
+	display: flex;
+	align-items: center;
+	gap: calc(var(--default-grid-baseline, 4px) * 2);
+}
+
+.cc-top-bar__area-picker,
+.cc-top-bar__title-form {
+	display: flex;
+	align-items: center;
+	gap: calc(var(--default-grid-baseline, 4px) * 2);
+}
+
+.cc-top-bar__select {
+	min-width: 160px;
+}
+
+.cc-top-bar__title-input {
+	min-width: 200px;
+}
+
+@media (max-width: 600px) {
+	.cc-top-bar {
+		min-height: 52px;
+		padding: 0 calc(var(--default-grid-baseline, 4px) * 1.5) 0 calc(var(--default-grid-baseline, 4px) * 1);
+		gap: calc(var(--default-grid-baseline, 4px) * 0.5);
+	}
+
+	.cc-top-bar__title {
+		font-size: 18px;
+	}
+
+	.cc-top-bar__select {
+		min-width: 120px;
+	}
+
+	.cc-top-bar__title-input {
+		min-width: 140px;
+	}
+}
+</style>
