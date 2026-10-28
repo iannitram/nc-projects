@@ -34,8 +34,8 @@ function node(overrides = {}) {
 			completed: false,
 			due: null,
 			priority: null,
-			url: '/remote.php/dav/calendars/owner/personal-1/t1.ics',
-			calendarUrl: '/remote.php/dav/calendars/owner/personal-1/',
+			url: '/remote.php/dav/calendars/owner/list-a/t1.ics',
+			calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 			...overrides,
 		},
 		children: [],
@@ -199,9 +199,9 @@ describe('TaskRow inline edits', () => {
 				'',
 			].join('\r\n')
 			const task = reactive(Task.fromIcs(ics, {
-				url: '/remote.php/dav/calendars/owner/personal-1/t1.ics',
+				url: '/remote.php/dav/calendars/owner/list-a/t1.ics',
 				etag: '"e1"',
-				calendarUrl: '/remote.php/dav/calendars/owner/personal-1/',
+				calendarUrl: '/remote.php/dav/calendars/owner/list-a/',
 			}))
 			const wrapper = mount(TaskRow, {
 				props: { node: { task, children: [], deeper: 0 } },
@@ -248,7 +248,7 @@ describe('TaskRow inline edits', () => {
 		const link = wrapper.find('.cc-task-open-in-tasks')
 		expect(link.exists()).toBe(true)
 		expect(link.text()).toBe('Open in Tasks')
-		expect(link.attributes('href')).toBe('/apps/tasks/calendars/personal-1/tasks/t1.ics')
+		expect(link.attributes('href')).toBe('/apps/tasks/calendars/list-a/tasks/t1.ics')
 	})
 
 	it('does not let mousedown on an edit control bubble to the row', async () => {

@@ -35,7 +35,7 @@ function deepFreeze(value) {
 	return value
 }
 
-const VAN = { url: '/van/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
+const VAN = { url: '/list-a/', displayName: 'Van', ownedByMe: true, writable: true, ctag: 'v1' }
 
 function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, status, extra = [] }) {
 	return [
@@ -58,7 +58,7 @@ function vtodo({ uid, created = '20200101T000000Z', categories, parent, sort, st
 }
 
 function stored(uid, fields) {
-	return { url: `/van/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/van/', ics: vtodo({ uid, ...fields }) }
+	return { url: `/list-a/${uid}.ics`, etag: `"${uid}-e1"`, calendarUrl: '/list-a/', ics: vtodo({ uid, ...fields }) }
 }
 
 async function loadStore(todos) {
@@ -108,8 +108,8 @@ describe('projects store setCompleted', () => {
 
 		expect(putTodo).toHaveBeenCalledTimes(2)
 		const [first, second] = putTodo.mock.calls
-		expect([first[0], first[2]]).toEqual(['/van/A.ics', '"A-e1"'])
-		expect([second[0], second[2]]).toEqual(['/van/A1.ics', '"A1-e1"'])
+		expect([first[0], first[2]]).toEqual(['/list-a/A.ics', '"A-e1"'])
+		expect([second[0], second[2]]).toEqual(['/list-a/A1.ics', '"A1-e1"'])
 		for (const call of putTodo.mock.calls) {
 			expect(sent(call).status).toBe('COMPLETED')
 			expect(sent(call).completed).toBe(true)
@@ -135,7 +135,7 @@ describe('projects store setCompleted', () => {
 
 		await store.setCompleted('A1', false)
 
-		expect(putTodo.mock.calls.map((call) => call[0])).toEqual(['/van/A1.ics', '/van/A.ics', '/van/P.ics'])
+		expect(putTodo.mock.calls.map((call) => call[0])).toEqual(['/list-a/A1.ics', '/list-a/A.ics', '/list-a/P.ics'])
 		for (const call of putTodo.mock.calls) {
 			expect(sent(call).status).toBe('NEEDS-ACTION')
 			expect(call[1]).not.toContain('COMPLETED:')
@@ -184,12 +184,12 @@ describe('projects store setCompleted', () => {
 
 	it('reloads every task in the plan and shows "Someone else changed this; reloaded" on a conflict', async () => {
 		const store = await loadStore(open())
-		putTodo.mockRejectedValue(new ConflictError('/van/A.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-a/A.ics'))
 		fetchTodo.mockImplementation(async (url) => fresh(uidOfUrl(url), { parent: uidOfUrl(url) === 'A' ? 'P' : 'A', sort: 10 }))
 
 		await store.setCompleted('A', true).catch(() => {})
 
-		expect(fetchTodo.mock.calls.map((call) => call[0]).sort()).toEqual(['/van/A.ics', '/van/A1.ics'])
+		expect(fetchTodo.mock.calls.map((call) => call[0]).sort()).toEqual(['/list-a/A.ics', '/list-a/A1.ics'])
 		expect(showInfo).toHaveBeenCalledWith('Someone else changed this; reloaded')
 		expect(showError).not.toHaveBeenCalled()
 		expect(store.tasksByUid.A.etag).toBe('"A-fresh"')
@@ -199,7 +199,7 @@ describe('projects store setCompleted', () => {
 
 	it('shows "Could not save the change" and no "reloaded" notice when the conflict reload fails', async () => {
 		const store = await loadStore(open())
-		putTodo.mockRejectedValue(new ConflictError('/van/A.ics'))
+		putTodo.mockRejectedValue(new ConflictError('/list-a/A.ics'))
 		fetchTodo.mockRejectedValue(new Error('reload failed'))
 
 		await store.setCompleted('A', true).catch(() => {})

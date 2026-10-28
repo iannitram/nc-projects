@@ -57,7 +57,7 @@ Docker's `restart: unless-stopped` brings the test container back after the Dock
 
 | Owner sees | URI | Why |
 |---|---|---|
-| The eight areas (Personal, The Channel, Van, Barnum, Cheltenham, DCIS, DPS, System) | `personal-1`, a UUID, `van`, `barnum-2`, … | URIs differ from names on purpose: areas match by display name |
+| The eight areas (Area A, Area B, Area C, Area D, Area E, Area F, Area G, Area H) | `area-a-1`, a UUID, `area-c`, `area-d-2`, … | URIs differ from names on purpose: areas match by display name |
 | "Personal", the account's default calendar | `personal` | **Events only.** A trap: area discovery must keep only lists that hold tasks (VTODO), as Tasks does |
 | "Shared by another person" | `shared-list_shared_by_other` | Must be ignored (shared by another account) |
 | "Agent queue" | `queue_shared_by_agent` | Must be ignored (agent queue) |
@@ -69,7 +69,7 @@ The 78 fixture tasks follow the spec's fixture table, with fixed UIDs (`area-0`,
 
 ```
 scripts/dav-get.sh <list-uri> <file.ics> [user]
-scripts/dav-get.sh personal-1 f-mix-old.ics
+scripts/dav-get.sh area-a-1 f-mix-old.ics
 ```
 
 This prints the raw iCalendar. Diff two runs to compare a task before and after a change.

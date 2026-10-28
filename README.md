@@ -10,7 +10,7 @@ Spec settled with the owner in a grilling session, 2026-10-23, and finished in t
 
 | Concept | What it is in CalDAV | Notes |
 |---|---|---|
-| **Area** | One of the owner's own task lists: Personal, The Channel, Van, Barnum, Cheltenham, DCIS, DPS, System | Matched by display name. Excluded: lists shared by other people (today: Farm Boy), every agent queue (`*_shared_by_*`), and Deck's `app-generated--deck--*` boards |
+| **Area** | One of the owner's own task lists: Area A, Area B, Area C, Area D, Area E, Area F, Area G, Area H | Matched by display name. Excluded: lists shared by other people (for example, a list a colleague shares), every agent queue (`*_shared_by_*`), and Deck's `app-generated--deck--*` boards |
 | **Project** | A VTODO with the category `project` | No migration: every existing project appears on day one |
 | **Task in a project** | A VTODO whose `RELATED-TO` is the project's UID (bare, which means PARENT per RFC 5545) | Followed across lists, so a child on another list still shows under its parent |
 | **Order** | `X-APPLE-SORT-ORDER` on each VTODO | The field the Tasks app's manual sort uses, so the order shows in Tasks and on phones too |

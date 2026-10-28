@@ -34,7 +34,7 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 
 | ID | Feature | Complexity | Notes |
 |---|---|---|---|
-| P02 | **Area discovery**: list the owner's calendars and keep the 8 areas | Low | Needs P01. Match by display name, never by URI segment (The Channel's is a UUID, Personal's is `personal-1`). Exclude lists shared by other people (today Farm Boy), `*_shared_by_*`, `app-generated--deck--*` Merged 2026-10-26 (#5 area discovery, #6 dav.js reads). |
+| P02 | **Area discovery**: list the owner's calendars and keep the 8 areas | Low | Needs P01. Match by display name, never by URI segment (one is a UUID, another is `<name>-1`). Exclude lists shared by other people (for example, a list a colleague shares), `*_shared_by_*`, `app-generated--deck--*` Merged 2026-10-26 (#5 area discovery, #6 dav.js reads). |
 | P03 | **Task model**: parse and write VTODOs | Medium | Needs P00(a). Fields: UID, SUMMARY, STATUS, COMPLETED, DUE, PRIORITY, CATEGORIES, RELATED-TO, X-APPLE-SORT-ORDER, etag, calendar. **Must round-trip every property it doesn't understand** (agents write `X-CC-*`). Unit tests on fixtures Merged 2026-10-26 (#7 read and round-trip, #8 setters and `Task.create`). |
 | P04 | **Tree builder**: areas → projects → tasks | Medium | Needs P02, P03. Project = category `project`. Children by RELATED-TO across lists, up to 3 levels; count what lies deeper for the "+N deeper" note. Orphans and untagged parents are set aside for P15, not shown Merged 2026-10-26 (#10). |
 
@@ -86,8 +86,8 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 
 | Item | Why |
 |---|---|
-| Agent queues / a "Crew" area | The owner's own lists only. Agent work that needs the owner already lands on System |
-| Lists shared by other people (Farm Boy) | Not the owner's own |
+| Agent queues / a "Crew" area | The owner's own lists only. Agent work that needs the owner already lands on Area H |
+| Lists shared by other people | Not the owner's own |
 | Deck boards | Deck is retired as a project layer; its boards only show up in CalDAV as leftovers |
 | Other users | The owner first; revisit if wanted |
 | Its own REST API for agents | Agents keep using CalDAV through `nc_helpers` |
