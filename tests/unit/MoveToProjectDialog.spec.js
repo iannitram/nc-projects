@@ -9,27 +9,27 @@ describe('MoveToProjectDialog', () => {
 
 	const sampleAreas = [
 		{
-			name: 'Home',
-			calendarUrl: '/calendars/home/',
+			name: 'Area A',
+			calendarUrl: '/calendars/area-a/',
 			projects: [
 				{
-					task: { uid: 'p-kitchen', summary: 'Kitchen refresh', calendarUrl: '/calendars/home/' },
+					task: { uid: 'p-kitchen', summary: 'Project one', calendarUrl: '/calendars/area-a/' },
 					progress: { done: 3, total: 7 },
 					children: [{ task: { uid: 'c1' } }, { task: { uid: 'c2' } }, { task: { uid: 'c3' } }],
 				},
 				{
-					task: { uid: 'p-shed', summary: 'Garden shed', calendarUrl: '/calendars/home/' },
+					task: { uid: 'p-shed', summary: 'Project two', calendarUrl: '/calendars/area-a/' },
 					progress: { done: 5, total: 9 },
 					children: [],
 				},
 			],
 		},
 		{
-			name: 'Studio',
-			calendarUrl: '/calendars/studio/',
+			name: 'Area B',
+			calendarUrl: '/calendars/area-b/',
 			projects: [
 				{
-					task: { uid: 'p-podcast', summary: 'Podcast season 2', calendarUrl: '/calendars/studio/' },
+					task: { uid: 'p-podcast', summary: 'Project three', calendarUrl: '/calendars/area-b/' },
 					progress: { done: 2, total: 11 },
 					children: [{ task: { uid: 's1' } }],
 				},
@@ -42,12 +42,12 @@ describe('MoveToProjectDialog', () => {
 		store = useProjectsStore()
 		store.areas = JSON.parse(JSON.stringify(sampleAreas))
 		store.tasksByUid = {
-			'p-kitchen': { uid: 'p-kitchen', summary: 'Kitchen refresh', isProject: true, calendarUrl: '/calendars/home/' },
-			'p-shed': { uid: 'p-shed', summary: 'Garden shed', isProject: true, calendarUrl: '/calendars/home/' },
-			'p-podcast': { uid: 'p-podcast', summary: 'Podcast season 2', isProject: true, calendarUrl: '/calendars/studio/' },
-			'task-1': { uid: 'task-1', summary: 'Sand window frames', parentUid: 'p-kitchen', calendarUrl: '/calendars/home/' },
-			'sub-1': { uid: 'sub-1', summary: 'Subtask 1', parentUid: 'task-1', calendarUrl: '/calendars/home/' },
-			'sub-2': { uid: 'sub-2', summary: 'Subtask 2', parentUid: 'task-1', calendarUrl: '/calendars/home/' },
+			'p-kitchen': { uid: 'p-kitchen', summary: 'Project one', isProject: true, calendarUrl: '/calendars/area-a/' },
+			'p-shed': { uid: 'p-shed', summary: 'Project two', isProject: true, calendarUrl: '/calendars/area-a/' },
+			'p-podcast': { uid: 'p-podcast', summary: 'Project three', isProject: true, calendarUrl: '/calendars/area-b/' },
+			'task-1': { uid: 'task-1', summary: 'Task to move', parentUid: 'p-kitchen', calendarUrl: '/calendars/area-a/' },
+			'sub-1': { uid: 'sub-1', summary: 'Subtask 1', parentUid: 'task-1', calendarUrl: '/calendars/area-a/' },
+			'sub-2': { uid: 'sub-2', summary: 'Subtask 2', parentUid: 'task-1', calendarUrl: '/calendars/area-a/' },
 		}
 		store.moveToProject = vi.fn().mockResolvedValue(undefined)
 	})
@@ -66,16 +66,16 @@ describe('MoveToProjectDialog', () => {
 	it('lists open projects grouped by area with progress', () => {
 		const wrapper = mountDialog()
 
-		expect(wrapper.text()).toContain('Home')
-		expect(wrapper.text()).toContain('Studio')
+		expect(wrapper.text()).toContain('Area A')
+		expect(wrapper.text()).toContain('Area B')
 
-		expect(wrapper.text()).toContain('Kitchen refresh')
+		expect(wrapper.text()).toContain('Project one')
 		expect(wrapper.text()).toContain('3 of 7')
 
-		expect(wrapper.text()).toContain('Garden shed')
+		expect(wrapper.text()).toContain('Project two')
 		expect(wrapper.text()).toContain('5 of 9')
 
-		expect(wrapper.text()).toContain('Podcast season 2')
+		expect(wrapper.text()).toContain('Project three')
 		expect(wrapper.text()).toContain('2 of 11')
 	})
 
@@ -85,14 +85,14 @@ describe('MoveToProjectDialog', () => {
 		const input = wrapper.find('input[type="text"], input[type="search"]')
 		expect(input.exists()).toBe(true)
 
-		await input.setValue('shed')
+		await input.setValue('two')
 
-		expect(wrapper.text()).toContain('Garden shed')
-		expect(wrapper.text()).not.toContain('Kitchen refresh')
-		expect(wrapper.text()).not.toContain('Podcast season 2')
-		// Home area contains Garden shed, but Studio has no match
-		expect(wrapper.text()).toContain('Home')
-		expect(wrapper.text()).not.toContain('Studio')
+		expect(wrapper.text()).toContain('Project two')
+		expect(wrapper.text()).not.toContain('Project one')
+		expect(wrapper.text()).not.toContain('Project three')
+		// Area A area contains Project two, but Area B has no match
+		expect(wrapper.text()).toContain('Area A')
+		expect(wrapper.text()).not.toContain('Area B')
 	})
 
 	it('disables the task current project', () => {
@@ -108,7 +108,7 @@ describe('MoveToProjectDialog', () => {
 	})
 
 	it('shows the consequence line for same-list move', async () => {
-		const taskWithoutSubtasks = { uid: 'task-no-sub', summary: 'Simple task', parentUid: 'p-kitchen', calendarUrl: '/calendars/home/' }
+		const taskWithoutSubtasks = { uid: 'task-no-sub', summary: 'Simple task', parentUid: 'p-kitchen', calendarUrl: '/calendars/area-a/' }
 		store.tasksByUid['task-no-sub'] = taskWithoutSubtasks
 
 		const wrapper = mountDialog({ task: taskWithoutSubtasks })
@@ -116,7 +116,7 @@ describe('MoveToProjectDialog', () => {
 		const shedRadio = wrapper.find('input[type="radio"][value="p-shed"]')
 		await shedRadio.setValue('p-shed')
 
-		expect(wrapper.text()).toContain("Moves under 'Garden shed'. It stays on the Home list.")
+		expect(wrapper.text()).toContain("Moves under 'Project two'. It stays on the Area A list.")
 	})
 
 	it('shows the consequence line for cross-list move with subtask count', async () => {
@@ -126,7 +126,7 @@ describe('MoveToProjectDialog', () => {
 		const podcastRadio = wrapper.find('input[type="radio"][value="p-podcast"]')
 		await podcastRadio.setValue('p-podcast')
 
-		expect(wrapper.text()).toContain("Moves under 'Podcast season 2' and to the Studio list, with its 2 subtasks.")
+		expect(wrapper.text()).toContain("Moves under 'Project three' and to the Area B list, with its 2 subtasks.")
 	})
 
 	it('disables the Move button until a project is selected', async () => {
