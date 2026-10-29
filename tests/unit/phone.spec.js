@@ -54,14 +54,16 @@ function sampleNode() {
 
 const css = fs.readFileSync(path.resolve(__dirname, '../../src/styles/projects.css'), 'utf8')
 const PHONE_QUERY = '@media (max-width: 600px), (pointer: coarse)'
+const HOVER_QUERY = '@media (hover: none)'
 
 /**
- * The text of the phone and touch block (between its braces).
+ * The text of the block that follows `query` (between its braces).
  *
+ * @param {string} query the media query that opens the block
  * @return {string} the block body
  */
-function phoneBlock() {
-	const open = css.indexOf('{', css.indexOf(PHONE_QUERY))
+function blockAfter(query) {
+	const open = css.indexOf('{', css.indexOf(query))
 	let depth = 0
 	for (let i = open; i < css.length; i++) {
 		if (css[i] === '{') {
@@ -71,6 +73,15 @@ function phoneBlock() {
 		}
 	}
 	throw new Error('unclosed block')
+}
+
+/**
+ * The text of the phone and touch block (between its braces).
+ *
+ * @return {string} the block body
+ */
+function phoneBlock() {
+	return blockAfter(PHONE_QUERY)
 }
 
 /**
@@ -88,9 +99,27 @@ function ruleFor(selector) {
 
 describe('phone layout and long-press drag (#123)', () => {
 	describe('the stylesheet', () => {
-		it('has exactly one phone and touch block, and no other media query', () => {
+		it('has exactly one phone and touch block, and no other media query but the hover one', () => {
 			expect(css.split(PHONE_QUERY)).toHaveLength(2)
-			expect(css.match(/@media/g)).toHaveLength(1)
+			expect(css.match(/@media/g)).toHaveLength(2)
+			expect(css.split(HOVER_QUERY)).toHaveLength(2)
+		})
+
+		it('keeps the menus visible on any screen that cannot hover, and nothing else', () => {
+			// The row and card components ruled "(hover: none)" before #123 moved their media
+			// queries here. A no-hover screen with a fine pointer must not get the phone block:
+			// it would lose the grip, and useDrag long-presses only from a touch pointer.
+			const block = blockAfter(HOVER_QUERY).replace(/\/\*[\s\S]*?\*\//g, '')
+			const rules = [...block.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+			expect(rules).toHaveLength(1)
+			const [, selectors, declarations] = rules[0]
+			expect(selectors.split(',').map((s) => s.trim())).toEqual([
+				'.cc-column .cc-task-row .cc-task-row__menu',
+				'.cc-column .cc-project-card__header .cc-project-card__menu .action-item__menutoggle > *',
+			])
+			expect(declarations).toMatch(/visibility:\s*visible/)
+			expect(declarations).toMatch(/opacity:\s*1/)
+			expect(block).not.toMatch(/grip|--cc-target|--cc-row-height|display:\s*none/)
 		})
 
 		it('sets the row height to 48 px and the touch target to 44 px as variables', () => {

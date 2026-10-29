@@ -273,6 +273,20 @@
 	}
 }
 
+/*
+ * Screens that cannot hover but report a fine pointer (a stylus digitizer, a kiosk): the menus
+ * stay visible, as the row and card components ruled before issue 123 moved their media
+ * queries here. Only this: the block above would also hide the grip, and a long press drags
+ * only from a touch pointer (useDrag.isTouch), so such a screen would lose the drag.
+ */
+@media (hover: none) {
+	.cc-column .cc-task-row .cc-task-row__menu,
+	.cc-column .cc-project-card__header .cc-project-card__menu .action-item__menutoggle > * {
+		visibility: visible;
+		opacity: 1;
+	}
+}
+
 /* Drag states (sortable chosen / ghost / drop target / subtask badge) */
 .cc-drag-chosen,
 .cc-task-tree__item.sortable-chosen,
