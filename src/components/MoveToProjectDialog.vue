@@ -252,7 +252,7 @@ async function onMove() {
 		emit('close')
 		emit('update:open', false)
 	} catch {
-		// Error is shown by the store toast, dialog stays open.
+		// Only a thrown error lands here and keeps the dialog open. The store reports its own failures with a toast and returns without throwing, so the dialog closes after those; the tree has already been rolled back or reloaded.
 	}
 }
 </script>
