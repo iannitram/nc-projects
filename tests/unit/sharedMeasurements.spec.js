@@ -31,7 +31,7 @@ describe('shared measurements with nc-outliner (issue 126)', () => {
 
 	it('has no hard-coded colour outside a var() fallback', () => {
 		const offenders = filesUnder(resolve(root, 'src'))
-			.flatMap((file) => readFileSync(file, 'utf8').split('\n').map((line, index) => ({ file, line, index })))
+			.flatMap((file) => readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' ')).split('\n').map((line, index) => ({ file, line, index })))
 			.filter(({ line }) => /#[0-9a-fA-F]{3,6}/.test(line) && !/var\(--[\w-]+,\s*#[0-9a-fA-F]{3,6}\)/.test(line))
 		expect(offenders).toEqual([])
 	})
