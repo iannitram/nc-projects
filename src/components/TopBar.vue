@@ -264,6 +264,11 @@ async function submitNewProject() {
 		font-size: 18px;
 	}
 
+	/* The phone gap is tight; keep the count from touching the title. */
+	.cc-top-bar__meta {
+		margin-inline-start: calc(var(--default-grid-baseline, 4px) * 1.5);
+	}
+
 	.cc-top-bar__select {
 		min-width: 120px;
 	}
