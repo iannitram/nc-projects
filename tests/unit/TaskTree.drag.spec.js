@@ -83,8 +83,8 @@ describe('TaskTree drag to reorder', () => {
 		expect(wrapper.findAll('.drag-handle').map((h) => h.attributes('data-uid'))).toEqual(['t1', 't2', 't3'])
 	})
 
-	describe('cross-project dragging in same area (issue #25 / P12)', () => {
-		it('configures top-level lists in the same area to share a sortable group, keeps another area out, and keeps subtasks per-parent', () => {
+	describe('cross-project dragging across areas (#25, #121)', () => {
+		it('configures top-level lists across areas to share a sortable group, while subtasks remain per-parent', () => {
 			const wrapperA = mount(TaskTree, {
 				props: { projectUid: 'pA', areaName: 'Personal', nodes: [node('a1', 'pA')] },
 			})
@@ -103,14 +103,10 @@ describe('TaskTree drag to reorder', () => {
 			const sortableOther = wrapperOther.findComponent(Sortable)
 			const sortableSub = wrapperSub.findComponent(Sortable)
 
-			// Same area shares group name
-			expect(sortableA.props('options').group.name).toBe('cc-tasks-area-Personal')
-			expect(sortableB.props('options').group.name).toBe('cc-tasks-area-Personal')
-			expect(sortableA.props('options').group.name).toBe(sortableB.props('options').group.name)
-
-			// Different area has different group name
-			expect(sortableOther.props('options').group.name).toBe('cc-tasks-area-Work')
-			expect(sortableA.props('options').group.name).not.toBe(sortableOther.props('options').group.name)
+			// Top-level lists across areas share group name
+			expect(sortableA.props('options').group.name).toBe('cc-tasks-top')
+			expect(sortableB.props('options').group.name).toBe('cc-tasks-top')
+			expect(sortableOther.props('options').group.name).toBe('cc-tasks-top')
 
 			// Subtask list keeps per-parent group name
 			expect(sortableSub.props('options').group.name).toBe('cc-tasks-a1')
@@ -222,6 +218,32 @@ describe('TaskTree drag to reorder', () => {
 			// the item is gone from both lists: Vue renders the move from the store
 			expect(wrapperA.findAll('.drag-handle').map((h) => h.attributes('data-uid'))).toEqual(['a2'])
 			expect(wrapperB.findAll('.drag-handle').map((h) => h.attributes('data-uid'))).toEqual(['b1', 'b2'])
+		})
+
+		it('adds a +N badge to the dragged row when it has subtasks on start, and cleans it up on end', async () => {
+			store.tasksByUid = {
+				a1: { uid: 'a1', parentUid: 'pA' },
+				s1: { uid: 's1', parentUid: 'a1' },
+				s2: { uid: 's2', parentUid: 'a1' },
+			}
+			const wrapper = mount(TaskTree, {
+				props: { projectUid: 'pA', areaName: 'Personal', nodes: [node('a1', 'pA')] },
+			})
+			const list = wrapper.find('ul').element
+			const item = list.children[0]
+
+			const sortable = wrapper.findComponent(Sortable)
+			sortable.vm.$emit('start', { item, oldIndex: 0 })
+			await wrapper.vm.$nextTick()
+
+			const badge = item.querySelector('.cc-drag-badge')
+			expect(badge).toBeTruthy()
+			expect(badge.textContent).toBe('+2')
+
+			sortable.vm.$emit('end', { item, from: list, to: list, oldIndex: 0, newIndex: 0 })
+			await wrapper.vm.$nextTick()
+
+			expect(item.querySelector('.cc-drag-badge')).toBeNull()
 		})
 	})
 })

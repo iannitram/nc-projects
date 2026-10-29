@@ -12,7 +12,7 @@ import { Task } from '../models/Task.js'
 import { buildTree, isSomeday } from '../models/tree.js'
 import { candidateLists, pickAreas } from '../services/areas.js'
 import { crashLogWarning } from '../services/crashLog.js' // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
+import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, moveTodo, putTodo } from '../services/dav.js'
 import { getAreaLists, saveAreaLists as persistAreaLists } from '../services/settings.js'
 
 let pendingConflictReloads = 0
@@ -214,6 +214,201 @@ function countProjectOpenTasks(project) {
 		walk(project.children)
 	}
 	return count
+}
+
+/**
+ * @param {string} [url] a collection or task URL
+ * @return {string} the URL without trailing slashes
+ */
+function stripSlash(url) {
+	return (url || '').replace(/\/+$/, '')
+}
+
+/**
+ * A task with its stored location, as read from the server.
+ *
+ * @param {import('../services/dav.js').StoredTodo} stored the server's copy
+ * @return {Task}
+ */
+function taskFromStored(stored) {
+	return Task.fromIcs(stored.ics, { url: stored.url, etag: stored.etag, calendarUrl: stored.calendarUrl })
+}
+
+/**
+ * Re-read whole lists and replace their tasks in the store, so it matches the server.
+ *
+ * @param {object} store the projects store
+ * @param {object[]} calendars the lists to re-read
+ */
+async function reloadLists(store, calendars) {
+	const unique = [...new Map(calendars.map((calendar) => [stripSlash(calendar.url), calendar])).values()]
+	try {
+		const lists = await Promise.all(unique.map((calendar) => fetchTodos(calendar, store.davSession)))
+		const reloaded = new Set(unique.map((calendar) => stripSlash(calendar.url)))
+		const tasksByUid = Object.fromEntries(Object.entries(store.tasksByUid)
+			.filter(([, task]) => !reloaded.has(stripSlash(toRaw(task).calendarUrl))))
+		for (const task of lists.flat().map(taskFromStored)) {
+			if (task.uid) {
+				tasksByUid[task.uid] = task
+			}
+		}
+		store.tasksByUid = tasksByUid
+	} catch {
+		// Keep what is shown; the next refresh settles it
+	}
+	store.rebuildTree()
+}
+
+/**
+ * The one notice after a cross-list move stopped: what moved and what did not.
+ *
+ * @param {object} what the move's progress
+ * @param {string} what.summary the task's title
+ * @param {number} what.total subtasks that had to move
+ * @param {number} what.movedSubtasks subtasks that moved
+ * @param {boolean} what.taskMoved whether the task itself moved
+ * @param {boolean} what.linked whether its RELATED-TO was rewritten
+ * @param {Error} what.error the failure
+ * @param {string} what.source the list it came from
+ * @param {string} what.target the list it was moving to
+ * @param {string} what.project the new project's title
+ * @param {string} [what.oldProject] the old parent's title
+ * @return {string}
+ */
+function crossListNotice({ summary, total, movedSubtasks, taskMoved, linked, error, source, target, project, oldProject }) {
+	if (linked) {
+		return `Moved '${summary}' to ${target}, but could not save the order of the tasks in '${project}'. Try again.`
+	}
+	if (taskMoved) {
+		const withSubtasks = total === 0 ? '' : total === 1 ? ' and its subtask' : ` and its ${total} subtasks`
+		const where = oldProject ? `it is still under '${oldProject}'` : `it is not under '${project}' yet`
+		return `Moved '${summary}'${withSubtasks} to ${target}, but ${where}. Try again.`
+	}
+	if (movedSubtasks === total && total > 0) {
+		const which = total === 1 ? 'the subtask' : `all ${total} subtasks`
+		return `Moved ${which} of '${summary}' to ${target}; '${summary}' stayed on ${source}. Try again.`
+	}
+	if (movedSubtasks > 0) {
+		return `Moved ${movedSubtasks} of ${total} subtasks of '${summary}' to ${target}; '${summary}' and the rest stayed on ${source}. Try again.`
+	}
+	if (error instanceof ConflictError) {
+		return `Could not move '${summary}': it or a subtask was changed elsewhere. Nothing was moved; refresh and try again.`
+	}
+	if (error?.reason === 'exists') {
+		return `Could not move '${summary}': ${target} already has a task with the same file. Nothing was moved.`
+	}
+	if (error?.reason === 'target-missing') {
+		return `Could not move '${summary}': ${target} is no longer available. Nothing was moved.`
+	}
+	return `Could not move '${summary}' to ${target}. Try again.`
+}
+
+/**
+ * Move a task to a project on another list (#26, M17): MOVE every subtask (open and done,
+ * deepest first), then the task, each with If-Match and a re-read for its new etag; then
+ * rewrite only the task's RELATED-TO (and its place) with one PUT. A failure part-way
+ * stops, reloads the lists involved and shows one notice saying what moved.
+ *
+ * @param {object} store the projects store
+ * @param {Task} moved the task
+ * @param {object} targetProject the project node it goes under
+ * @param {object} targetCalendar the project's list
+ * @param {{uid: string, sortOrder: number}[]} toUpdate new sort orders from placeMoved
+ */
+async function moveAcrossLists(store, moved, targetProject, targetCalendar, toUpdate) {
+	const taskUid = moved.uid
+	const projectUid = targetProject.task.uid
+	const listName = (calendar) => calendar?.displayName
+		|| store.areas.find((area) => stripSlash(area.calendarUrl ?? area.calendar?.url) === stripSlash(calendar?.url))?.name
+		|| 'the other list'
+
+	// Every descendant, level by level; moved deepest first
+	const levels = []
+	const seen = new Set([taskUid])
+	let frontier = [taskUid]
+	while (frontier.length > 0) {
+		const next = Object.values(store.tasksByUid).filter((task) => frontier.includes(task.parentUid) && !seen.has(task.uid))
+		next.forEach((task) => seen.add(task.uid))
+		if (next.length > 0) {
+			levels.push(next)
+		}
+		frontier = next.map((task) => task.uid)
+	}
+	if (seen.has(projectUid)) {
+		showError(`Could not move '${moved.summary}' into its own subtask`)
+		return
+	}
+	const subtasks = levels.reverse().flat().filter((task) => stripSlash(task.calendarUrl) !== stripSlash(targetCalendar.url))
+
+	const placement = toUpdate.find((item) => item.uid === taskUid)
+	const bumped = toUpdate.filter((item) => item.uid !== taskUid)
+	const original = { ics: toRaw(moved).toIcs(), where: { ...toRaw(moved).where } }
+	const sourceCalendar = store.calendarOf(original.where)
+	const oldProject = store.tasksByUid[moved.parentUid]?.summary
+	const summary = moved.summary
+
+	// Optimistic: show it under the new project while the requests run
+	toRaw(moved).parentUid = projectUid
+	if (placement) {
+		toRaw(moved).sortOrder = placement.sortOrder
+	}
+	store.rebuildTree()
+
+	let movedSubtasks = 0
+	let taskMoved = false
+	let linked = false
+	try {
+		for (const subtask of subtasks) {
+			const newUrl = await moveTodo(subtask.url, targetCalendar.url, subtask.etag, store.davSession)
+			movedSubtasks++
+			store.tasksByUid[subtask.uid] = taskFromStored(await fetchTodo(newUrl, store.davSession))
+		}
+
+		const newUrl = await moveTodo(original.where.url, targetCalendar.url, original.where.etag, store.davSession)
+		taskMoved = true
+		const relinked = taskFromStored(await fetchTodo(newUrl, store.davSession))
+		relinked.parentUid = projectUid
+		if (placement) {
+			relinked.sortOrder = placement.sortOrder
+		}
+		const stored = await putTodo(relinked.url, relinked.toIcs(), relinked.etag, store.davSession)
+		relinked.where = { ...relinked.where, etag: stored.etag }
+		store.tasksByUid[taskUid] = relinked
+		linked = true
+
+		for (const { uid, sortOrder } of bumped) {
+			const sibling = store.tasksByUid[uid]
+			if (sibling) {
+				toRaw(sibling).sortOrder = sortOrder
+				const storedSibling = await putTodo(sibling.url, toRaw(sibling).toIcs(), sibling.etag, store.davSession)
+				toRaw(sibling).where = { ...toRaw(sibling).where, etag: storedSibling.etag }
+			}
+		}
+		store.rebuildTree()
+	} catch (error) {
+		crashLogWarning(error instanceof ConflictError ? 'save conflict' : 'save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		store.tasksByUid[taskUid] = Task.fromIcs(original.ics, original.where)
+		const nothingMoved = movedSubtasks === 0 && !taskMoved
+		const refused = error instanceof ConflictError || error?.reason === 'exists' || error?.reason === 'target-missing'
+		if (nothingMoved && refused) {
+			// The server refused the first MOVE: nothing changed there, so put the old view back without another request
+			store.rebuildTree()
+		} else {
+			await reloadLists(store, [sourceCalendar, targetCalendar, ...subtasks.map((task) => store.calendarOf(task))])
+		}
+		showError(crossListNotice({
+			summary,
+			total: subtasks.length,
+			movedSubtasks,
+			taskMoved,
+			linked,
+			error,
+			source: listName(sourceCalendar),
+			target: listName(targetCalendar),
+			project: targetProject.task.summary,
+			oldProject,
+		}))
+	}
 }
 
 export const useProjectsStore = defineStore('projects', {
@@ -796,7 +991,7 @@ export const useProjectsStore = defineStore('projects', {
 			// Find the target project in the tree
 			let targetProject = null
 			for (const area of this.areas) {
-				for (const project of area.projects) {
+				for (const project of [...(area.projects || []), ...(area.done || [])]) {
 					if (project.task.uid === projectUid) {
 						targetProject = project
 						break
@@ -811,6 +1006,9 @@ export const useProjectsStore = defineStore('projects', {
 				showError('Could not move the task: target project not found')
 				return
 			}
+
+			const targetCalendar = this.calendarOf(targetProject.task)
+			const isCrossList = (moved.calendarUrl || '').replace(/\/+$/, '') !== (targetCalendar.url || '').replace(/\/+$/, '')
 
 			// Get all siblings in the destination project, including the moved task for calculation purposes
 			const siblings = (targetProject.children?.map((child) => child.task) || []).map((task) => ({
@@ -832,6 +1030,11 @@ export const useProjectsStore = defineStore('projects', {
 			// Calculate where the moved task should be placed using placeMoved function
 			const toUpdate = placeMoved(siblings, taskUid, newIndex)
 
+			if (isCrossList) {
+				await moveAcrossLists(this, moved, targetProject, targetCalendar, toUpdate)
+				return
+			}
+
 			if (toUpdate.length === 0) {
 				return
 			}
@@ -851,7 +1054,7 @@ export const useProjectsStore = defineStore('projects', {
 			for (const { uid, sortOrder } of toUpdate) {
 				const task = this.tasksByUid[uid]
 				if (task) {
-					before.set(uid, { ics: toRaw(task).toIcs(), where: toRaw(task).where })
+					before.set(uid, { ics: toRaw(task).toIcs(), where: { ...toRaw(task).where } })
 					toRaw(task).sortOrder = sortOrder
 					// For the moved task, also update its parentUid to point to new project
 					if (uid === taskUid) {
@@ -861,7 +1064,7 @@ export const useProjectsStore = defineStore('projects', {
 			}
 			rebuild()
 
-			// A landed write keeps its new sort order and new etag; only the failed write and the ones not yet sent are rolled back
+			// Same-list move: keep existing path (one PUT, or bumped sibling PUTs)
 			const landed = new Set()
 			try {
 				for (const { uid } of toUpdate) {

@@ -272,3 +272,61 @@
 		min-height: var(--cc-row-height, 48px);
 	}
 }
+
+/* Drag states (sortable chosen / ghost / drop target / subtask badge) */
+.cc-drag-chosen,
+.cc-task-tree__item.sortable-chosen,
+.cc-task-tree__row-wrapper.lifted {
+	background: var(--color-main-background);
+	box-shadow: 0 6px 24px var(--color-box-shadow);
+	outline: 1px solid var(--color-border-dark);
+	position: relative;
+	z-index: 5;
+}
+
+.cc-drag-ghost,
+.cc-task-tree__item.sortable-ghost,
+.ghost-slot {
+	opacity: 0.6;
+	min-height: 34px;
+	border-radius: var(--border-radius-element);
+	border: 1px dashed var(--color-border-dark);
+	background: repeating-linear-gradient(-45deg, transparent 0 6px, var(--color-background-dark) 6px 12px);
+}
+
+.cc-project-card__header.drop-target,
+.cc-project-card__header.is-drop-target,
+.cc-project-card__header--drop-target,
+.proj.drop-target > .proj-head {
+	outline: 2px dashed var(--color-primary-element);
+	outline-offset: -2px;
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element-light-text);
+}
+
+.cc-project-card__drop-hint,
+.drop-hint {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-primary-element-light-text);
+}
+
+.cc-task-tree__row-wrapper {
+	position: relative;
+}
+
+.cc-drag-badge,
+.drag-badge {
+	position: absolute;
+	right: -10px;
+	top: -10px;
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text);
+	font-size: 12px;
+	font-weight: 700;
+	padding: 0 7px;
+	border-radius: 999px;
+	line-height: 20px;
+	z-index: 10;
+	pointer-events: none;
+}

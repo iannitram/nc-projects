@@ -7,6 +7,7 @@ import { computed, nextTick, ref, toRaw, watch } from 'vue'
 import AddTaskInput from './AddTaskInput.vue'
 import { getTasksDeepLink } from './TaskRow.vue'
 import TaskTree from './TaskTree.vue'
+import { activeDragSourceProjectUid, activeDropProjectUid } from '../composables/useDrag.js'
 import { readProjectCollapsed, useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -242,6 +243,50 @@ function toggleCollapsed() {
 	store?.toggleProjectCollapsed(props.project.task.uid)
 }
 
+const isDropTarget = computed(() => {
+	const dropUid = activeDropProjectUid.value
+	const sourceUid = activeDragSourceProjectUid.value
+	const myUid = props.project?.task?.uid
+	return Boolean(dropUid && dropUid === myUid && sourceUid !== myUid)
+})
+
+/**
+ * Handle drag enter on the project header.
+ */
+function onHeaderDragEnter() {
+	if (activeDragSourceProjectUid.value && activeDragSourceProjectUid.value !== props.project?.task?.uid) {
+		activeDropProjectUid.value = props.project?.task?.uid
+	}
+}
+
+/**
+ * Handle drag over on the project header.
+ *
+ * @param {DragEvent} evt drag event
+ */
+function onHeaderDragOver(evt) {
+	if (activeDragSourceProjectUid.value && activeDragSourceProjectUid.value !== props.project?.task?.uid) {
+		evt.preventDefault()
+		activeDropProjectUid.value = props.project?.task?.uid
+	}
+}
+
+/**
+ * Handle drag leave on the project header.
+ *
+ * @param {DragEvent} evt drag event
+ */
+function onHeaderDragLeave(evt) {
+	if (activeDropProjectUid.value === props.project?.task?.uid) {
+		if (!evt.currentTarget.contains(evt.relatedTarget)) {
+			const card = evt.currentTarget.closest('.cc-project-card')
+			if (!card || !card.contains(evt.relatedTarget)) {
+				activeDropProjectUid.value = null
+			}
+		}
+	}
+}
+
 </script>
 
 <template>
@@ -250,8 +295,16 @@ function toggleCollapsed() {
 		:class="{ 'cc-project-card--someday': isSomeday }">
 		<header
 			class="cc-project-card__header drag-handle"
-			:class="{ 'cc-conflict-reloaded': isConflictReloaded }"
-			:data-uid="project.task?.uid">
+			:class="{
+				'cc-conflict-reloaded': isConflictReloaded,
+				'drop-target': isDropTarget,
+				'is-drop-target': isDropTarget,
+				'cc-project-card__header--drop-target': isDropTarget,
+			}"
+			:data-uid="project.task?.uid"
+			@dragenter="onHeaderDragEnter"
+			@dragover="onHeaderDragOver"
+			@dragleave="onHeaderDragLeave">
 			<span class="cc-project-card__grip" aria-hidden="true">
 				<NcIconSvgWrapper :path="mdiDragVertical" :size="20" />
 			</span>
@@ -290,13 +343,16 @@ function toggleCollapsed() {
 					:aria-label="`Next due ${dueLabel}`">{{ dueLabel }}</time>
 			</div>
 			<div class="cc-project-card__progress">
-				<NcProgressBar
-					v-if="progressTotal > 0"
-					class="cc-project-card__progress-bar"
-					:value="progressValue"
-					ariaLabel="Project progress"
-					size="small" />
-				<span class="cc-project-card__progress-text">{{ progressText }}</span>
+				<span v-if="isDropTarget" class="cc-project-card__drop-hint drop-hint">Drop to move here</span>
+				<template v-else>
+					<NcProgressBar
+						v-if="progressTotal > 0"
+						class="cc-project-card__progress-bar"
+						:value="progressValue"
+						ariaLabel="Project progress"
+						size="small" />
+					<span class="cc-project-card__progress-text">{{ progressText }}</span>
+				</template>
 			</div>
 			<NcActions
 				class="cc-project-card__menu cc-no-drag"
@@ -354,6 +410,22 @@ function toggleCollapsed() {
 	padding: 4px 8px;
 	border-radius: var(--border-radius-large);
 	background: var(--color-background-hover);
+}
+
+.cc-project-card__header.drop-target,
+.cc-project-card__header.is-drop-target,
+.cc-project-card__header--drop-target {
+	outline: 2px dashed var(--color-primary-element);
+	outline-offset: -2px;
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element-light-text);
+}
+
+.cc-project-card__drop-hint,
+.drop-hint {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-primary-element-light-text);
 }
 
 .cc-project-card--someday .cc-project-card__header {

@@ -1,7 +1,29 @@
 import { describe, expect, it, vi } from 'vitest'
-import { DRAG_OPTIONS, fullIndexForDrop, onSiblingDrop } from '../../src/composables/useDrag.js'
+import { DRAG_OPTIONS, fullIndexForDrop, getSubtaskCount, onSiblingDrop } from '../../src/composables/useDrag.js'
 
 describe('useDrag', () => {
+	describe('getSubtaskCount', () => {
+		it('returns 0 when task has no subtasks or map is empty', () => {
+			expect(getSubtaskCount(null, 't1')).toBe(0)
+			expect(getSubtaskCount({}, 't1')).toBe(0)
+			expect(getSubtaskCount({ t1: { uid: 't1', parentUid: 'p1' } }, 't1')).toBe(0)
+		})
+
+		it('recursively counts direct and indirect subtasks', () => {
+			const tasks = {
+				p1: { uid: 'p1', parentUid: null },
+				t1: { uid: 't1', parentUid: 'p1' },
+				s1: { uid: 's1', parentUid: 't1' },
+				s2: { uid: 's2', parentUid: 't1' },
+				s2_1: { uid: 's2_1', parentUid: 's2' },
+				t2: { uid: 't2', parentUid: 'p1' },
+			}
+			expect(getSubtaskCount(tasks, 't1')).toBe(3)
+			expect(getSubtaskCount(tasks, 's2')).toBe(1)
+			expect(getSubtaskCount(tasks, 't2')).toBe(0)
+		})
+	})
+
 	describe('onSiblingDrop', () => {
 		const drop = {
 			parentUid: 'p1',

@@ -4,6 +4,13 @@ import { ref } from 'vue'
 export const LONG_PRESS_MS = 300
 
 /**
+ * Shared reactive state for active drag operations across components.
+ */
+export const activeDragUid = ref(null)
+export const activeDragSourceProjectUid = ref(null)
+export const activeDropProjectUid = ref(null)
+
+/**
  * `sortablejs-vue3` options shared by every drag list (P08, P09, P11, P12).
  * A mouse drags at once; a finger drags after a long press on the row (issue 123).
  * The lifted row carries `chosenClass`, the landing spot `ghostClass` (styles in projects.css).
@@ -78,6 +85,33 @@ export function onLongPressChoose(evt) {
 /** Sortable's `unchoose` handler: the row was put down, so the hint goes. */
 export function onLongPressRelease() {
 	longPressHintVisible.value = false
+}
+
+/**
+ * Recursively count all descendants (subtasks) of a task by UID.
+ *
+ * @param {Record<string, object> | null | undefined} tasksByUid map of tasks by UID
+ * @param {string | null | undefined} rootUid root task UID
+ * @return {number} count of descendants
+ */
+export function getSubtaskCount(tasksByUid, rootUid) {
+	if (!rootUid || !tasksByUid) {
+		return 0
+	}
+	let count = 0
+	const queue = [rootUid]
+	const visited = new Set([rootUid])
+	while (queue.length > 0) {
+		const currentUid = queue.shift()
+		for (const candidate of Object.values(tasksByUid)) {
+			if (candidate.parentUid === currentUid && !visited.has(candidate.uid)) {
+				visited.add(candidate.uid)
+				count++
+				queue.push(candidate.uid)
+			}
+		}
+	}
+	return count
 }
 
 /**

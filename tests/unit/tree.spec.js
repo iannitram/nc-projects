@@ -127,6 +127,32 @@ describe('tree', () => {
 			expect(result.areas.flatMap((area) => area.projects).map((project) => project.children.map((node) => node.task.uid))).toEqual([['project-child', 'nested-parent']])
 		})
 
+		it('computes reasons for orphans and untagged parents', () => {
+			const tasks = [
+				{ uid: 'done-parent', summary: 'Spring clean', completed: true },
+				{ uid: 'orphan-done', summary: 'Sand window frames', parentUid: 'done-parent', sortOrder: 10 },
+				{ uid: 'orphan-missing', summary: 'Draft episode outline', parentUid: 'gone-parent', sortOrder: 20 },
+				{ uid: 'untagged-parent', summary: 'Website refresh', sortOrder: 30 },
+				{ uid: 'c1', parentUid: 'untagged-parent' },
+				{ uid: 'c2', parentUid: 'untagged-parent' },
+				{ uid: 'c3', parentUid: 'untagged-parent' },
+				{ uid: 'c4', parentUid: 'untagged-parent' },
+				{ uid: 'single-parent', summary: 'Solo task', sortOrder: 40 },
+				{ uid: 'c5', parentUid: 'single-parent' },
+			]
+
+			const result = buildTree(areas, tasks)
+			const orphanDone = result.orphans.find((t) => t.uid === 'orphan-done')
+			const orphanMissing = result.orphans.find((t) => t.uid === 'orphan-missing')
+			const untaggedParent = result.untaggedParents.find((t) => t.uid === 'untagged-parent')
+			const singleParent = result.untaggedParents.find((t) => t.uid === 'single-parent')
+
+			expect(orphanDone.reason).toBe("Parent 'Spring clean' is done")
+			expect(orphanMissing.reason).toBe('Parent no longer exists')
+			expect(untaggedParent.reason).toBe('4 subtasks')
+			expect(singleParent.reason).toBe('1 subtask')
+		})
+
 		it('lists only the root of an untagged chain as an untagged parent', () => {
 			const tasks = [
 				{ uid: 'U1' },
