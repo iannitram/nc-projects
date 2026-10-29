@@ -48,6 +48,7 @@ export function getTasksDeepLink(task) {
 <script setup>
 import { mdiDotsHorizontal, mdiFolderMoveOutline } from '@mdi/js'
 import { NcActionButton, NcActionInput, NcActionLink, NcActionRadio, NcActions, NcActionSeparator, NcCheckboxRadioSwitch, NcIconSvgWrapper, NcTextField } from '@nextcloud/vue'
+import { getActivePinia } from 'pinia'
 import { computed, nextTick, ref, toRaw } from 'vue'
 import MoveToProjectDialog from './MoveToProjectDialog.vue'
 import { useProjectsStore } from '../store/projects.js'
@@ -56,9 +57,7 @@ const props = defineProps({
 	/** @type {import('vue').PropType<import('../models/tree.js').TaskNode>} */
 	node: { type: Object, required: true },
 })
-/**
- *
- */
+/** Check the task off, or reopen it, through the store (the store cascades to subtasks). */
 function onCompletionChange() {
 	useProjectsStore().setCompleted(props.node?.task?.uid, !isCompleted.value)
 }
@@ -92,6 +91,12 @@ const isCompleted = computed(() => {
 		return true
 	}
 	return Boolean(task.value.completed)
+})
+
+/** A conflict just reloaded this task (issue 125): tint the row for a few seconds. */
+const isConflictReloaded = computed(() => {
+	const uid = task.value?.uid
+	return Boolean(uid && getActivePinia() && useProjectsStore().conflictReloaded[uid])
 })
 
 const tasksDeepLink = computed(() => getTasksDeepLink(task.value))
@@ -250,7 +255,7 @@ function onMoveDialogClose() {
 <template>
 	<div
 		class="cc-task-row"
-		:class="{ 'is-completed': isCompleted, [`cc-task-row--priority-${priorityLevel}`]: true }">
+		:class="{ 'is-completed': isCompleted, 'cc-conflict-reloaded': isConflictReloaded, [`cc-task-row--priority-${priorityLevel}`]: true }">
 		<NcCheckboxRadioSwitch
 			class="cc-task-row__checkbox"
 			:class="`cc-task-row__checkbox--${priorityLevel}`"
@@ -307,10 +312,17 @@ function onMoveDialogClose() {
 			<template #icon>
 				<NcIconSvgWrapper :path="mdiDotsHorizontal" :size="20" />
 			</template>
+			<!--
+				With no due date the picker must show nothing, not today: "clearable" makes it
+				keep null, and the placeholder says so. Clearing stays the explicit menu item,
+				so the picker's own clear button is hidden (see the style).
+			-->
 			<NcActionInput
-				class="cc-no-drag"
+				class="cc-no-drag cc-task-row__due-input"
 				type="date"
 				label="Due date…"
+				placeholder="No due date"
+				clearable
 				:modelValue="dueDate"
 				@update:modelValue="setDue"
 				@mousedown.stop
@@ -377,7 +389,7 @@ function onMoveDialogClose() {
 	display: flex;
 	align-items: center;
 	gap: calc(var(--default-grid-baseline, 4px) * 2);
-	min-height: var(--default-clickable-area, 44px);
+	min-height: var(--cc-row-height, var(--default-clickable-area, 44px));
 	padding: 0 6px;
 	border-radius: var(--border-radius-element, 4px);
 	flex: 1;
@@ -471,27 +483,26 @@ function onMoveDialogClose() {
 	font-weight: 600;
 }
 
-/* The menu shows on hover or focus with a pointer, always on touch. */
+/* The menu shows on hover or focus with a pointer; always on touch (projects.css, issue 123). */
 .cc-task-row__menu {
 	flex-shrink: 0;
-	visibility: hidden;
+	opacity: 0;
+	transition: var(--cc-hover-reveal, opacity 0.15s);
 }
 
 .cc-task-row:hover .cc-task-row__menu,
 .cc-task-row:focus-within .cc-task-row__menu,
 .cc-task-row__menu:has([aria-expanded='true']),
 .cc-task-row__menu.is-returning-focus {
-	visibility: visible;
-}
-
-@media (hover: none) {
-	.cc-task-row__menu {
-		visibility: visible;
-	}
+	opacity: 1;
 }
 
 .cc-no-drag {
 	-webkit-touch-callout: default;
+}
+
+.cc-task-row__due-input :deep(.dp--clear-btn) {
+	display: none;
 }
 
 .cc-task-deeper {

@@ -35,6 +35,8 @@ import {
 	DRAG_OPTIONS,
 	fullIndexForDrop,
 	getSubtaskCount,
+	onLongPressChoose,
+	onLongPressRelease,
 	onSiblingDrop,
 } from '../composables/useDrag.js'
 import { useProjectsStore } from '../store/projects.js'
@@ -409,6 +411,8 @@ function onDrop(evt) {
 		:data-area-name="depth === 1 ? areaName : null"
 		:data-all-uids="(nodes || []).map((node) => node.task?.uid).filter(Boolean).join(',')"
 		:data-visible-uids="visibleNodes.map((node) => node.task?.uid).filter(Boolean).join(',')"
+		@choose="onLongPressChoose"
+		@unchoose="onLongPressRelease"
 		@start="onDragStart"
 		@end="onDrop">
 		<template #item="{ element: node }">
@@ -534,13 +538,5 @@ function onDrop(evt) {
 	margin-left: 10px;
 	padding-left: 13px;
 	border-left: 1px solid var(--color-border);
-}
-
-@media (max-width: 600px) {
-	.cc-task-tree__collapse-toggle,
-	button.cc-task-tree__collapse-toggle {
-		min-height: 44px;
-		min-width: 44px;
-	}
 }
 </style>
