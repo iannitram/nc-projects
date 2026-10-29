@@ -44,7 +44,7 @@ describe('ProjectCard', () => {
 		expect(setCompleted).not.toHaveBeenCalled()
 		const dialog = wrapper.findComponent(NcDialog)
 		expect(dialog.exists()).toBe(true)
-		expect(dialog.props('message')).toBe('Check off Kitchen refresh and its 1 open tasks?')
+		expect(dialog.props('message')).toBe('Check off Kitchen refresh and its 1 open task?')
 		const dialogButtons = () => [...document.querySelectorAll('[role="dialog"] button')]
 		const cancel = dialogButtons().find((button) => button.textContent.trim() === 'Cancel')
 		expect(cancel).toBeTruthy()

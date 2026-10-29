@@ -7,6 +7,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 SERVICE="nextcloud"
+# Git Bash on Windows rewrites /var/www/... container paths into C:/Program Files/Git/...;
+# this keeps docker exec/cp paths as written (no effect elsewhere).
+export MSYS_NO_PATHCONV=1
+
 DC="docker compose -p nc-projects-test -f test-env/compose.yaml"
 occ() { $DC exec -T -u www-data "$SERVICE" php occ "$@"; }
 

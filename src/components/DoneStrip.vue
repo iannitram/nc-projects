@@ -107,11 +107,8 @@ function getProjectKey(project) {
 				v-for="project in completedProjects"
 				:key="getProjectKey(project)"
 				class="cc-done-strip__item">
-				<span
-					role="checkbox"
-					aria-checked="true"
-					aria-readonly="true"
-					:aria-label="`Completed: ${getProjectTitle(project)}`">
+				<!-- Decorative: a done project cannot be reopened here, and the strip already says "done". -->
+				<span class="cc-done-strip__marker" aria-hidden="true">
 					<NcIconSvgWrapper :path="mdiCheckboxMarkedOutline" :size="20" />
 				</span>
 				<span class="cc-done-strip__project-title">{{ getProjectTitle(project) }}</span>
@@ -171,17 +168,18 @@ function getProjectKey(project) {
 
 /* Keep the link reachable so keyboard focus reveals its icon. */
 .cc-done-strip__link :deep(svg) {
-	visibility: hidden;
+	opacity: 0;
+	transition: var(--cc-hover-reveal, opacity 0.15s);
 }
 
 .cc-done-strip__item:hover .cc-done-strip__link :deep(svg),
 .cc-done-strip__item:focus-within .cc-done-strip__link :deep(svg) {
-	visibility: visible;
+	opacity: 1;
 }
 
 @media (hover: none), (pointer: coarse) {
 	.cc-done-strip__link :deep(svg) {
-		visibility: visible;
+		opacity: 1;
 	}
 }
 </style>

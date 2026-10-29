@@ -1,6 +1,6 @@
 // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 /**
- * TEMPORARY crash log (issue #108). Sends uncaught errors, unhandled promise rejections, Vue
+ * TEMPORARY crash log (issue 108). Sends uncaught errors, unhandled promise rejections, Vue
  * component errors and the app's own save failures and conflicts to POST /apps/cc_projects/api/clientlog,
  * where the server writes each one to Nextcloud's log. Does nothing unless the page says crash_log is '1'.
  *

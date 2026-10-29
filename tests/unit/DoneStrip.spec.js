@@ -127,8 +127,10 @@ describe('DoneStrip', () => {
 		await wrapper.get('.cc-done-strip__toggle').trigger('click')
 		const rows = wrapper.findAll('.cc-done-strip__item')
 		for (const row of rows) {
-			expect(row.get('[role="checkbox"]').attributes('aria-checked')).toBe('true')
-			expect(row.get('[role="checkbox"]').attributes('aria-readonly')).toBe('true')
+			// The marker is decorative (nothing to toggle here): no checkbox role, hidden from AT.
+			expect(row.find('[role="checkbox"]').exists()).toBe(false)
+			expect(row.get('.cc-done-strip__marker').attributes('aria-hidden')).toBe('true')
+			expect(row.get('.cc-done-strip__marker').attributes('tabindex')).toBeUndefined()
 			expect(row.get('a').get('svg').exists()).toBe(true)
 		}
 		expect(rows[0].get('time').attributes('datetime')).toBe('2026-10-22T12:00:00.000Z')
@@ -155,8 +157,8 @@ describe('DoneStrip', () => {
 		})
 
 		expect(wrapper.find('.cc-done-strip').exists()).toBe(true)
-		// #146: one done project is singular
-		expect(wrapper.find('.cc-done-strip__title').text()).toBe('1 done project')
+		expect(wrapper.text()).toContain('1 done project')
+		expect(wrapper.text()).not.toContain('1 done projects')
 	})
 
 	it('pluralizes the title: 1 done project, 2 done projects (#146)', () => {

@@ -1,5 +1,6 @@
 <script setup>
 import { mdiChevronDown, mdiChevronRight, mdiDragVertical } from '@mdi/js'
+import { n } from '@nextcloud/l10n'
 import { NcActionButton, NcActionCheckbox, NcActionLink, NcActions, NcButton, NcCheckboxRadioSwitch, NcDialog, NcIconSvgWrapper, NcProgressBar } from '@nextcloud/vue'
 import { getActivePinia } from 'pinia'
 import { computed, nextTick, ref, toRaw, watch } from 'vue'
@@ -230,6 +231,9 @@ watch(() => props.project.task.uid, (uid) => {
 	}
 }, { immediate: true })
 
+/** A conflict just reloaded the project task (issue 125): tint the band for a few seconds. */
+const isConflictReloaded = computed(() => Boolean(store?.conflictReloaded[props.project.task.uid]))
+
 const isCollapsed = computed(() => store?.collapsedProjects.has(props.project.task.uid) ?? false)
 
 /**
@@ -292,6 +296,7 @@ function onHeaderDragLeave(evt) {
 		<header
 			class="cc-project-card__header drag-handle"
 			:class="{
+				'cc-conflict-reloaded': isConflictReloaded,
 				'drop-target': isDropTarget,
 				'is-drop-target': isDropTarget,
 				'cc-project-card__header--drop-target': isDropTarget,
@@ -387,7 +392,7 @@ function onHeaderDragLeave(evt) {
 			v-if="confirmCompletion"
 			v-model:open="confirmCompletion"
 			name="Check off project"
-			:message="`Check off ${project.task.summary} and its ${openTasks.length} open tasks?`"
+			:message="`Check off ${project.task.summary} and its ${n('cc_projects', '%n open task', '%n open tasks', openTasks.length)}?`"
 			:buttons="confirmationButtons" />
 	</div>
 </template>
@@ -482,39 +487,29 @@ function onHeaderDragLeave(evt) {
 	color: var(--color-text-maxcontrast);
 }
 
+/* Hover controls as in nc-outliner: faded out, the grip rests at 0.6 on hover or focus. */
 .cc-project-card__grip {
-	visibility: hidden;
+	opacity: 0;
+	transition: var(--cc-hover-reveal, opacity 0.15s);
 	cursor: grab;
 }
 
 /* Keep the menu button focusable while its icon waits for hover or focus. */
 .cc-project-card__menu :deep(.action-item__menutoggle > *) {
-	visibility: hidden;
+	opacity: 0;
+	transition: var(--cc-hover-reveal, opacity 0.15s);
 }
 
 .cc-project-card__header:hover .cc-project-card__grip,
-.cc-project-card__header:focus-within .cc-project-card__grip,
+.cc-project-card__header:focus-within .cc-project-card__grip {
+	opacity: var(--cc-grip-rest-opacity, 0.6);
+}
+
+.cc-project-card__grip:hover,
 .cc-project-card__header:hover .cc-project-card__menu :deep(.action-item__menutoggle > *),
 .cc-project-card__header:focus-within .cc-project-card__menu :deep(.action-item__menutoggle > *) {
-	visibility: visible;
+	opacity: 1;
 }
 
-@media (hover: none), (pointer: coarse) {
-	.cc-project-card__menu :deep(.action-item__menutoggle > *) {
-		visibility: visible;
-	}
-}
-
-@media (max-width: 600px) {
-	.cc-project-card__header {
-		grid-template-columns: auto auto minmax(0, 1fr) auto auto;
-		gap: 0;
-		padding: 4px 0;
-	}
-
-	.cc-project-card__grip,
-	.cc-project-card__progress-bar {
-		display: none;
-	}
-}
+/* Phone and touch layout of the header: projects.css (issue 123). */
 </style>

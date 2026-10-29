@@ -13,6 +13,7 @@ import AreaSettings from './components/AreaSettings.vue'
 import NeedsFilingTray from './components/NeedsFilingTray.vue'
 import StatusLine from './components/StatusLine.vue'
 import TopBar from './components/TopBar.vue'
+import { longPressHintVisible } from './composables/useDrag.js'
 import { useRefresh } from './composables/useRefresh.js'
 import { useProjectsStore } from './store/projects.js'
 
@@ -171,6 +172,12 @@ onMounted(() => {
 						</div>
 					</div>
 				</div>
+				<p
+					v-if="longPressHintVisible"
+					class="cc-longpress-hint"
+					role="status">
+					Long-press a row to move it
+				</p>
 				<StatusLine />
 			</div>
 			<AreaSettings v-if="store" />
@@ -179,6 +186,27 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* One line, shown while a row is lifted, for the first three long presses (issue 123). */
+.cc-longpress-hint {
+	position: fixed;
+	inset-inline: 0;
+	bottom: calc(var(--default-grid-baseline, 4px) * 4);
+	width: max-content;
+	max-width: calc(100% - var(--default-grid-baseline, 4px) * 8);
+	margin: 0 auto;
+	padding: calc(var(--default-grid-baseline, 4px) * 2) calc(var(--default-grid-baseline, 4px) * 4);
+	border-radius: var(--border-radius-pill);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 12px var(--color-box-shadow);
+	color: var(--color-main-text);
+	font-size: 14px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+	z-index: 20;
+}
+
 .cc-skeleton-area {
 	margin-bottom: calc(var(--default-grid-baseline, 4px) * 6);
 }
