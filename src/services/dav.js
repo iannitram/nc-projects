@@ -1,7 +1,6 @@
 /**
  * CalDAV client over `@nextcloud/cdav-library` (P02, P07, P10, P12; CODE_MAP §Data layer).
  * The only module that talks to the server. Every write sends If-Match (CODE_MAP rule 3).
- * Stub: signatures only.
  */
 import { getRequestToken } from '@nextcloud/auth'
 import DavClient from '@nextcloud/cdav-library'
@@ -299,42 +298,112 @@ export async function createTodo(calendar, ics, session = getDavSession()) {
 }
 
 /**
- * MOVE a task to another list with If-Match, then re-read it (the library keeps a stale etag).
+ * Why a MOVE failed: `exists` (the target list already has that file; 412 with Overwrite: F),
+ * `target-missing` (the target list is gone), `failed` (anything else, the move may or may not have landed).
+ * A changed or vanished source is a ConflictError instead.
+ */
+export class MoveError extends Error {
+	/**
+	 * @param {string} url the task's URL
+	 * @param {number} status the HTTP status, -1 when no response came back
+	 * @param {'exists'|'target-missing'|'failed'} reason why it failed
+	 */
+	constructor(url, status, reason) {
+		super(`Could not move ${url}: HTTP ${status}`)
+		this.name = 'MoveError'
+		this.url = url
+		this.status = status
+		this.reason = reason
+	}
+}
+
+/**
+ * Re-read a task after a refused MOVE.
+ *
+ * @param {ReturnType<typeof createDavSession>} session the shared session
+ * @param {string} url the task's URL
+ * @param {string} etag the etag the MOVE was guarded by
+ * @return {Promise<'same'|'changed'|'gone'|'unknown'>}
+ */
+async function sourceState(session, url, etag) {
+	try {
+		const calendar = await findCalendarForTodo(session, url)
+		const current = await calendar.find(url.slice(calendar.url.length))
+		if (current?.etag === undefined || current?.etag === null) {
+			return 'unknown'
+		}
+		return current.etag === etag ? 'same' : 'changed'
+	} catch (error) {
+		return error?.status === 404 ? 'gone' : 'unknown'
+	}
+}
+
+/**
+ * Whether a list is still among the user's calendars (re-discovers them).
+ *
+ * @param {ReturnType<typeof createDavSession>} session the shared session
+ * @param {string} calendarUrl the list's URL
+ * @return {Promise<boolean>} true when it is there or cannot be checked
+ */
+async function calendarExists(session, calendarUrl) {
+	try {
+		const strip = (value) => value.replace(/\/+$/, '')
+		return (await session.calendars(true)).some((calendar) => strip(calendar.url) === strip(calendarUrl))
+	} catch {
+		return true
+	}
+}
+
+/**
+ * CalDAV MOVE of one task to another list, keeping its file name:
+ * `Destination: <target list>/<same file name>`, `Overwrite: F`, `If-Match: <etag>`.
+ * Sent directly rather than through cdav-library, which reports every HTTP error as
+ * status -1 and so cannot tell a changed task from a taken file name or a missing list.
+ * The etag after a MOVE is not known: re-read the new URL (`fetchTodo`).
  *
  * @param {string} url the task's URL
- * @param {string} etag its current etag
- * @param {TaskCalendar|string} target the list to move to
+ * @param {string} targetCalendarUrl the list to move it to
+ * @param {string} etag the etag the move is made against
  * @param {ReturnType<typeof createDavSession>} [session] the shared session
- * @return {Promise<StoredTodo>} the task as stored after the move
- * @throws {ConflictError} on HTTP 412
+ * @return {Promise<string>} the task's new URL
+ * @throws {ConflictError} when the task changed or vanished (412, 404 or 409 with the target list present)
+ * @throws {MoveError} otherwise
  */
-export async function moveTodo(url, etag, target, session = getDavSession()) {
-	return withReconnect(session, async () => {
-		const sourceCalendar = await findCalendarForTodo(session, url)
-		const targetUrl = typeof target === 'string' ? target : target.url
-		const calendars = await session.calendars()
-		const normTarget = targetUrl.replace(/\/+$/, '')
-		const targetCalendar = calendars.find((candidate) => {
-			const norm = candidate.url.replace(/\/+$/, '')
-			return norm === normTarget || normTarget.startsWith(norm)
+export async function moveTodo(url, targetCalendarUrl, etag, session = getDavSession()) {
+	const fileName = url.split('/').pop()
+	const destination = `${targetCalendarUrl.replace(/\/+$/, '')}/${fileName}`
+	const root = generateRemoteUrl('dav')
+	let response
+	try {
+		response = await fetch(new URL(url, root).href, {
+			method: 'MOVE',
+			credentials: 'same-origin',
+			headers: {
+				Destination: new URL(destination, root).href,
+				Overwrite: 'F',
+				'If-Match': etag,
+				requesttoken: getRequestToken(),
+			},
 		})
-		if (!targetCalendar) {
-			throw new Error(`No target calendar found for ${targetUrl}`)
+	} catch {
+		throw new MoveError(url, -1, 'failed')
+	}
+	if (response.ok) {
+		return destination
+	}
+	const status = response.status
+	if (status === 412) {
+		const state = await sourceState(session, url, etag)
+		if (state === 'changed' || state === 'gone') {
+			throw new ConflictError(url)
 		}
-		const path = url.slice(sourceCalendar.url.length)
-		const todo = await sourceCalendar.find(path)
-		const headers = {}
-		if (etag) {
-			headers['If-Match'] = etag
+		throw new MoveError(url, status, state === 'same' ? 'exists' : 'failed')
+	}
+	if (status === 404 || status === 409) {
+		if (!await calendarExists(session, targetCalendarUrl)) {
+			throw new MoveError(url, status, 'target-missing')
 		}
-		try {
-			await todo.move(targetCalendar, false, headers)
-		} catch (error) {
-			if (error.status === 412 || (error.status === -1 && await etagChanged(sourceCalendar, path, etag))) {
-				throw new ConflictError(url)
-			}
-			throw error
-		}
-		return fetchTodo(todo.url, session)
-	})
+		throw new ConflictError(url)
+	}
+	throw new MoveError(url, status, 'failed')
 }
