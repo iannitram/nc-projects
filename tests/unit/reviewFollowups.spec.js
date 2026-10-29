@@ -29,7 +29,8 @@ async function mountWithPicker(task) {
 		attachTo: document.body,
 	})
 	await flushPromises()
-	await new Promise((resolve) => setTimeout(resolve, 20))
+	// The picker renders after a tick; wait for it to exist rather than for a fixed delay.
+	await vi.waitFor(() => expect(wrapper.find('.cc-task-row__due-input input').exists()).toBe(true))
 	return wrapper
 }
 

@@ -160,4 +160,16 @@ describe('DoneStrip', () => {
 		expect(wrapper.text()).toContain('1 done project')
 		expect(wrapper.text()).not.toContain('1 done projects')
 	})
+
+	it('pluralizes the title: 1 done project, 2 done projects (#146)', () => {
+		const project = (uid) => ({
+			task: { uid, summary: uid, url: `/remote.php/dav/calendars/owner/list-a/${uid}.ics`, calendarUrl: '/remote.php/dav/calendars/owner/list-a/' },
+			children: [],
+			progress: { done: 1, total: 1 },
+		})
+		const one = mount(DoneStrip, { props: { done: [project('a')] } })
+		expect(one.find('.cc-done-strip__title').text()).toBe('1 done project')
+		const two = mount(DoneStrip, { props: { done: [project('a'), project('b')] } })
+		expect(two.find('.cc-done-strip__title').text()).toBe('2 done projects')
+	})
 })
