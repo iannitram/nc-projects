@@ -11,7 +11,7 @@ import {
 	useIsMobile,
 } from '@nextcloud/vue'
 import { getActivePinia } from 'pinia'
-import { computed, nextTick } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { areaId } from '../models/tree.js'
 import { useProjectsStore } from '../store/projects.js'
 
@@ -35,6 +35,31 @@ function closeDrawerOnPhone() {
 		emit('toggle-navigation', { open: false })
 	}
 }
+
+const TOGGLE_SELECTOR = '.app-navigation-toggle'
+// Anything that owns Escape while it is open: menus (popovers) and dialogs/modals.
+const OWNS_ESCAPE_SELECTOR = '.v-popper__popper--shown, .modal-mask, [role="dialog"], [role="menu"]'
+
+/**
+ * Escape closes the drawer on phones, but only when nothing else handled the key:
+ * open menus and dialogs close themselves first (they stop or prevent the event).
+ *
+ * @param {KeyboardEvent} event the keydown event
+ */
+function onEscape(event) {
+	if (event.key !== 'Escape' || event.defaultPrevented || !isMobile.value) {
+		return
+	}
+	const toggle = document.querySelector(TOGGLE_SELECTOR)
+	if (toggle?.getAttribute('aria-expanded') !== 'true' || document.querySelector(OWNS_ESCAPE_SELECTOR)) {
+		return
+	}
+	emit('toggle-navigation', { open: false })
+	toggle.focus()
+}
+
+onMounted(() => document.addEventListener('keydown', onEscape))
+onUnmounted(() => document.removeEventListener('keydown', onEscape))
 
 /**
  * Switch back to the All areas view and scroll to top.
