@@ -232,4 +232,43 @@
 		min-height: var(--cc-row-height);
 		padding: 0;
 	}
+
+	/*
+	 * Menus as a bottom sheet (mockup f). NcActions (9.x) renders its popover in the body with
+	 * the fixed class "action-item__popper" and offers no class prop, so the rule targets that
+	 * class; floating-vue positions it with inline styles, hence the !important. Focus,
+	 * Escape and the trigger's aria-label stay NcActions' own.
+	 */
+	.v-popper__popper.action-item__popper {
+		position: fixed !important;
+		inset: auto 0 0 0 !important;
+		transform: none !important;
+		width: 100% !important;
+		max-width: 100% !important;
+		max-height: 70vh;
+		z-index: 10000;
+	}
+
+	.action-item__popper .v-popper__wrapper,
+	.action-item__popper .v-popper__inner {
+		width: 100%;
+		max-width: 100%;
+		border-radius: var(--border-radius-container-large, 16px) var(--border-radius-container-large, 16px) 0 0;
+	}
+
+	.action-item__popper .v-popper__inner {
+		max-height: 70vh;
+		overflow-y: auto;
+		padding-bottom: env(safe-area-inset-bottom, 0);
+	}
+
+	.action-item__popper .v-popper__arrow-container {
+		display: none;
+	}
+
+	.action-item__popper li,
+	.action-item__popper .action-button,
+	.action-item__popper .action-link {
+		min-height: var(--cc-row-height, 48px);
+	}
 }

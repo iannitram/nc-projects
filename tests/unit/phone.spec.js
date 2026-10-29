@@ -142,6 +142,27 @@ describe('phone layout and long-press drag (#123)', () => {
 			expect(ruleFor('.cc-column .cc-project-card__header .cc-project-card__grip')).toMatch(/display:\s*none/)
 		})
 
+		it('renders row menus as a bottom sheet: full width, bottom, rounded top, 48 px items', () => {
+			const sheet = ruleFor('.v-popper__popper.action-item__popper')
+			expect(sheet).toMatch(/position:\s*fixed !important/)
+			expect(sheet).toMatch(/inset:\s*auto 0 0 0 !important/)
+			expect(sheet).toMatch(/width:\s*100% !important/)
+			expect(sheet).toMatch(/z-index:\s*\d{4,}/)
+			expect(ruleFor('.action-item__popper .v-popper__inner')).toMatch(/overflow-y:\s*auto/)
+			expect(ruleFor('.action-item__popper .v-popper__wrapper')).toMatch(/border-radius:.*16px\) 0 0/)
+			expect(ruleFor('.action-item__popper li')).toMatch(/min-height:\s*var\(--cc-row-height, 48px\)/)
+		})
+
+		it('the real menu popover carries the bottom-sheet class and the button keeps its name', async () => {
+			const wrapper = mount(TaskRow, { props: { node: sampleNode() }, attachTo: document.body })
+			const button = wrapper.find('.action-item__menutoggle')
+			expect(button.attributes('aria-label')).toBe('Actions for Fix the engine')
+			await button.trigger('click')
+			await vi.waitFor(() => expect(document.querySelector('.v-popper__popper.action-item__popper')).not.toBeNull())
+			expect(button.attributes('aria-label')).toBe('Actions for Fix the engine')
+			wrapper.unmount()
+		})
+
 		it('styles the lifted row (chosenClass) and the drop line (ghostClass)', () => {
 			expect(css).toMatch(/\.cc-drag-chosen > \.cc-task-tree__row-wrapper[^{]*\{[^}]*transform:\s*scale\(1\.02\)[^}]*box-shadow/)
 			expect(css).toMatch(/\.cc-drag-ghost::before\s*\{[^}]*height:\s*2px[^}]*background:\s*var\(--color-primary-element\)/)
