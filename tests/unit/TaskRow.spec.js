@@ -148,7 +148,12 @@ describe('TaskRow', () => {
 		await dialog.vm.$emit('close')
 		await wrapper.vm.$nextTick()
 		expect(wrapper.findComponent({ name: 'MoveToProjectDialog' }).exists()).toBe(false)
+		// The hidden-until-hover menu stays shown while focus goes back, or focus() does nothing.
+		expect(wrapper.find('.cc-task-row__menu').classes()).toContain('is-returning-focus')
+		await new Promise((resolve) => requestAnimationFrame(resolve))
+		await wrapper.vm.$nextTick()
 		expect(focusSpy).toHaveBeenCalled()
+		expect(wrapper.find('.cc-task-row__menu').classes()).not.toContain('is-returning-focus')
 	})
 })
 

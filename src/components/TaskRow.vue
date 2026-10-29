@@ -73,6 +73,7 @@ const PRIORITY_OPTIONS = [
 const editing = ref(false)
 const moveDialogOpen = ref(false)
 const actionsRef = ref(null)
+const returningFocus = ref(false)
 const titleDraft = ref('')
 const titleInput = ref(null)
 let titleCancelled = false
@@ -230,11 +231,18 @@ function openMoveDialog() {
  */
 function onMoveDialogClose() {
 	moveDialogOpen.value = false
+	// The menu button is hidden until hover or focus, and a hidden button can't take focus,
+	// so keep it shown while focus goes back. Wait a frame so the modal's own focus
+	// handling has finished first.
+	returningFocus.value = true
 	nextTick(() => {
-		const trigger = actionsRef.value?.$el?.querySelector?.('button') || actionsRef.value?.$el
-		if (trigger && typeof trigger.focus === 'function') {
-			trigger.focus()
-		}
+		requestAnimationFrame(() => {
+			const trigger = actionsRef.value?.$el?.querySelector?.('button') || actionsRef.value?.$el
+			if (trigger && typeof trigger.focus === 'function') {
+				trigger.focus()
+			}
+			returningFocus.value = false
+		})
 	})
 }
 </script>
@@ -291,6 +299,7 @@ function onMoveDialogClose() {
 		<NcActions
 			ref="actionsRef"
 			class="cc-task-row__menu cc-no-drag"
+			:class="{ 'is-returning-focus': returningFocus }"
 			:aria-label="`Actions for ${summary}`"
 			@mousedown.stop
 			@pointerdown.stop
@@ -470,7 +479,8 @@ function onMoveDialogClose() {
 
 .cc-task-row:hover .cc-task-row__menu,
 .cc-task-row:focus-within .cc-task-row__menu,
-.cc-task-row__menu:has([aria-expanded='true']) {
+.cc-task-row__menu:has([aria-expanded='true']),
+.cc-task-row__menu.is-returning-focus {
 	visibility: visible;
 }
 
