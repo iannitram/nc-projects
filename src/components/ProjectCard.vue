@@ -1,12 +1,12 @@
 <script setup>
 import { mdiChevronDown, mdiChevronRight, mdiDragVertical } from '@mdi/js'
+import { n } from '@nextcloud/l10n'
 import { NcActionButton, NcActionCheckbox, NcActionLink, NcActions, NcButton, NcCheckboxRadioSwitch, NcDialog, NcIconSvgWrapper, NcProgressBar } from '@nextcloud/vue'
 import { getActivePinia } from 'pinia'
 import { computed, nextTick, ref, toRaw, watch } from 'vue'
 import AddTaskInput from './AddTaskInput.vue'
 import { getTasksDeepLink } from './TaskRow.vue'
 import TaskTree from './TaskTree.vue'
-import { n } from '../services/l10n.js'
 import { readProjectCollapsed, useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -336,7 +336,7 @@ function toggleCollapsed() {
 			v-if="confirmCompletion"
 			v-model:open="confirmCompletion"
 			name="Check off project"
-			:message="`Check off ${project.task.summary} and its ${n('%n open task', '%n open tasks', openTasks.length)}?`"
+			:message="`Check off ${project.task.summary} and its ${n('cc_projects', '%n open task', '%n open tasks', openTasks.length)}?`"
 			:buttons="confirmationButtons" />
 	</div>
 </template>

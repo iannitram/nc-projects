@@ -1,9 +1,9 @@
+import { n } from '@nextcloud/l10n'
 import { flushPromises, mount } from '@vue/test-utils'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import TaskRow from '../../src/components/TaskRow.vue'
-import { n } from '../../src/services/l10n.js'
 
 vi.mock('@nextcloud/router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -12,7 +12,7 @@ vi.mock('@nextcloud/router', async (importOriginal) => ({
 
 describe('n() plural helper', () => {
 	it.each([[0, '0 open tasks'], [1, '1 open task'], [2, '2 open tasks']])('%i gives "%s"', (count, text) => {
-		expect(n('%n open task', '%n open tasks', count)).toBe(text)
+		expect(n('cc_projects', '%n open task', '%n open tasks', count)).toBe(text)
 	})
 })
 
