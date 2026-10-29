@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProjectCard from '../../src/components/ProjectCard.vue'
 import TaskTree from '../../src/components/TaskTree.vue'
+import { activeDragSourceProjectUid, activeDropProjectUid } from '../../src/composables/useDrag.js'
 import { Task } from '../../src/models/Task.js'
 import { useProjectsStore } from '../../src/store/projects.js'
 
@@ -144,5 +145,27 @@ describe('project band', () => {
 		await wrapper.findComponent(NcActionButton).find('button').trigger('click')
 		expect(wrapper.findComponent(NcDialog).exists()).toBe(false)
 		expect(setCompleted).toHaveBeenCalledTimes(2)
+	})
+
+	it('shows "Drop to move here" and styles header as drop target when drag hovers it', async () => {
+		const wrapper = render(project())
+		expect(wrapper.find('.cc-project-card__drop-hint').exists()).toBe(false)
+		expect(wrapper.find('.cc-project-card__header').classes()).not.toContain('drop-target')
+
+		activeDragSourceProjectUid.value = 'source-proj'
+		activeDropProjectUid.value = 'p-band'
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.find('.cc-project-card__header').classes()).toContain('drop-target')
+		const hint = wrapper.find('.cc-project-card__drop-hint')
+		expect(hint.exists()).toBe(true)
+		expect(hint.text()).toBe('Drop to move here')
+
+		activeDropProjectUid.value = null
+		activeDragSourceProjectUid.value = null
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.find('.cc-project-card__drop-hint').exists()).toBe(false)
+		expect(wrapper.find('.cc-project-card__header').classes()).not.toContain('drop-target')
 	})
 })

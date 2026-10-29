@@ -46,9 +46,10 @@ export function getTasksDeepLink(task) {
 </script>
 
 <script setup>
-import { mdiDotsHorizontal } from '@mdi/js'
+import { mdiDotsHorizontal, mdiFolderMoveOutline } from '@mdi/js'
 import { NcActionButton, NcActionInput, NcActionLink, NcActionRadio, NcActions, NcActionSeparator, NcCheckboxRadioSwitch, NcIconSvgWrapper, NcTextField } from '@nextcloud/vue'
 import { computed, nextTick, ref, toRaw } from 'vue'
+import MoveToProjectDialog from './MoveToProjectDialog.vue'
 import { useProjectsStore } from '../store/projects.js'
 
 const props = defineProps({
@@ -70,6 +71,9 @@ const PRIORITY_OPTIONS = [
 ]
 
 const editing = ref(false)
+const moveDialogOpen = ref(false)
+const actionsRef = ref(null)
+const returningFocus = ref(false)
 const titleDraft = ref('')
 const titleInput = ref(null)
 let titleCancelled = false
@@ -213,6 +217,34 @@ function clearDue() {
 function setPriority(value) {
 	update({ priority: value })
 }
+
+/**
+ * Open the move-to-project dialog, closing the actions menu first.
+ */
+function openMoveDialog() {
+	actionsRef.value?.closeMenu?.(false)
+	moveDialogOpen.value = true
+}
+
+/**
+ * Close the move dialog and return focus to the actions trigger button.
+ */
+function onMoveDialogClose() {
+	moveDialogOpen.value = false
+	// The menu button is hidden until hover or focus, and a hidden button can't take focus,
+	// so keep it shown while focus goes back. Wait a frame so the modal's own focus
+	// handling has finished first.
+	returningFocus.value = true
+	nextTick(() => {
+		requestAnimationFrame(() => {
+			const trigger = actionsRef.value?.$el?.querySelector?.('button') || actionsRef.value?.$el
+			if (trigger && typeof trigger.focus === 'function') {
+				trigger.focus()
+			}
+			returningFocus.value = false
+		})
+	})
+}
 </script>
 
 <template>
@@ -265,7 +297,9 @@ function setPriority(value) {
 			{{ node.deeper }} more {{ node.deeper === 1 ? 'level' : 'levels' }} in Tasks
 		</a>
 		<NcActions
+			ref="actionsRef"
 			class="cc-task-row__menu cc-no-drag"
+			:class="{ 'is-returning-focus': returningFocus }"
 			:aria-label="`Actions for ${summary}`"
 			@mousedown.stop
 			@pointerdown.stop
@@ -308,7 +342,18 @@ function setPriority(value) {
 				{{ option.label }}
 			</NcActionRadio>
 			<NcActionSeparator />
-			<!-- "Move to project…" goes here (the dialog is #120, cluster P3). -->
+			<NcActionButton
+				closeAfterClick
+				class="cc-no-drag"
+				@click="openMoveDialog"
+				@mousedown.stop
+				@pointerdown.stop
+				@touchstart.stop>
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiFolderMoveOutline" :size="20" />
+				</template>
+				Move to project…
+			</NcActionButton>
 			<NcActionLink
 				v-if="task"
 				class="cc-no-drag cc-task-open-in-tasks"
@@ -319,6 +364,11 @@ function setPriority(value) {
 				Open in Tasks
 			</NcActionLink>
 		</NcActions>
+		<MoveToProjectDialog
+			v-if="moveDialogOpen"
+			:open="moveDialogOpen"
+			:task="task"
+			@close="onMoveDialogClose" />
 	</div>
 </template>
 
@@ -429,7 +479,8 @@ function setPriority(value) {
 
 .cc-task-row:hover .cc-task-row__menu,
 .cc-task-row:focus-within .cc-task-row__menu,
-.cc-task-row__menu:has([aria-expanded='true']) {
+.cc-task-row__menu:has([aria-expanded='true']),
+.cc-task-row__menu.is-returning-focus {
 	visibility: visible;
 }
 

@@ -7,6 +7,7 @@ vi.mock('../../src/services/dav.js', () => ({
 	fetchTodo: vi.fn(),
 	createTodo: vi.fn(),
 	putTodo: vi.fn(),
+	moveTodo: vi.fn(),
 	getDavSession: vi.fn(() => ({})),
 	ConflictError: class ConflictError extends Error {
 		constructor(url) {
@@ -24,7 +25,7 @@ vi.mock('@nextcloud/dialogs', () => ({
 
 import { showError, showInfo } from '@nextcloud/dialogs'
 import { Task } from '../../src/models/Task.js'
-import { ConflictError, fetchTodo, fetchTodos, listTaskCalendars, putTodo } from '../../src/services/dav.js'
+import { ConflictError, fetchTodo, fetchTodos, listTaskCalendars, moveTodo, putTodo } from '../../src/services/dav.js'
 import { useProjectsStore } from '../../src/store/projects.js'
 
 function deepFreeze(value) {
@@ -182,5 +183,12 @@ describe('projects store moveToProject (same list)', () => {
 		expect(showError).not.toHaveBeenCalled()
 		expect(store.tasksByUid.t1.etag).toBe('"t1-fresh"')
 		expect(store.tasksByUid.t1.parentUid).toBe('P')
+	})
+
+	it('same-list move still issues one PUT and does not call moveTodo', async () => {
+		const store = await loadStore(spaced())
+		await store.moveToProject('t1', 'Q', 2)
+		expect(putTodo).toHaveBeenCalledTimes(1)
+		expect(moveTodo).not.toHaveBeenCalled()
 	})
 })
