@@ -121,7 +121,7 @@ async function submitNewProject() {
 			{{ projectCountText }}
 		</span>
 		<div class="cc-top-bar__spacer" />
-		<div class="cc-top-bar__actions">
+		<div class="cc-top-bar__actions" :class="{ 'cc-top-bar__actions--creating': isCreating }">
 			<NcButton
 				class="cc-top-bar__collapse-btn"
 				variant="tertiary"
@@ -139,11 +139,12 @@ async function submitNewProject() {
 				class="cc-top-bar__new-project-btn"
 				variant="primary"
 				aria-label="New project"
+				title="New project"
 				@click="openNewProject">
 				<template #icon>
 					<NcIconSvgWrapper :path="mdiPlus" :size="20" />
 				</template>
-				New project
+				<span class="cc-top-bar__new-label">New project</span>
 			</NcButton>
 
 			<!-- Creation area: pick an area -->
@@ -269,6 +270,56 @@ async function submitNewProject() {
 
 	.cc-top-bar__title-input {
 		min-width: 140px;
+	}
+}
+
+/* Narrow phones: "New project" is icon-only (its aria-label and title stay), so the title and
+   the count fit on one line and the button never cuts into them. */
+@media (max-width: 420px) {
+	.cc-top-bar__new-label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.cc-top-bar__new-project-btn {
+		width: 44px;
+		min-width: 44px;
+		height: 44px;
+		min-height: 44px;
+		padding: 0;
+		flex-shrink: 0;
+	}
+}
+
+/* While the creation form is open on a phone it takes its own full-width line. */
+@media (max-width: 600px) {
+	.cc-top-bar {
+		flex-wrap: wrap;
+	}
+
+	.cc-top-bar__actions--creating {
+		flex: 1 0 100%;
+		min-width: 0;
+		padding-bottom: calc(var(--default-grid-baseline, 4px) * 2);
+	}
+
+	.cc-top-bar__actions--creating .cc-top-bar__select,
+	.cc-top-bar__actions--creating .cc-top-bar__title-input {
+		min-width: 0;
+		flex: 1;
+	}
+
+	.cc-top-bar__area-picker,
+	.cc-top-bar__title-form {
+		flex: 1;
+		min-width: 0;
 	}
 }
 </style>

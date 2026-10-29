@@ -1,6 +1,8 @@
 import { mdiUnfoldLessHorizontal, mdiUnfoldMoreHorizontal } from '@mdi/js'
 import { NcSelect, NcTextField } from '@nextcloud/vue'
 import { mount } from '@vue/test-utils'
+import fs from 'node:fs'
+import path from 'node:path'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TopBar from '../../src/components/TopBar.vue'
@@ -57,6 +59,25 @@ describe('TopBar', () => {
 		expect(newProjectBtn.exists()).toBe(true)
 		expect(newProjectBtn.attributes('aria-label')).toBe('New project')
 		expect(newProjectBtn.text()).toContain('New project')
+	})
+
+	it('below 420 px the New project text is visually hidden but the name and tooltip stay (#123)', () => {
+		const wrapper = mount(TopBar, { global: { plugins: [pinia] } })
+		const button = wrapper.find('.cc-top-bar__new-project-btn')
+		const label = button.find('.cc-top-bar__new-label')
+		expect(label.text()).toBe('New project')
+		expect(button.attributes('aria-label')).toBe('New project')
+		expect(button.attributes('title')).toBe('New project')
+
+		const source = fs.readFileSync(path.resolve(__dirname, '../../src/components/TopBar.vue'), 'utf8')
+		const block = source.slice(source.indexOf('@media (max-width: 420px)'))
+		const hidden = block.match(/\.cc-top-bar__new-label\s*\{([^}]*)\}/)[1]
+		expect(hidden).toMatch(/position:\s*absolute/)
+		expect(hidden).toMatch(/clip:\s*rect\(0, 0, 0, 0\)/)
+		expect(hidden).not.toMatch(/display:\s*none/)
+		const target = block.match(/\.cc-top-bar__new-project-btn\s*\{([^}]*)\}/)[1]
+		expect(target).toMatch(/width:\s*44px/)
+		expect(target).toMatch(/height:\s*44px/)
 	})
 
 	it('formats project count properly for 1 project and 0 projects', async () => {
