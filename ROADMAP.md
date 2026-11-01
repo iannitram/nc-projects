@@ -1,6 +1,6 @@
 # Roadmap
 
-Goal: a project manager over Nextcloud Tasks, built in three phases (the owner, 2026-10-23). **1.0 is all three phases** (the owner, 2026-10-26; [SPEC.md](SPEC.md), ADR 0014). Phase 1 is the core ask and should be usable day to day on its own, so it can be dogfooded before 1.0.
+Goal: a project manager over Nextcloud Tasks, built in three phases (the owner, 2026-10-23), plus a fourth, Today and the wheel, added when the task spinner was folded in (the owner, 2026-10-31). **1.0 is all four phases** ([SPEC.md](SPEC.md), ADR 0014). Phase 1 is the core ask and should be usable day to day on its own, so it can be dogfooded before 1.0.
 
 **How this file works**
 - Every feature has a fixed **ID** (P01, P02, …). IDs never change, so Notes can name dependencies even after rows move.
@@ -12,7 +12,7 @@ Goal: a project manager over Nextcloud Tasks, built in three phases (the owner, 
 
 ## Dev stages
 
-The phases below are the build order. Phase 0 and phase 1 are usable day to day on their own; 1.0 is all three phases (SPEC.md). Each piece is a GitHub issue, sized by the pipeline repo's rubric, with its order written as `Blocked by #N`.
+The phases below are the build order. Phase 0 and phase 1 are usable day to day on their own; 1.0 is all four phases (SPEC.md), then the design pass, the last stage before 1.0 (R04), which now also covers Today, the wheel, the timeline and the Undo toast. Each piece is a GitHub issue, sized by the pipeline repo's rubric, with its order written as `Blocked by #N`.
 
 ## Open source we bring in
 
@@ -25,6 +25,8 @@ The phases below are the build order. Phase 0 and phase 1 are usable day to day 
 | `pinia` | ^3.0.4 | `src/store/projects.js` |
 | `@nextcloud/vite-config`, `@nextcloud/eslint-config` | ^2.5.4, ^9.0.1 | Build and lint |
 | Nextcloud Tasks 0.18.1 (source, read only) | v0.18.1 | The reference for every behaviour we match (`scripts/fetch-tasks-ref.sh`); no code is copied |
+
+Phase 4 brings in no new library: `ical.js` already reads events and expands repeats, and the wheel is drawn as plain SVG.
 
 Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-and-linux).
 
@@ -80,6 +82,31 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 | P16 | **Report a bug** (M21) | Medium | The shared craft-bugreport-web form and consent screen in the app navigation; server-only drop config and relay; the selected area as the working file; error buffer at startup. Built locally (#39, #40), awaiting PR; craft-bugreport-web pinned at 4549b81. |
 | P17 | **Updates from the admin panel** (M22) | Medium | info.xml release fields (#41), the tag workflow calling craft-nc-appstore's build-app (#42), first signed release through the merged feed on the test Nextcloud (#44); needs craft-nc-appstore 1.0 |
 
+### Phase 4: Today and the wheel (M23-M26, added 2026-10-31)
+
+Build order: the fixtures and the pure pieces first (they are independent Easy issues with locked tests), then the store, then the views. Issues #152-#174.
+
+| ID | Feature | Complexity | Notes |
+|---|---|---|---|
+| P18 | **Phase 4 fixtures** in the test container | Low | #152: tasks due today, overdue, this week, later and undated, with priorities and `LOCATION`; one completed today; a fixture calendar with overlapping, all-day, repeating and cancelled events today. Every M23-M26 check needs it |
+| P19 | **Today** (M23) | Medium | Pure: `Task` description and location plus the tick note #153, `day.js` #154 and its reschedule half #155, `today.js` (selection and the day-end rule) #156, `useClock` #157. Store: done with a note and reschedule #161 (needs #153, #155, #160). View and nav entry #163 (needs #152, #156, #157, #161, #162) |
+| P20 | **Undo** (M25) | Medium | Pure: the stack #158, `planUndo` #159. Store: every write records an entry, `undo()` puts the stored copies back #160 (needs #158, #159). The toast #162 (needs #160). An undo is a PUT of the old text with If-Match (MOVE back first after a list change); a task changed since is never overwritten (M14) |
+| P21 | **The wheel** (M24) | High | Pure: weights and filtered pool #164, seeded random and the weighted pick #165, "Others from this room" #166 (needs #153). Views: filters, the wheel and the spin #167 (needs #163, #164, #165); the picked task's actions #168 (needs #161, #166, #167). Weights follow the day page I use now (priority 1 the biggest slice, none in the middle); overdue doubles, for "overdue first" |
+| P22 | **Timeline and NOW** (M26) | Medium | Pure: one day's events #169, layout maths #171, the NOW card #172. Data: read-only event read in `dav.js` and a `day` store #170 (needs #152, #169). View #173 (needs #163, #170, #171, #172). Read-only in 1.0: Projects never writes an event |
+
+**Phase 4 on Mac, PC and Linux** (browsers; details in [CODE_MAP.md](CODE_MAP.md#mac-pc-and-linux)):
+- The same browsers as the panel: current Firefox, Chrome, Safari and Edge on Mac, Windows and Linux, Safari on iOS and Chrome on Android. Served by Nextcloud, so nothing like the file-access workarounds the day page I use now needs on Linux sandboxed browsers.
+- The wheel is SVG, not canvas: no device-pixel-ratio fixes, the same on every engine, testable in jsdom. The spin uses `requestAnimationFrame` and is skipped under `prefers-reduced-motion`; Space spins, and a tap on the hub spins on touch screens.
+- Dates: every day comparison uses local `YYYY-MM-DD` keys built with `new Date(y, m, d)`, so clock changes and the browser's time zone cannot shift a task's day; the locked tests use date-only and floating times so they pass on CI runners in UTC and on machines in any zone.
+- The date picker is `@nextcloud/vue`'s (as on the task rows), not a bare `<input type="date">`, so it looks and behaves the same in Safari and Firefox.
+- Remembered wheel filters live in `localStorage`, guarded with try/catch (private windows and blocked storage just fall back to the defaults).
+
+### Last stage before 1.0: design pass (R04)
+
+| ID | Feature | Complexity | Notes |
+|---|---|---|---|
+| P23 | **Design pass** | Medium | The panel's pass is #102 (mockups approved 2026-10-28, its implementation issues #109-#126 built). Phase 4's surfaces get the same pass in #174 (needs #162, #163, #167, #168, #173), with the same design system. The project moves to Prototype / Beta only when its `design-pass` issues are built |
+
 ---
 
 ## Out of scope (decided 2026-10-23)
@@ -94,7 +121,7 @@ Platforms (Mac, PC and Linux) are covered in [CODE_MAP.md](CODE_MAP.md#mac-pc-an
 | A full task editor | Quick edits only; the Tasks app does the rest |
 | Auto-completing a project at 100% | The owner closes projects by hand |
 | Adding subtasks under a task (not a project) | Not asked; use the Tasks app |
-| Search and filters | Not asked for 1.0 |
+| Search | Not asked for 1.0; filters only on Today and the wheel (M23, M24) |
 | A PHP data backend | Browser CalDAV, like the Tasks app |
 | Native phone app | Phone Tasks/CalDAV clients already show the same data and order |
 | Moving projects between areas | Not asked; use the Tasks app |

@@ -26,9 +26,25 @@ Terms used in the spec's Musts, with the meaning the app gives them.
 | **Move to another project** | Dragging a task onto another project: re-link it, and move it to that project's list if different. Its subtasks come along. |
 | **Orphan** | A task whose parent link points at a task that is missing or completed. Listed in the Needs filing tray. |
 | **Needs filing tray** | The panel section listing orphans and untagged parents, with "make project" and "move to project" buttons. |
+| **Today** | The page listing my open tasks due today and overdue, grouped by area, with tick (and a note), priority and date controls, the timeline and the NOW card (M23, M26). |
+| **Done today** | The count on Today of listed tasks I completed today, out of all listed; also the day progress bar. |
+| **Day-end rule** | A task I complete stays on Today, struck through, until the date changes; one I re-date leaves at once. |
+| **Note (tick note)** | Text I type when ticking a task done, added to its description as a line `- YYYY-MM-DD text`. |
+| **Reschedule** | Moving a task's due date to tomorrow, next week (the next Monday) or a picked date. A date-only due date stays date-only. |
+| **The wheel** | The page that picks one open task at random, weighted by priority, from the tasks that pass the filters (M24). |
+| **Spin** | One weighted random pick on the wheel, shown as the wheel turning to that task's slice. |
+| **Weight** | A slice's size on the wheel: priority 1 is 10, down to priority 9 at 2; no priority is 5; overdue doubles it. |
+| **Priority cutoff** | The wheel filter that keeps priorities 1 to N (or All). Below All, tasks with no priority are left off. |
+| **Due window** | Where a task's due date falls: overdue, today, this week (the next six days), later, or no date. The wheel filters on these. |
+| **Others from this room** | On the wheel, a re-spin among the open tasks related to the picked one: under the same project, or with the same location (the task's `LOCATION`). |
+| **Acted on** | A task I completed or rescheduled from the wheel. It leaves the wheel for the rest of the session. |
+| **Undo** | Putting the stored tasks of the last change back exactly as they were, from the toast (M25). Refused, with a notice, if a task changed elsewhere since. |
+| **Undo toast** | The bar at the bottom of every view naming the last change, with Undo; it hides after 10 seconds. |
+| **Timeline** | Today's events from my own calendars, by hour, read-only (M26). |
+| **NOW line, NOW card** | The line across the timeline at the current time, and the card naming the current event (or, in a gap, the task to do now) with the minutes left and what is next. |
 | **Panel** | The Projects page: all areas with their cards, the Done strips and the Needs filing tray. |
 | **Parent link** | A task's bare `RELATED-TO:<uid>`, which means "my parent is this task". Written without `RELTYPE`. |
-| **Phase** | One of the roadmap's three build stages: 1 view, add, reorder; 2 move, edit, create projects; 3 the Needs filing tray. 1.0 needs all three. |
+| **Phase** | One of the roadmap's four build stages: 1 view, add, reorder; 2 move, edit, create projects; 3 the Needs filing tray; 4 Today and the wheel. 1.0 needs all four, then the design pass. |
 | **Progress bar** | A project's done/total count over every task at every level under it, across lists. |
 | **Project** | A task with the category `project`. Its tasks are those linked under it. |
 | **Quick edit** | Check off, rename, due date or priority, done in the panel. Anything else goes through Open in Tasks. |

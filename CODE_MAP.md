@@ -2,7 +2,7 @@
 
 Describes commit: eb3b328 (2026-10-28)
 
-**Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`), the panel (`App.vue`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`) and store actions for loading, refreshing, adding, ordering, completion, quick edits and project creation are **present**; `reorder` for projects within an area remains a **stub** (`moveToProject` landed in PR #101). When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md).
+**Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (all but `moveTodo`), the panel (`App.vue`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`) and store actions for loading, refreshing, adding, ordering, completion, quick edits and project creation are **present**; `reorder` for projects within an area remains a **stub** (`moveToProject` landed in PR #101). When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md). Phase 4 (Today and the wheel, added to the spec 2026-10-31) is all **planned**: see [Today and the wheel](#today-and-the-wheel-phase-4).
 
 **Design pass (approved 2026-10-28, #102):** [brief](docs/design/2026-10-28-design-pass/brief.md) · [mockups, sections a to g](docs/design/2026-10-28-design-pass/mockups.html) · [implementation notes](docs/design/2026-10-28-design-pass/implementation-notes.md). UI work follows these.
 
@@ -73,6 +73,38 @@ Server (PHP): serves the page and user settings; relays bug reports without expo
 | `vite.config.mjs`, `appinfo/build.json` (generated, ignored) | **Built.** Stamps the current source revision into the build for report metadata | M21 (#39) |
 | `appinfo/info.xml` + `.github/workflows/release.yml` (updates from the admin panel; planned) | The release fields the merged feed reads (id, a.b.c version, Nextcloud range, PHP minimum; guarded by `tests/unit/release.infoxml.spec.js`, planned in #41) and the tag workflow that calls craft-nc-appstore's `build-app.yml@v1`; signing and publishing happen on the release-key machine (R35), never in CI | M22 (#41, #42, #44) |
 
+### Today and the wheel (Phase 4)
+
+Everything in this table is **planned** (spec re-approved 2026-10-31; issues #152-#174). It reuses what is there: the same `tasksByUid` the panel loads, the same `Task` getters, and the store's guarded writes (`putTodo` with If-Match, `moveTodo`, the conflict reload and notice). The pure models import nothing but `ical.js` and each other, read `Task` getters the way `tree.js` and `completion.js` do, and are tested on `Task.fromIcs` fixtures. Only `services/dav.js` talks to the server, and the calendar side only reads.
+
+| Path | Job | IDs |
+|---|---|---|
+| `src/models/Task.js` (add) | **Planned** (#153): `description` and `location` getters and setters (null or '' removes the property), round-tripping like every other field | P19, P21 |
+| `src/models/note.js` | **Planned** (#153): `appendNote(description, note, day)`, the tick note as a `- YYYY-MM-DD text` line at the end of DESCRIPTION (the shape the day page I use now writes) | P19, P21 |
+| `src/models/day.js` | **Planned** (#154, #155): `dayKey`, `addDays`, `dueKey`, `completedKey`, `dueWindow` (overdue, today, week = the next six days, later, none); `rescheduleKey` (tomorrow, next week = next Monday, a picked day) and `dueOnDay` (a new DUE on that day: date-only stays date-only, a date-time keeps its clock time) | P19, P21 |
+| `src/models/today.js` | **Planned** (#156): `selectToday(tasks, areas, today)`: open tasks due today or overdue on the areas, plus those completed today (the day-end rule: they stay struck through until the date changes), grouped by area in area order, ordered by due day, priority, title; `{groups, done, total}` for the Done-today count and the day progress bar | P19, P22 |
+| `src/models/wheel.js` | **Planned** (#164): `wheelWeight` (priority 1-9 gives 10-2, none 5, overdue x2) and `wheelPool(tasks, filters, today, leftOut)`: open non-project tasks passing the priority cutoff, the areas and the due windows, with the counts each filter left out | P21 |
+| `src/models/random.js` | **Planned** (#165): `mulberry32(seed)` (a seedable random source) and `pickWeighted(pool, random)`; the view passes `Math.random`, tests pass a seed | P21 |
+| `src/models/related.js` | **Planned** (#166): `projectOf`, `placeOf`, `relatedTasks(tasksByUid, uid, leftOut)`: "Others from this room" = open tasks under the same project or at the same `LOCATION` | P21 |
+| `src/models/undo.js` | **Planned** (#158, #159): `pushUndo`, `topUndo`, `popUndo`, `dropUndoFor` (the last 10 changes; an entry's items are each task's stored copy before the write and its url and etag after) and `planUndo(entry, tasksByUid)`: the writes that put each stored copy back, newest first (MOVE back first when the change moved lists), or the tasks that changed since, in which case nothing is written | P20 |
+| `src/models/events.js` | **Planned** (#169): `eventsForDay(objects, day)`: the VEVENTs of one day as minutes from local midnight (timed, all-day, repeats expanded, EXDATE kept out, cancelled left out) | P22 |
+| `src/models/timeline.js` | **Planned** (#171): `fitRange` (whole hours, at least 7am-5pm, inside 6am-10pm, takes in the clock), `hourMarks`, `layoutEvents` (top, height, side-by-side columns for overlaps, past), `nowTop` | P22 |
+| `src/models/nowCard.js` | **Planned** (#172): `nowCard({events, nowMin, task})`: the running event, else the task to do now, else before the day / open window / day complete; minutes left; what is next | P22 |
+| `src/composables/useClock.js` | **Planned** (#157): the page clock (`now`, `minute`, `today`), re-read every 30 s and on window focus; `today` changing is the day-end rule | P19, P22 |
+| `src/services/dav.js` (add) | **Planned** (#170): `listEventCalendars()` (the owner's own calendars holding VEVENTs, by the same exclusions as task lists) and `fetchEvents(calendar, from, to)` (CalDAV time-range REPORT). Never sends PUT, MOVE or DELETE to a calendar | P22 |
+| `src/store/projects.js` (add) | **Planned**: `undoStack`; every write action (`setCompleted`, `updateTask`, `moveToProject`, `reorder`, the project reorder, and the two below) records one undo entry after its writes land; `undo()` runs `planUndo` through `moveTodo` and `putTodo`, re-reads, rebuilds; a conflict reloads and drops that task from the stack (#160). `completeWithNote(uid, note, today)` and `reschedule(uid, kind, today)` (#161) | P19, P20 |
+| `src/store/day.js` | **Planned** (#170): Pinia store for the timeline: today's events from `listEventCalendars`, `fetchEvents` and `eventsForDay`, read when Today opens, on refresh and when the day changes; a failed read leaves it empty with a quiet note | P22 |
+| `src/components/TodayView.vue` | **Planned** (#163): Today: area groups of task rows with tick (and an optional note), priority and date controls (Tomorrow, Next week, a date), struck-through done rows, "Done today: N of M"; the timeline pane beside it on desktop, above it at phone width | P19, P22 |
+| `src/components/WheelView.vue` | **Planned** (#167): the wheel: filters (priority cutoff, areas, due windows; remembered in this browser like show-done, ADR 0019), the SVG wheel, spin (pick first, then animate to it), the "N on the wheel, left out: ..." line | P21 |
+| `src/components/WheelResult.vue` | **Planned** (#168): the picked task: Done (with a note), Reschedule (tomorrow, next week, a date), Open in Tasks, Spin again, Others from this room; Done and Reschedule take it off the wheel for the session | P21 |
+| `src/components/TimelinePane.vue` | **Planned** (#173): hours, events, NOW line, NOW card, day progress bar; read-only | P22 |
+| `src/components/UndoToast.vue` | **Planned** (#162): one toast at the bottom of every view: the newest change, Undo, dismiss; hides after 10 s unless hovered or focused; an undo error stays until dismissed | P20 |
+| `src/components/AppNav.vue`, `src/App.vue` (add) | **Planned** (#163, #167): Today and Wheel entries above the areas; `store.view` gains `'today'` and `'wheel'` | P19, P21 |
+| `test-env/seed.py` (add) | **Planned** (#152): Phase 4 fixtures, dated relative to the day they are seeded: tasks due today, overdue, this week, later and undated, with priorities and `LOCATION`; one completed today; a `Fixture events` calendar with overlapping, all-day, repeating and cancelled events today | P18 |
+| `tests/unit/{Task.descriptionLocation,day,day.reschedule,today,useClock,undo.stack,undo.plan,wheel,random,related,events,timeline,nowCard}.spec.js` | **Planned**: the locked tests, each pasted in its Easy issue; a satellite commits the file before the code (R28) | P19-P22 |
+
+**How Phase 4 reuses the panel.** Today and the wheel never fetch tasks of their own: they read `store.tasksByUid` (loaded and refreshed as now) and write through store actions, so the etag guard, the conflict notice, rollback and the crash log apply unchanged. `completeWithNote` is `setCompleted`'s cascade (`planCompletion`) with the note in the first PUT; `reschedule` and priority changes go through `updateTask`. Undo is one more write of the same kind: the old text, with If-Match.
+
 ### Tests and tooling
 
 | Path | Job |
@@ -115,7 +147,7 @@ Calls go one way, top to bottom. Only `services/dav.js` talks to the server; the
 
 | Module | Calls | Called by |
 |---|---|---|
-| `components/*` | the store's actions; `composables/useDrag.js` | `App.vue`, each other (AreaSection → ProjectCard → TaskTree → TaskRow) |
+| `components/*` | the store's actions; `composables/useDrag.js` | `App.vue`, each other (AreaSection → ProjectCard → TaskTree → TaskRow; planned: TodayView → TimelinePane, WheelView → WheelResult, UndoToast once in App) |
 | `App.vue` | `store/projects.js` (`load`), `composables/useRefresh.js` | `main.js` |
 | `store/projects.js` | `services/dav.js`, `services/areas.js`, `models/Task.js`, `models/tree.js`, `models/sortOrder.js` | components, `App.vue` |
 | `services/areas.js` | nothing (pure filter over `TaskCalendar`) | the store |
@@ -123,6 +155,15 @@ Calls go one way, top to bottom. Only `services/dav.js` talks to the server; the
 | `models/tree.js` | `models/sortOrder.js` (sibling order) | the store |
 | `models/Task.js` | `ical.js` | the store, `models/tree.js` (as data) |
 | `models/sortOrder.js` | nothing | `models/tree.js`, the store |
+| `models/day.js` (planned) | `ical.js` | `models/today.js`, `models/wheel.js`, `composables/useClock.js`, the store |
+| `models/today.js` (planned) | `models/day.js` | `TodayView`, `TimelinePane` (Done-today share) |
+| `models/wheel.js`, `models/random.js`, `models/related.js` (planned) | `models/day.js` (wheel only) | `WheelView`, `WheelResult` |
+| `models/note.js` (planned) | nothing | the store (`completeWithNote`) |
+| `models/undo.js` (planned) | nothing | the store (`undo`), `UndoToast` (through the store) |
+| `models/events.js` (planned) | `ical.js` | `store/day.js` |
+| `models/timeline.js`, `models/nowCard.js` (planned) | nothing | `TimelinePane` |
+| `store/day.js` (planned) | `services/dav.js`, `models/events.js` | `TimelinePane`, `TodayView` |
+| `composables/useClock.js` (planned) | `models/day.js` | `TodayView`, `WheelView`, `TimelinePane` |
 
 ## Mac, PC and Linux
 
@@ -134,6 +175,7 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 - **Line endings:** LF everywhere (`.gitattributes`); the lint config rejects CRLF.
 - **Scripts:** `scripts/*.sh` and `test-env/*.sh` are bash: on Windows run them in Git Bash or WSL. Node scripts build paths with `node:path`, never string joins with `/` or `\`.
 - **Test container:** needs Docker (Docker Desktop on Mac and Windows). `tests/tools/php.mjs` falls back to it when no PHP 8.4 is installed.
+- **Phase 4 (planned):** the wheel is SVG (no canvas, so no device-pixel-ratio handling on Retina or Windows scaling) and its spin respects `prefers-reduced-motion`; day maths uses local `YYYY-MM-DD` keys built with `new Date(y, m, d)`, so time zones and clock changes cannot move a task to another day; the locked tests use date-only and floating times (and `COMPLETED` at noon UTC), so they pass on UTC CI runners and on machines in any zone; the date picker is `@nextcloud/vue`'s, the same in Safari, Firefox and Chrome; remembered wheel filters use guarded `localStorage`.
 
 ## Rules the code keeps
 
@@ -144,6 +186,7 @@ Projects is a browser app on a Nextcloud server, so "platform" means the develop
 5. **Exclusions are fixed:** lists shared by other people (for example, a list a colleague shares), agent queues (`*_shared_by_*`), Deck boards (`app-generated--deck--*`).
 6. **Order like Tasks does:** write the moved task, plus only the later siblings Tasks' rule bumps. Never renumber a whole project.
 7. **Task data stays in CalDAV.** The owner authorized the bug-report relay as an exception (ADR 0020); it forwards only reports explicitly sent by the user.
+8. **Calendars are read-only** (Phase 4, M26): the timeline reads events and never writes one.
 
 ## Shared measurements with nc-outliner
 
