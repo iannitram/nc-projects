@@ -1,6 +1,6 @@
 # Projects: spec
 
-**Approval:** 2026-10-26, in a session with Claude Code (re-approved after M5, M6, M8, M10, M11 and M18 were matched to the Tasks app). A changed Must or Won't sets this back to "not yet".
+**Approval:** 2026-10-31, the owner, in the Project Manager session's question tool: "Approve (Recommended)" (Phase 4: M23-M26 and the Won't change; rulings: "One app: fold into nc-projects (Recommended)", features "The wheel", "Today view", "Undo everywhere", "Timeline + NOW card", Day Board "Retire it once the app covers it (Recommended)", task-spinner "Fold in and archive it (Recommended)"). First approval 2026-10-26 in a session with Claude Code (re-approved after M5, M6, M8, M10, M11 and M18 were matched to the Tasks app). A changed Must or Won't sets this back to "not yet".
 
 Must M21 added 2026-10-26 by the owner: "Yes, a 1.0 Must (Recommended)" (the request: "New feature request for both apps - bug logging button with the same pathway as the launcher bug submission pathway"; details "Launcher set, browser version (Recommended)", "Same File Drop (Recommended)", "One shared module repo (Recommended)").
 
@@ -8,9 +8,9 @@ Must M22 added 2026-10-26 by the owner: "Private app store feed (Recommended)", 
 
 ## 1.0 in one sentence
 
-I can open **Projects** from Nextcloud's top bar and, in one panel, see every project on my own task lists with its tasks in my drag order, add and reorder tasks and projects, move a task to another project, make quick edits, start new projects, and file away stray tasks, while the Tasks app, phone clients and agents keep working on the same data unchanged.
+I can open **Projects** from Nextcloud's top bar and, in one panel, see every project on my own task lists with its tasks in my drag order, add and reorder tasks and projects, move a task to another project, make quick edits, start new projects, file away stray tasks, and plan my day from **Today** and **the wheel**, while the Tasks app, phone clients and agents keep working on the same data unchanged.
 
-All three phases of the roadmap make up 1.0: phase 1 (view, add, reorder), phase 2 (move, edit, create projects) and phase 3 (the Needs filing tray).
+All four phases of the roadmap make up 1.0: phase 1 (view, add, reorder), phase 2 (move, edit, create projects), phase 3 (the Needs filing tray) and phase 4 (Today and the wheel, added 2026-10-31 when the task spinner was folded into this app).
 
 ## Musts
 
@@ -123,6 +123,26 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 - Done looks like: the fixture orphan and untagged parent are listed; each button fixes its case and the item leaves the tray.
 - Check: open the tray; use each button on a fixture item; check the result in Tasks.
 
+### Phase 4: Today and the wheel (added 2026-10-31)
+
+The task spinner idea (from the retired task-spinner repo: `docs/ideas/task-spinner.md`) and the day surface I use now are folded into this app, so Projects, Today and the wheel are one app on the same task data. The Tasks app stays installed and unchanged for full editing and phones.
+
+**M23. Today.** WHEN I open Today, THE APP SHALL list my open tasks due today and the overdue ones, grouped by area, each with tick (with an optional note), priority and date controls, and a Done-today count; a task I complete SHALL stay on the page, struck through, until the day ends, and a task I move to another day SHALL leave it.
+- Done looks like: the fixture tasks due today and overdue appear under their areas; ticking one strikes it through and the count goes up; re-dating one removes it.
+- Check: in the test container, open Today, tick one task with a note, re-date another; read both stored tasks (completed with the note in the description; new due date).
+
+**M24. The wheel.** WHEN I spin, THE APP SHALL pick one open task at random, weighted by priority (and overdue first), from the tasks that pass my filters: a priority cutoff, the areas I choose, and the due window (overdue, today, this week, no date); on the picked task it SHALL offer Done (with a note), Reschedule (tomorrow, next week, a date), Open in Tasks, Spin again, and "Others from this room" (re-spins among the related tasks: the same project, or the same room or location in the task's location field). A task I act on SHALL leave the wheel.
+- Done looks like: with a fixed seed, the picks follow the weights; each action does what it says and the acted-on task no longer comes up.
+- Check: unit tests of the pick with a seeded random source and fixture tasks; in the test container, spin, use each action once, read the stored tasks.
+
+**M25. Undo.** WHEN I complete, re-date, re-prioritise, note, move or reorder a task anywhere in the app, THE APP SHALL show a toast with Undo, and Undo SHALL put the stored task back exactly as it was.
+- Done looks like: after Undo, the stored copy matches the copy before the change.
+- Check: for each kind of change, compare the stored task's text before the change and after Undo.
+
+**M26. Timeline and NOW.** WHEN I open Today, THE APP SHALL show today's events from my calendars on a timeline with a NOW line, a NOW card for the current event or task, and a day progress bar; in 1.0 the timeline is read-only.
+- Done looks like: the test calendar's events appear at their times; the NOW line and card match the clock.
+- Check: in the test container with a fixture calendar, open Today at a fixed clock; the events, NOW line and card match.
+
 ### Across all phases
 
 **M21. Report a bug.** WHEN I choose "Report a bug", THE APP SHALL open the shared report form (craft-bugreport-web): what happened, what I expected, the app's recent errors, an optional screenshot and, only if I tick it that time, the open area's projects and tasks as JSON; it SHALL show me every file and send the report to the bug File Drop only after I press Send.
@@ -142,7 +162,7 @@ Each Must is checked in the **test container**, a throwaway Nextcloud with the s
 - No full task editor; quick edits only, the Tasks app does the rest.
 - No auto-completing a project when its tasks reach 100%.
 - No adding subtasks under a task; "+ Add task" works at the project's top level only.
-- No search or filters.
+- No search; filters only on Today and the wheel (M23, M24).
 - No data backend on the server; it only serves the page.
 - No native phone app.
 - No moving projects between areas.
