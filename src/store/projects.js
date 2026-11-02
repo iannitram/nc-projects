@@ -1,15 +1,16 @@
 /**
  * The panel's state (P05, P10 and every write feature). Pinia.
  * Writes are optimistic with rollback; a ConflictError reloads the task (rule 3).
- * Stub: state and action names only.
  */
 import { showError, showInfo } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
 import { markRaw, toRaw } from 'vue'
 import { planCompletion } from '../models/completion.js'
+import { dayKey } from '../models/day.js'
 import { placeMoved } from '../models/sortOrder.js'
 import { Task } from '../models/Task.js'
 import { buildTree, isSomeday } from '../models/tree.js'
+import { dropUndoFor, planUndo, popUndo, pushUndo, topUndo } from '../models/undo.js'
 import { candidateLists, pickAreas } from '../services/areas.js'
 import { crashLogWarning } from '../services/crashLog.js' // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, moveTodo, putTodo } from '../services/dav.js'
@@ -235,6 +236,32 @@ function taskFromStored(stored) {
 }
 
 /**
+ * Wrap an action's writes: snapshot before optimistic edits, publish only on success.
+ * Tasks are supplied in first-write order; a MOVE followed by PUT stays one item.
+ *
+ * @param {object} store the projects store
+ * @param {string} label the toast text
+ * @param {Task[]} tasks tasks the action will write
+ * @return {() => void} call only after every write and re-read succeeded
+ */
+function recordChange(store, label, tasks) {
+	const originals = new Map(tasks.filter(Boolean).map((task) => [task.uid, {
+		ics: toRaw(task).toIcs(),
+		url: task.url,
+		calendarUrl: task.calendarUrl,
+	}]))
+	return () => {
+		const items = [...originals].map(([uid, before]) => {
+			const task = store.tasksByUid[uid]
+			return { uid, before, after: { url: task.url, etag: task.etag } }
+		})
+		if (items.length > 0) {
+			store.undoStack = pushUndo(store.undoStack, { label, items })
+		}
+	}
+}
+
+/**
  * Re-read whole lists and replace their tasks in the store, so it matches the server.
  *
  * @param {object} store the projects store
@@ -342,6 +369,7 @@ async function moveAcrossLists(store, moved, targetProject, targetCalendar, toUp
 
 	const placement = toUpdate.find((item) => item.uid === taskUid)
 	const bumped = toUpdate.filter((item) => item.uid !== taskUid)
+	const record = recordChange(store, `Moved: ${moved.summary}`, [...subtasks, moved, ...bumped.map(({ uid }) => store.tasksByUid[uid])])
 	const original = { ics: toRaw(moved).toIcs(), where: { ...toRaw(moved).where } }
 	const sourceCalendar = store.calendarOf(original.where)
 	const oldProject = store.tasksByUid[moved.parentUid]?.summary
@@ -385,6 +413,7 @@ async function moveAcrossLists(store, moved, targetProject, targetCalendar, toUp
 			}
 		}
 		store.rebuildTree()
+		record()
 	} catch (error) {
 		crashLogWarning(error instanceof ConflictError ? 'save conflict' : 'save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 		store.tasksByUid[taskUid] = Task.fromIcs(original.ics, original.where)
@@ -428,6 +457,9 @@ export const useProjectsStore = defineStore('projects', {
 		untaggedParents: [],
 		/** @type {Record<string, import('../models/Task.js').Task>} */
 		tasksByUid: {},
+		/** @type {import('../models/undo.js').UndoEntry[]} */
+		undoStack: [],
+		undoing: false,
 		/** @type {Record<string, string|undefined>} */
 		ctags: {},
 		/** @type {object|null} */
@@ -555,6 +587,70 @@ export const useProjectsStore = defineStore('projects', {
 		},
 	},
 	actions: {
+		/** Restore the newest change with guarded writes; never record an undo. */
+		async undo() {
+			const entry = topUndo(this.undoStack)
+			if (!entry || this.undoing) {
+				return
+			}
+			this.undoing = true
+			let activeUid
+			try {
+				const { steps, conflicts } = planUndo(entry, this.tasksByUid)
+				if (conflicts.length > 0) {
+					const urls = conflicts.map((uid) => this.tasksByUid[uid]?.url || entry.items.find((item) => item.uid === uid).after.url)
+					for (const uid of conflicts) {
+						this.undoStack = dropUndoFor(this.undoStack, uid)
+					}
+					if (!await this.handleConflict(urls)) {
+						showError('Could not undo')
+					}
+					return
+				}
+				for (const step of steps) {
+					activeUid = step.uid
+					const task = toRaw(this.tasksByUid[step.uid])
+					const item = entry.items.find((item) => item.uid === step.uid)
+					let url
+					if (step.op === 'move') {
+						url = await moveTodo(step.url, step.toCalendarUrl, step.etag, this.davSession)
+						task.where = { ...task.where, url, calendarUrl: step.toCalendarUrl }
+					} else {
+						url = step.url
+						const stored = await putTodo(url, step.ics, step.etag ?? task.etag, this.davSession)
+						task.where = { ...task.where, etag: stored.etag }
+					}
+					// Keep progress for a safe retry if a later request fails.
+					item.after = { url: task.url, etag: task.etag }
+					const restored = taskFromStored(await fetchTodo(url, this.davSession))
+					this.tasksByUid[step.uid] = restored
+					item.after = { url: restored.url, etag: restored.etag }
+				}
+				// Another task may have been edited while these requests were pending.
+				this.undoStack = topUndo(this.undoStack) === entry
+					? popUndo(this.undoStack)
+					: this.undoStack.filter((change) => change !== entry)
+				// An earlier change to the same task can now be undone over our own new etag.
+				for (const { uid } of entry.items) {
+					const previous = [...this.undoStack].reverse().flatMap((change) => change.items).find((item) => item.uid === uid)
+					if (previous) {
+						const task = this.tasksByUid[uid]
+						previous.after = { url: task.url, etag: task.etag }
+					}
+				}
+			} catch (error) {
+				if (error instanceof ConflictError) {
+					this.undoStack = dropUndoFor(this.undoStack, activeUid)
+					if (await this.handleConflict(error)) {
+						return
+					}
+				}
+				showError('Could not undo')
+			} finally {
+				this.rebuildTree()
+				this.undoing = false
+			}
+		},
 		/** Read every area list and build the tree (P05). */
 		async load() {
 			this.davSession ??= markRaw(getDavSession())
@@ -613,6 +709,12 @@ export const useProjectsStore = defineStore('projects', {
 					}
 				}
 
+				for (const [uid, previous] of Object.entries(this.tasksByUid)) {
+					const current = tasksByUid[uid]
+					if (!current || current.etag !== previous.etag || current.url !== previous.url) {
+						this.undoStack = dropUndoFor(this.undoStack, uid)
+					}
+				}
 				this.tasksByUid = tasksByUid
 				this.ctags = {
 					...this.ctags,
@@ -795,6 +897,11 @@ export const useProjectsStore = defineStore('projects', {
 			if (urls.length === 0) {
 				return
 			}
+			for (const task of Object.values(this.tasksByUid)) {
+				if (urls.includes(task.url)) {
+					this.undoStack = dropUndoFor(this.undoStack, task.uid)
+				}
+			}
 			return queueConflictReload(async () => {
 				this.markConflictReloaded(await this.reloadTasks(urls, !isArray))
 			})
@@ -911,6 +1018,7 @@ export const useProjectsStore = defineStore('projects', {
 
 			// Optimistic: keep each task's original resource, then apply the new
 			// sort orders and rebuild the tree before the first write is awaited
+			const record = recordChange(this, 'Reordered', toUpdate.map(({ uid }) => this.tasksByUid[uid]))
 			const before = new Map()
 			for (const { uid, sortOrder } of toUpdate) {
 				const task = this.tasksByUid[uid]
@@ -933,6 +1041,7 @@ export const useProjectsStore = defineStore('projects', {
 						landed.add(uid)
 					}
 				}
+				record()
 			} catch (error) {
 				for (const [uid, original] of before) {
 					if (!landed.has(uid)) {
@@ -1050,6 +1159,7 @@ export const useProjectsStore = defineStore('projects', {
 			}
 
 			// Optimistic: keep each task's original resource, then apply the new sort orders and rebuild before the first write is awaited
+			const record = recordChange(this, `Moved: ${moved.summary}`, toUpdate.map(({ uid }) => this.tasksByUid[uid]))
 			const before = new Map()
 			for (const { uid, sortOrder } of toUpdate) {
 				const task = this.tasksByUid[uid]
@@ -1075,6 +1185,7 @@ export const useProjectsStore = defineStore('projects', {
 						landed.add(uid)
 					}
 				}
+				record()
 			} catch (error) {
 				for (const [uid, original] of before) {
 					if (!landed.has(uid)) {
@@ -1127,6 +1238,7 @@ export const useProjectsStore = defineStore('projects', {
 				return
 			}
 
+			const record = recordChange(this, `${done ? 'Completed' : 'Reopened'}: ${this.tasksByUid[uid].summary}`, plan.map((planUid) => this.tasksByUid[planUid]))
 			const before = plan.map((planUid) => {
 				const task = this.tasksByUid[planUid]
 				return { uid: planUid, ics: toRaw(task).toIcs(), where: toRaw(task).where }
@@ -1143,6 +1255,7 @@ export const useProjectsStore = defineStore('projects', {
 					const stored = await putTodo(task.url, task.toIcs(), task.etag)
 					toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
 				}
+				record()
 			} catch (error) {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict(plan.map((planUid) => this.tasksByUid[planUid]?.url).filter(Boolean))
@@ -1180,7 +1293,7 @@ export const useProjectsStore = defineStore('projects', {
 		},
 		/**
 		 * @param {string} uid the task
-		 * @param {{summary?: string, due?: (Date|null), priority?: number, categories?: string[]}} changes quick edits
+		 * @param {{summary?: string, due?: (Date|null), priority?: number, categories?: string[], description?: string}} changes quick edits
 		 */
 		async updateTask(uid, changes) {
 			this.davSession ??= markRaw(getDavSession())
@@ -1188,6 +1301,15 @@ export const useProjectsStore = defineStore('projects', {
 			if (!task || !changes || Object.keys(changes).length === 0) {
 				return
 			}
+
+			const label = 'due' in changes
+				? `Moved to ${changes.due ? dayKey(changes.due) : 'no date'}`
+				: 'priority' in changes
+					? 'Priority'
+					: 'summary' in changes
+						? 'Renamed'
+						: 'description' in changes ? 'Note' : 'Updated'
+			const record = recordChange(this, `${label}: ${task.summary}`, [task])
 
 			// Store the original values for rollback
 			const originalIcs = task.toIcs()
@@ -1211,6 +1333,10 @@ export const useProjectsStore = defineStore('projects', {
 				task.categories = changes.categories
 			}
 
+			if ('description' in changes) {
+				task.description = changes.description
+			}
+
 			// Rebuild the tree with the updated task, preserving collapse state.
 			this.rebuildTree()
 
@@ -1222,6 +1348,7 @@ export const useProjectsStore = defineStore('projects', {
 					...task.where,
 					etag: result.etag,
 				}
+				record()
 			} catch (error) {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict([task.url])
@@ -1285,6 +1412,7 @@ export const useProjectsStore = defineStore('projects', {
 				return
 			}
 
+			const record = recordChange(this, `Made project: ${task.summary}`, [task])
 			const raw = toRaw(task)
 			const before = { uid, ics: raw.toIcs(), where: raw.where }
 
@@ -1294,6 +1422,7 @@ export const useProjectsStore = defineStore('projects', {
 			try {
 				const stored = await putTodo(raw.url, raw.toIcs(), raw.etag)
 				toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
+				record()
 			} catch (error) {
 				if (error instanceof ConflictError) {
 					const reloaded = await this.handleConflict([raw.url])
