@@ -249,6 +249,38 @@ export class Task {
 		return self.where.calendarUrl
 	}
 
+	get description() {
+		void this.revision
+		return toRaw(this).propertyValue('description')
+	}
+
+	set description(value) {
+		const self = toRaw(this)
+		if (value === null || value === '') {
+			self.removeProperties('description')
+			self.touch()
+		} else {
+			self.setValue('description', value)
+		}
+		this.revision++
+	}
+
+	get location() {
+		void this.revision
+		return toRaw(this).propertyValue('location')
+	}
+
+	set location(value) {
+		const self = toRaw(this)
+		if (value === null || value === '') {
+			self.removeProperties('location')
+			self.touch()
+		} else {
+			self.setValue('location', value)
+		}
+		this.revision++
+	}
+
 	propertyValue(name) {
 		void this.revision
 		const self = toRaw(this)
