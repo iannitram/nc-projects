@@ -55,6 +55,7 @@ export function layoutEvents(events, range, nowMin, pxPerMin = PX_PER_MIN) {
 		.filter((e) => !e.allDay && e.end > range.start && e.start < range.end)
 		.map((e) => ({
 			...e,
+			origEnd: e.end,
 			start: Math.max(e.start, range.start),
 			end: Math.min(e.end, range.end),
 		}))
@@ -115,7 +116,7 @@ export function layoutEvents(events, range, nowMin, pxPerMin = PX_PER_MIN) {
 			height: Math.max((event.end - event.start) * pxPerMin - 2, MIN_EVENT_PX),
 			column,
 			columns: 0, // Will be set when cluster closes
-			past: event.end <= nowMin,
+			past: event.origEnd <= nowMin,
 		})
 	}
 
