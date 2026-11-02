@@ -1,6 +1,17 @@
 import { completedKey, dueKey } from './day.js'
 
 /**
+ * Priority rank: 1-9 as given, anything else (none, 0, or out of range) last at 10.
+ *
+ * @param {object} task
+ * @return {number}
+ */
+function rank(task) {
+	const p = task.priority
+	return Number.isInteger(p) && p >= 1 && p <= 9 ? p : 10
+}
+
+/**
  * Select today's tasks: open tasks due today or overdue on the areas,
  * plus those completed today (the day-end rule), grouped by area in area order.
  *
@@ -31,8 +42,8 @@ export function selectToday(tasks, areas, today) {
 		}
 
 		// Compare priorities (1 first, then 2, 3, ..., none last)
-		const priorityA = a.priority ?? 10
-		const priorityB = b.priority ?? 10
+		const priorityA = rank(a)
+		const priorityB = rank(b)
 		if (priorityA !== priorityB) {
 			return priorityA < priorityB ? -1 : 1
 		}
@@ -60,7 +71,7 @@ export function selectToday(tasks, areas, today) {
 			})
 
 			// Count completed tasks in this group
-			const groupDone = areaTasks.filter((task) => completedKey(task) === today).length
+			const groupDone = areaTasks.filter((task) => task.completed).length
 			done.push(groupDone)
 
 			total += areaTasks.length
