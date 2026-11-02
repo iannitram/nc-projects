@@ -1,5 +1,8 @@
 import ICAL from 'ical.js'
 
+// Stops an endless rule. Daily repeats from years back need about a thousand steps to reach today.
+const MAX_OCCURRENCES = 100000
+
 /**
  * Convert stored calendar objects into events for a specific day
  *
@@ -27,7 +30,7 @@ export function eventsForDay(objects, key) {
 		const vtimezones = component.getAllSubcomponents('vtimezone')
 		for (const vtimezone of vtimezones) {
 			const timezone = new ICAL.Timezone(vtimezone)
-			if (!ICAL.TimezoneService.hasTimezone(timezone.tzid)) {
+			if (!ICAL.TimezoneService.has(timezone.tzid)) {
 				ICAL.TimezoneService.register(timezone)
 			}
 		}
@@ -46,17 +49,16 @@ export function eventsForDay(objects, key) {
 			// Handle recurring events
 			const starts = []
 			if (event.isRecurring()) {
+				// Keep every start before the day's end, not only those on the day:
+				// an occurrence that began the day before can still run into this day.
+				// The overlap check below drops the rest.
 				const iterator = event.iterator()
-				let next
-				let count = 0
-				while ((next = iterator.next()) && count < 1000) {
-					if (next.toJSDate().getTime() >= dayEndMs) {
+				for (let count = 0; count < MAX_OCCURRENCES; count++) {
+					const next = iterator.next()
+					if (!next || next.toJSDate().getTime() >= dayEndMs) {
 						break
 					}
-					if (next.toJSDate().getTime() >= dayStartMs) {
-						starts.push(next)
-					}
-					count++
+					starts.push(next)
 				}
 			} else {
 				starts.push(event.startDate)
@@ -102,7 +104,10 @@ export function eventsForDay(objects, key) {
 		if (a.start !== b.start) {
 			return a.start - b.start
 		}
-		return a.title.localeCompare(b.title)
+		if (a.title < b.title) {
+			return -1
+		}
+		return a.title > b.title ? 1 : 0
 	})
 
 	return events
