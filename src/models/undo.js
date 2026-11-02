@@ -1,4 +1,21 @@
 /**
+ * One stored copy of a task around a change
+ *
+ * @typedef {object} UndoItem
+ * @property {string} uid - The task uid
+ * @property {{ics: string, url: string, calendarUrl: string}} before - The stored copy before the write
+ * @property {{url: string, etag: string}} after - Where the task is stored after the write, with its new etag
+ */
+
+/**
+ * One undoable change: a label and the tasks it wrote
+ *
+ * @typedef {object} UndoEntry
+ * @property {string} label - What the change was
+ * @property {UndoItem[]} items - The tasks the change wrote
+ */
+
+/**
  * Maximum number of undo entries to keep
  *
  * @type {number}
