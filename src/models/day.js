@@ -1,3 +1,5 @@
+import ICAL from 'ical.js'
+
 /**
  * Get the local YYYY-MM-DD key for a date or ICAL.Time
  *
@@ -84,4 +86,59 @@ export function dueWindow(task, today) {
 	}
 
 	return 'later'
+}
+
+/**
+ * Get the rescheduled date key for a task
+ *
+ * @param {string} kind - 'tomorrow', 'next-week' or YYYY-MM-DD
+ * @param {string} today - YYYY-MM-DD
+ * @return {string}
+ */
+export function rescheduleKey(kind, today) {
+	if (kind === 'tomorrow') {
+		return addDays(today, 1)
+	}
+
+	if (kind === 'next-week') {
+		const [year, month, day] = today.split('-').map(Number)
+		const date = new Date(year, month - 1, day)
+		const weekday = date.getDay()
+		return addDays(today, (8 - weekday) % 7 || 7)
+	}
+
+	if (/^\d{4}-\d{2}-\d{2}$/.test(kind)) {
+		return kind
+	}
+
+	throw new TypeError(`Invalid reschedule key: ${kind}`)
+}
+
+/**
+ * Get a new due date on a specific day
+ *
+ * @param {ICAL.Time|null} due - The original due date
+ * @param {string} key - YYYY-MM-DD
+ * @return {ICAL.Time}
+ */
+export function dueOnDay(due, key) {
+	const [year, month, day] = key.split('-').map(Number)
+
+	if (!due || due.isDate) {
+		return ICAL.Time.fromData({ year, month, day, isDate: true })
+	}
+
+	if (due.zone === ICAL.Timezone.utcTimezone) {
+		const local = due.toJSDate()
+		const moved = new Date(year, month - 1, day, local.getHours(), local.getMinutes(), local.getSeconds())
+		const time = ICAL.Time.fromJSDate(moved, true)
+		time.zone = ICAL.Timezone.utcTimezone
+		return time
+	}
+
+	const time = due.clone()
+	time.year = year
+	time.month = month
+	time.day = day
+	return time
 }
