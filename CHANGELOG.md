@@ -2,6 +2,7 @@
 
 Newest first. One line per change of stage, release or decision that the next session needs.
 
+- 2026-11-02 Code map refreshed to match main: AppNav, TopBar, StatusLine, AreaSettings, GhostInput, DoneStrip and the settings service/route marked present; areas are the user's chosen lists; Phase 4 pure models and specs marked present
 - 2026-10-31 Phase 4 carried into the roadmap (P18-P23), code map (planned modules: day, today, wheel, random, related, note, undo, events, timeline, nowCard, useClock, a day store, the Today, Wheel, Timeline and Undo views) and glossary; issues #152-#174 filed, 13 Easy with locked tests checked red on main and green on a reference; #174 extends the design pass to the Phase 4 views.
 - 2026-10-31 Spec re-approved by the owner: Phase 4 (M23 Today, M24 the wheel, M25 Undo, M26 Timeline and NOW) folds the task spinner into this app; the Won't on filters narrowed. task-spinner's idea card moved to docs/ideas/task-spinner.md and that repo is archived. Eleanor's local Day Board is retired once Phase 4 passes.
 - 2026-10-26 End-of-night sweep: code map and roadmap match main after 10 merged tickets (#2, #5-#12, #15); P02-P04 merged, P05 in PR #43; #40 resized to Medium (needs the private craft-bugreport-web package).
