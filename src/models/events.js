@@ -2,6 +2,7 @@ import ICAL from 'ical.js'
 
 /**
  * Convert stored calendar objects into events for a specific day
+ *
  * @param {Array<{ics: string, calendarUrl: string}>} objects - The calendar objects to process
  * @param {string} key - The date string in YYYY-MM-DD format
  * @return {Array<{uid: string, title: string, start: number, end: number, allDay: boolean, calendarUrl: string}>} Events for the day
@@ -21,7 +22,7 @@ export function eventsForDay(objects, key) {
 
 	for (const object of objects) {
 		const component = ICAL.Component.fromString(object.ics)
-		
+
 		// Register timezones if present
 		const vtimezones = component.getAllSubcomponents('vtimezone')
 		for (const vtimezone of vtimezones) {
