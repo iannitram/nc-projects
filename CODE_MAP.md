@@ -79,8 +79,8 @@ Everything in this table is **planned** (spec re-approved 2026-10-31; issues #15
 
 | Path | Job | IDs |
 |---|---|---|
-| `src/models/Task.js` (add) | **Planned** (#153): `description` and `location` getters and setters (null or '' removes the property), round-tripping like every other field | P19, P21 |
-| `src/models/note.js` | **Planned** (#153): `appendNote(description, note, day)`, the tick note as a `- YYYY-MM-DD text` line at the end of DESCRIPTION (the shape the day page I use now writes) | P19, P21 |
+| `src/models/Task.js` (add) | **Present**: `description` and `location` getters and setters (null or '' removes the property), round-tripping like every other field | P19, P21 |
+| `src/models/note.js` | **Present**: `appendNote(description, note, day)`, the tick note as a `- YYYY-MM-DD text` line at the end of DESCRIPTION (the shape the day page I use now writes) | P19, P21 |
 | `src/models/day.js` | **Planned** (#154, #155): `dayKey`, `addDays`, `dueKey`, `completedKey`, `dueWindow` (overdue, today, week = the next six days, later, none); `rescheduleKey` (tomorrow, next week = next Monday, a picked day) and `dueOnDay` (a new DUE on that day: date-only stays date-only, a date-time keeps its clock time) | P19, P21 |
 | `src/models/today.js` | **Planned** (#156): `selectToday(tasks, areas, today)`: open tasks due today or overdue on the areas, plus those completed today (the day-end rule: they stay struck through until the date changes), grouped by area in area order, ordered by due day, priority, title; `{groups, done, total}` for the Done-today count and the day progress bar | P19, P22 |
 | `src/models/wheel.js` | **Planned** (#164): `wheelWeight` (priority 1-9 gives 10-2, none 5, overdue x2) and `wheelPool(tasks, filters, today, leftOut)`: open non-project tasks passing the priority cutoff, the areas and the due windows, with the counts each filter left out | P21 |
