@@ -460,6 +460,8 @@ export const useProjectsStore = defineStore('projects', {
 		/** @type {import('../models/undo.js').UndoEntry[]} */
 		undoStack: [],
 		undoing: false,
+		/** The last undo's failure; the undo toast keeps it until dismissed (issue 162). @type {string|null} */
+		undoError: null,
 		/** @type {Record<string, string|undefined>} */
 		ctags: {},
 		/** @type {object|null} */
@@ -603,6 +605,7 @@ export const useProjectsStore = defineStore('projects', {
 						this.undoStack = dropUndoFor(this.undoStack, uid)
 					}
 					if (!await this.handleConflict(urls)) {
+						this.undoError = 'Could not undo'
 						showError('Could not undo')
 					}
 					return
@@ -630,6 +633,8 @@ export const useProjectsStore = defineStore('projects', {
 				this.undoStack = topUndo(this.undoStack) === entry
 					? popUndo(this.undoStack)
 					: this.undoStack.filter((change) => change !== entry)
+				// The failure this retry fixed is no longer true.
+				this.undoError = null
 				// An earlier change to the same task can now be undone over our own new etag.
 				for (const { uid } of entry.items) {
 					const previous = [...this.undoStack].reverse().flatMap((change) => change.items).find((item) => item.uid === uid)
@@ -645,11 +650,17 @@ export const useProjectsStore = defineStore('projects', {
 						return
 					}
 				}
+				this.undoError = 'Could not undo'
 				showError('Could not undo')
 			} finally {
 				this.rebuildTree()
 				this.undoing = false
 			}
+		},
+		/** Forget every undoable change and any undo error (the undo toast's dismiss). */
+		clearUndo() {
+			this.undoStack = []
+			this.undoError = null
 		},
 		/** Read every area list and build the tree (P05). */
 		async load() {

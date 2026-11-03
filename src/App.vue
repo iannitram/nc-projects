@@ -13,6 +13,7 @@ import AreaSettings from './components/AreaSettings.vue'
 import NeedsFilingTray from './components/NeedsFilingTray.vue'
 import StatusLine from './components/StatusLine.vue'
 import TopBar from './components/TopBar.vue'
+import UndoToast from './components/UndoToast.vue'
 import { longPressHintVisible } from './composables/useDrag.js'
 import { useRefresh } from './composables/useRefresh.js'
 import { useProjectsStore } from './store/projects.js'
@@ -181,6 +182,7 @@ onMounted(() => {
 				<StatusLine />
 			</div>
 			<AreaSettings v-if="store" />
+			<UndoToast />
 		</NcAppContent>
 	</NcContent>
 </template>
