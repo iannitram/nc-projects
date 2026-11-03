@@ -122,6 +122,36 @@ describe('Task', () => {
 		expect(task.vtodo.hasProperty('completed')).toBe(false)
 		expect(task.vtodo.hasProperty('percent-complete')).toBe(false)
 	})
+	it('keeps the TZID parameter when a date-time due in a named zone is set', async () => {
+		const ics = [
+			'BEGIN:VCALENDAR',
+			'VERSION:2.0',
+			'PRODID:-//test//EN',
+			'BEGIN:VTIMEZONE',
+			'TZID:Test/Fixed',
+			'BEGIN:STANDARD',
+			'DTSTART:19700101T000000',
+			'TZOFFSETFROM:-0500',
+			'TZOFFSETTO:-0500',
+			'END:STANDARD',
+			'END:VTIMEZONE',
+			'BEGIN:VTODO',
+			'UID:tzid-due',
+			'SUMMARY:Zoned',
+			'DUE;TZID=Test/Fixed:20261030T144500',
+			'END:VTODO',
+			'END:VCALENDAR',
+		].join('\r\n')
+		const task = Task.fromIcs(ics, where)
+		const moved = task.due.clone()
+		moved.day = 3
+		moved.month = 11
+		task.due = moved
+		const due = task.vtodo.getFirstProperty('due')
+		expect(due.getParameter('tzid')).toBe('Test/Fixed')
+		expect(due.getFirstValue().toString()).toBe('2026-11-03T14:45:00')
+		expect(task.toIcs()).toContain('DUE;TZID=Test/Fixed:20261103T144500')
+	})
 	it('creates an open VTODO with requested fields and no sort order', () => {
 		const task = Task.create({ summary: 'New project', calendarUrl: where.calendarUrl, parentUid: 'parent-1', categories: ['project'] })
 		const component = ICAL.Component.fromString(task.toIcs())

@@ -141,8 +141,16 @@ export class Task {
 		const self = toRaw(this)
 		if (value === null) {
 			self.removeProperties('due')
+		} else if (value instanceof Date) {
+			self.setValue('due', utcTime(value))
 		} else {
-			self.setValue('due', value instanceof Date ? utcTime(value) : value)
+			// A date-time in a named zone keeps its TZID parameter; ical.js does not add it.
+			self.removeProperties('due')
+			const property = self.vtodo.addPropertyWithValue('due', value)
+			const zone = value.zone
+			if (!value.isDate && zone && zone !== ICAL.Timezone.utcTimezone && zone !== ICAL.Timezone.localTimezone && zone.tzid) {
+				property.setParameter('tzid', zone.tzid)
+			}
 		}
 		self.touch()
 		this.revision++

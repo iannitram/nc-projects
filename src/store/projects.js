@@ -6,7 +6,8 @@ import { showError, showInfo } from '@nextcloud/dialogs'
 import { defineStore } from 'pinia'
 import { markRaw, toRaw } from 'vue'
 import { planCompletion } from '../models/completion.js'
-import { dayKey } from '../models/day.js'
+import { dayKey, dueOnDay, rescheduleKey } from '../models/day.js'
+import { appendNote } from '../models/note.js'
 import { placeMoved } from '../models/sortOrder.js'
 import { Task } from '../models/Task.js'
 import { buildTree, isSomeday } from '../models/tree.js'
@@ -258,6 +259,65 @@ function recordChange(store, label, tasks) {
 		if (items.length > 0) {
 			store.undoStack = pushUndo(store.undoStack, { label, items })
 		}
+	}
+}
+
+/**
+ * Check off or reopen a task with Tasks' cascade (planCompletion). A note, when given, is appended
+ * to the task's own DESCRIPTION in the same PUT as its completion; a blank note changes nothing.
+ *
+ * @param {object} store the projects store
+ * @param {string} uid the task
+ * @param {boolean} done true to check off, false to reopen
+ * @param {{text: string, day: string}} [note] the note and the day it is dated
+ */
+async function writeCompletion(store, uid, done, note) {
+	const plan = planCompletion(store.tasksByUid, uid, done)
+	if (plan.length === 0) {
+		return
+	}
+
+	const record = recordChange(store, `${done ? 'Completed' : 'Reopened'}: ${store.tasksByUid[uid].summary}`, plan.map((planUid) => store.tasksByUid[planUid]))
+	const before = plan.map((planUid) => {
+		const task = store.tasksByUid[planUid]
+		return { uid: planUid, ics: toRaw(task).toIcs(), where: toRaw(task).where }
+	})
+
+	for (const planUid of plan) {
+		store.tasksByUid[planUid].completed = done
+	}
+	if (note) {
+		const task = store.tasksByUid[uid]
+		const description = appendNote(task.description, note.text, note.day)
+		if (description !== task.description) {
+			task.description = description
+		}
+	}
+	store.rebuildTree()
+
+	try {
+		for (const planUid of plan) {
+			const task = store.tasksByUid[planUid]
+			const stored = await putTodo(task.url, task.toIcs(), task.etag)
+			toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
+		}
+		record()
+	} catch (error) {
+		if (error instanceof ConflictError) {
+			const reloaded = await store.handleConflict(plan.map((planUid) => store.tasksByUid[planUid]?.url).filter(Boolean))
+			if (!reloaded) {
+				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+				showError('Could not save the change')
+			}
+			return
+		}
+
+		for (const saved of before) {
+			store.tasksByUid[saved.uid] = Task.fromIcs(saved.ics, saved.where)
+		}
+		store.rebuildTree()
+		crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+		showError('Could not save the change')
 	}
 }
 
@@ -1233,45 +1293,61 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {boolean} done check off or reopen, with Tasks' cascades
 		 */
 		async setCompleted(uid, done) {
-			const plan = planCompletion(this.tasksByUid, uid, done)
-			if (plan.length === 0) {
+			await writeCompletion(this, uid, done)
+		},
+		/**
+		 * Check off a task with Tasks' cascade, and append the note to the task's own DESCRIPTION in the same writes.
+		 * A blank note changes no DESCRIPTION.
+		 *
+		 * @param {string} uid the task
+		 * @param {string} note the note to append, or blank
+		 * @param {string} today the day the note is dated, YYYY-MM-DD
+		 */
+		async completeWithNote(uid, note, today) {
+			await writeCompletion(this, uid, true, { text: note, day: today })
+		},
+		/**
+		 * Move a task's DUE to tomorrow, next week or a date, keeping its time and zone.
+		 *
+		 * @param {string} uid the task
+		 * @param {string} kind 'tomorrow', 'next-week' or YYYY-MM-DD
+		 * @param {string} today the current day, YYYY-MM-DD
+		 */
+		async reschedule(uid, kind, today) {
+			this.davSession ??= markRaw(getDavSession())
+			const task = this.tasksByUid[uid]
+			if (!task) {
 				return
 			}
 
-			const record = recordChange(this, `${done ? 'Completed' : 'Reopened'}: ${this.tasksByUid[uid].summary}`, plan.map((planUid) => this.tasksByUid[planUid]))
-			const before = plan.map((planUid) => {
-				const task = this.tasksByUid[planUid]
-				return { uid: planUid, ics: toRaw(task).toIcs(), where: toRaw(task).where }
-			})
+			const key = rescheduleKey(kind, today)
+			const record = recordChange(this, `Moved to ${key}: ${task.summary}`, [task])
+			const originalIcs = task.toIcs()
+			const originalWhere = { ...task.where }
 
-			for (const planUid of plan) {
-				this.tasksByUid[planUid].completed = done
-			}
+			task.due = dueOnDay(task.due, key)
 			this.rebuildTree()
 
 			try {
-				for (const planUid of plan) {
-					const task = this.tasksByUid[planUid]
-					const stored = await putTodo(task.url, task.toIcs(), task.etag)
-					toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
+				const result = await putTodo(task.url, task.toIcs(), task.etag)
+				task.where = {
+					...task.where,
+					etag: result.etag,
 				}
 				record()
 			} catch (error) {
 				if (error instanceof ConflictError) {
-					const reloaded = await this.handleConflict(plan.map((planUid) => this.tasksByUid[planUid]?.url).filter(Boolean))
+					const reloaded = await this.handleConflict([task.url])
 					if (!reloaded) {
 						crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
 						showError('Could not save the change')
 					}
-					return
+				} else {
+					this.tasksByUid[uid] = Task.fromIcs(originalIcs, originalWhere)
+					this.rebuildTree()
+					crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
+					showError('Could not save the change')
 				}
-
-				for (const saved of before) {
-					this.tasksByUid[saved.uid] = Task.fromIcs(saved.ics, saved.where)
-				}
-				this.rebuildTree()
-				crashLogWarning('save failed') // TEMPORARY: remove after the crash-rate review (owner, 2026-10-28)
-				showError('Could not save the change')
 			}
 		},
 		/**
