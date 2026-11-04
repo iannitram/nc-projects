@@ -1,6 +1,6 @@
 import ICAL from 'ical.js'
 
-// Stops an endless rule. Daily repeats from years back need about a thousand steps to reach today.
+// Stops an endless rule. Simple rules jump close to the window first (fastForwardStart); rules with BY parts or COUNT still walk from their first start.
 const MAX_OCCURRENCES = 100000
 
 const DAY_MS = 24 * 60 * 60 * 1000
