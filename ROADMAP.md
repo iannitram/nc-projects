@@ -1,5 +1,27 @@
 # Roadmap
 
+Updated: 2026-11-11
+
+features:
+- foundation: App skeleton, build, CI and the test container with its fixtures (P00, P01, P18)
+- areas: Area discovery and the per-user choice of which lists are areas (P02)
+- model: Task model and the tree builder: areas, projects, task trees (P03, P04)
+- panel: Panel view: project cards, task trees, progress, status badges and the Done strip (P05, P06)
+- add: Add a task under a project and a new project per area (P07, P14)
+- reorder: Drag to reorder tasks in a project and projects in an area (P08, P09)
+- refresh: Refresh and conflict safety (P10)
+- phone: Phone layout and long-press to drag (P11)
+- move: Drag a task onto another project, across lists too (P12)
+- edit: Quick inline edits: check off, rename, due date, priority (P13)
+- filing: Needs filing tray (P15)
+- bug-report: Report a bug (P16, M21)
+- updates: Updates from the admin panel (P17, M22)
+- today: Today: tasks due today and overdue, done with a note, reschedule (P19, M23)
+- undo: Undo for every change (P20, M25)
+- wheel: The wheel (P21, M24)
+- timeline: Timeline and NOW (P22, M26)
+- design: Design pass, the last stage before 1.0 (P23)
+
 Goal: a project manager over Nextcloud Tasks, built in three phases (the owner, 2026-10-23), plus a fourth, Today and the wheel, added when the task spinner was folded in (the owner, 2026-10-31). **1.0 is all four phases** ([SPEC.md](SPEC.md), ADR 0014). Phase 1 is the core ask and should be usable day to day on its own, so it can be dogfooded before 1.0.
 
 **How this file works**
