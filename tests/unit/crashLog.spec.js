@@ -126,6 +126,66 @@ describe('each handler reaches the POST once', () => {
 	})
 })
 
+describe('null error events', () => {
+	it('logs the message of an error event whose error is null', () => {
+		installCrashLog(ON)
+
+		window.dispatchEvent(new ErrorEvent('error', { message: 'Script error.', error: null, cancelable: true }))
+		vi.advanceTimersByTime(2000)
+
+		expect(sentEvents()).toHaveLength(1)
+		expect(sentEvents()[0]).toMatchObject({ level: 'error', kind: 'error', message: 'Script error.' })
+	})
+
+	it('logs the message when error is a non-object value', () => {
+		installCrashLog(ON)
+
+		window.dispatchEvent(new ErrorEvent('error', { message: 'Script error.', error: false, cancelable: true }))
+		vi.advanceTimersByTime(2000)
+
+		expect(sentEvents()).toHaveLength(1)
+		expect(sentEvents()[0]).toMatchObject({ level: 'error', kind: 'error', message: 'Script error.' })
+	})
+
+	it('drops the ResizeObserver loop notice', () => {
+		installCrashLog(ON)
+
+		window.dispatchEvent(new ErrorEvent('error', {
+			message: 'ResizeObserver loop completed with undelivered notifications.',
+			error: null,
+			cancelable: true,
+		}))
+		vi.advanceTimersByTime(2000)
+
+		expect(axios.post).not.toHaveBeenCalled()
+		expect(sentEvents()).toHaveLength(0)
+	})
+
+	it('drops a ResizeObserver notice even when the browser supplies an Error object', () => {
+		installCrashLog(ON)
+
+		window.dispatchEvent(new ErrorEvent('error', {
+			message: 'ResizeObserver loop completed with undelivered notifications.',
+			error: new Error('observer loop'),
+			cancelable: true,
+		}))
+		vi.advanceTimersByTime(2000)
+
+		expect(axios.post).not.toHaveBeenCalled()
+		expect(sentEvents()).toHaveLength(0)
+	})
+
+	it('still logs a real Error', () => {
+		installCrashLog(ON)
+
+		window.dispatchEvent(new ErrorEvent('error', { message: 'x', error: new TypeError('boom'), cancelable: true }))
+		vi.advanceTimersByTime(2000)
+
+		expect(sentEvents()).toHaveLength(1)
+		expect(sentEvents()[0]).toMatchObject({ level: 'error', kind: 'error', message: 'TypeError: boom' })
+	})
+})
+
 describe('privacy: no user content in any POST body', () => {
 	it('sends none of the canaries from the page, the messages or the stacks', () => {
 		installCrashLog(ON)
