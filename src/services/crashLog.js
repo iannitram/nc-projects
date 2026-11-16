@@ -117,14 +117,14 @@ export function installCrashLog(config = {}) {
 	}
 	const listeners = [
 		['error', (event) => {
+			if (typeof event.message === 'string' && event.message.startsWith('ResizeObserver loop')) {
+				return
+			}
 			if (event.error !== null && typeof event.error === 'object') {
 				capture('error', 'error', () => describe(event.error))
 				return
 			}
 			if (typeof event.message === 'string' && event.message !== '') {
-				if (event.message.startsWith('ResizeObserver loop')) {
-					return
-				}
 				capture('error', 'error', () => ({ message: sanitizeText(event.message), stack: '' }))
 				return
 			}
