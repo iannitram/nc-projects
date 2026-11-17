@@ -1,8 +1,11 @@
 <script setup>
 import { NcTextField } from '@nextcloud/vue'
+import Sortable, { VuedraggableNext as Draggable } from 'sortablejs-vue3'
 import { ref } from 'vue'
 import DoneStrip from './DoneStrip.vue'
 import ProjectCard from './ProjectCard.vue'
+import { DRAG_OPTIONS } from '../composables/useDrag.js'
+import { isSomeday } from '../models/tree.js'
 import { useProjectsStore } from '../store/projects.js'
 
 defineProps({
@@ -14,6 +17,10 @@ const store = useProjectsStore()
 const newProject = ref('')
 const creating = ref(false)
 
+/**
+ *
+ * @param area
+ */
 async function createProject(area) {
 	const summary = newProject.value.trim()
 	if (!summary || creating.value) {
@@ -30,6 +37,9 @@ async function createProject(area) {
 	}
 }
 
+/**
+ *
+ */
 function clearProject() {
 	newProject.value = ''
 }
@@ -42,10 +52,34 @@ function clearProject() {
 			{{ area.name }}
 		</h3>
 		<div class="cc-area-section__projects">
-			<ProjectCard
-				v-for="project in area.projects"
-				:key="project.task?.uid || project.task?.summary"
-				:project="project" />
+			<Draggable
+				v-model="area.projects"
+				:options="DRAG_OPTIONS"
+				itemKey="task.uid"
+				tag="div"
+				class="sortable-list"
+				handle=".drag-handle"
+				@end="() => {
+					// When a project is dropped, reorder it in the store
+					const uids = area.projects.filter(p => !isSomeday(p.task)).map(p => p.task.uid)
+					if (uids.length < 2) return
+
+					// Find where each moved item went and update order accordingly
+					for (let i = 0; i < uids.length; i++) {
+						const uid = uids[i]
+						const projectIndex = area.projects.findIndex(p => p.task.uid === uid)
+						if (projectIndex !== -1 && projectIndex !== i) {
+							store.reorder(null, area.name, uid, i)
+							break
+						}
+					}
+				}">
+				<template #item="{element}">
+					<ProjectCard
+						:project="element"
+						class="sortable-item" />
+				</template>
+			</Draggable>
 		</div>
 		<DoneStrip :projects="area.done || []" />
 		<NcTextField
@@ -72,5 +106,13 @@ function clearProject() {
 	display: flex;
 	flex-direction: column;
 	gap: calc(var(--default-grid-baseline, 4px) * 3);
+}
+
+.sortable-list {
+	width: 100%;
+}
+
+.sortable-item {
+	width: 100%;
 }
 </style>

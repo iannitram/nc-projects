@@ -15,6 +15,17 @@ import { pickAreas } from '../services/areas.js'
 import { ConflictError, createTodo, fetchTodo, fetchTodos, getDavSession, listTaskCalendars, putTodo } from '../services/dav.js'
 
 /**
+ *
+ * @param task
+ */
+function isSomeday(task) {
+	if (Array.isArray(task.categories)) {
+		return task.categories.some((cat) => typeof cat === 'string' && cat.toLowerCase() === 'someday')
+	}
+	return false
+}
+
+/**
  * Depth-first search of a tree of task nodes for the node whose task has a uid.
  *
  * @param {import('../models/tree.js').TaskNode[]} nodes the nodes to search, with their children
@@ -178,9 +189,105 @@ export const useProjectsStore = defineStore('projects', {
 		 * @param {number} newIndex its index after the drop
 		 */
 		async reorder(parentUid, areaName, movedUid, newIndex) {
-			// The projects-in-an-area case (parentUid null) is another issue
 			if (parentUid === null) {
-				return notImplemented('reorder', parentUid, areaName, movedUid, newIndex)
+				// Handle projects-in-an-area reordering
+				const area = this.areas.find((candidate) => candidate.name === areaName)
+				if (!area) {
+					return
+				}
+
+				// Get the open projects in display order (excluding someday ones which are last)
+				const siblings = area.projects.filter((project) => !isSomeday(project.task)).map((project) => project.task)
+
+				// If the moved task is not among the children, return without doing anything
+				if (!siblings.some((task) => task.uid === movedUid)) {
+					return
+				}
+
+				// Prepare the siblings data for placeMoved function
+				const siblingsForPlaceMoved = siblings.map((task) => ({
+					uid: task.uid,
+					sortOrder: task.sortOrder,
+					created: task.created,
+				}))
+
+				// Get the tasks that need to be updated
+				const toUpdate = placeMoved(siblingsForPlaceMoved, movedUid, newIndex)
+
+				// If no tasks to update (unknown moved uid), return early
+				if (toUpdate.length === 0) {
+					return
+				}
+
+				const rebuild = () => {
+					const tree = buildTree(this.areas.map((area) => ({
+						name: area.name,
+						calendar: { url: area.calendarUrl },
+					})), Object.values(this.tasksByUid))
+					this.areas = tree.areas
+					this.orphans = tree.orphans
+					this.untaggedParents = tree.untaggedParents
+				}
+
+				// Optimistic: keep each task's original resource, then apply the new
+				// sort orders and rebuild the tree before the first write is awaited
+				const before = new Map()
+				for (const { uid, sortOrder } of toUpdate) {
+					const task = this.tasksByUid[uid]
+					if (task) {
+						before.set(uid, { ics: toRaw(task).toIcs(), where: toRaw(task).where })
+						toRaw(task).sortOrder = sortOrder
+					}
+				}
+				rebuild()
+
+				// A landed write keeps its new sort order and new etag; only the failed
+				// write and the ones not yet sent are rolled back
+				const landed = new Set()
+				try {
+					for (const { uid } of toUpdate) {
+						const task = this.tasksByUid[uid]
+						if (task) {
+							const stored = await putTodo(task.url, task.toIcs(), task.etag)
+							toRaw(task).where = { ...toRaw(task).where, etag: stored.etag }
+							landed.add(uid)
+						}
+					}
+				} catch (error) {
+					// Handle ConflictError differently: reload every task of the change
+					if (error instanceof ConflictError) {
+						try {
+							for (const { uid } of toUpdate) {
+								const task = this.tasksByUid[uid]
+								if (task) {
+									const stored = await fetchTodo(task.url)
+									const updatedTask = Task.fromIcs(stored.ics, {
+										url: stored.url,
+										etag: stored.etag,
+										calendarUrl: stored.calendarUrl,
+									})
+									this.tasksByUid[uid] = updatedTask
+								}
+							}
+
+							rebuild()
+							showInfo('Someone else changed this; reloaded')
+						} catch {
+							// If reload fails, show error
+							showError('Could not save the new order')
+						}
+						return
+					}
+
+					for (const [uid, original] of before) {
+						if (!landed.has(uid)) {
+							this.tasksByUid[uid] = Task.fromIcs(original.ics, original.where)
+						}
+					}
+					rebuild()
+					showError('Could not save the new order')
+				}
+				return
 			}
 
 			// Find the parent node at any depth of the tree
