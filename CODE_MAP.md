@@ -1,6 +1,6 @@
 # Code map
 
-Describes commit: f7e8266 (2026-11-02)
+Describes commit: ccddafb (2026-11-18); `UndoToast.vue` and `useClock.js` moved to present on 2026-11-18
 
 **Skeleton in place (2026-10-26), data layer and the panel merged since.** Every file below exists except those marked planned. The app shell, build files, models, `areas.js`, `dav.js` (with `moveTodo`), the panel (`App.vue`, `AppNav`, `TopBar`, `StatusLine`, `AreaSection`, `ProjectCard`, `TaskTree`, `TaskRow`, `AddTaskInput`, `DoneStrip`, the Needs filing page and the area settings dialog) and the store actions for loading, refreshing, adding, ordering (tasks and projects), completion, quick edits, project creation and `moveToProject` are **present**. Phase 4's pure models and undo store are present; its views, Today actions and the calendar read are not. When a file's code lands, fix its row here in the same PR: what a file actually does wins over this map. Feature IDs are from [ROADMAP.md](ROADMAP.md). Phase 4 (Today and the wheel, added to the spec 2026-10-31) is partly built (the pure models, shown **Present** below): see [Today and the wheel](#today-and-the-wheel-phase-4).
 
@@ -104,7 +104,7 @@ This table is Phase 4 (spec re-approved 2026-10-31; issues #152-#174). The pure 
 | `src/components/WheelView.vue` | **Planned** (#167): the wheel: filters (priority cutoff, areas, due windows; remembered in this browser like show-done, ADR 0019), the SVG wheel, spin (pick first, then animate to it), the "N on the wheel, left out: ..." line | P21 |
 | `src/components/WheelResult.vue` | **Planned** (#168): the picked task: Done (with a note), Reschedule (tomorrow, next week, a date), Open in Tasks, Spin again, Others from this room; Done and Reschedule take it off the wheel for the session | P21 |
 | `src/components/TimelinePane.vue` | **Planned** (#173): hours, events, NOW line, NOW card, day progress bar; read-only | P22 |
-| `src/components/UndoToast.vue` | **Planned** (#162): one toast at the bottom of every view: the newest change, Undo, dismiss; hides after 10 s unless hovered or focused; an undo error stays until dismissed | P20 |
+| `src/components/UndoToast.vue` | **Present** (#162): one toast at the bottom of every view: the newest change, Undo, dismiss; hides after 10 s unless hovered or focused; an undo error stays until dismissed | P20 |
 | `src/components/AppNav.vue`, `src/App.vue` (add) | **Planned** (#163, #167): Today and Wheel entries above the areas; `store.view` gains `'today'` and `'wheel'` | P19, P21 |
 | `test-env/seed.py` (add) | **Planned** (#152): Phase 4 fixtures, dated relative to the day they are seeded: tasks due today, overdue, this week, later and undated, with priorities and `LOCATION`; one completed today; a `Fixture events` calendar with overlapping, all-day, repeating and cancelled events today | P18 |
 | `tests/unit/{Task.descriptionLocation,day,day.reschedule,today,useClock,undo.stack,undo.plan,wheel,random,related,events,timeline,nowCard}.spec.js` | **Present** for all but `useClock.spec.js` (planned, #157): the locked tests, each pasted in its Easy issue; a satellite commits the file before the code (R28). Also `day.reschedule.tzid.spec.js`, `day.review.spec.js`, `events-review.spec.js`, `undo.review.spec.js` | P19-P22 |
@@ -145,7 +145,8 @@ This table is Phase 4 (spec re-approved 2026-10-31; issues #152-#174). The pure 
 | `scripts/fetch-tasks-ref.sh` | Shallow-clone Nextcloud Tasks (default v0.18.1) into git-ignored `reference/tasks` for reading |
 | `scripts/dav-get.sh` | Print one stored task's raw iCalendar from the **test** container (CalDAV GET), for the spec's "read the stored task" checks |
 | `scripts/check-dav-real.mjs` | **Real-library check (#34):** against the test container it proves `fetchTodo`'s relative-path `find()`, `createTodo`'s `createObject(name, headers, data)`, and a stale-etag write; the library files every HTTP error as status -1, so `dav.js` re-reads the etag to throw `ConflictError` |
-| `test-env/` | The test container: `compose.yaml`, `setup.sh`, `reset.sh`, `seed.py` (fixture lists and tasks) |
+| `test-env/` | The test container: `compose.yaml`, `setup.sh`, `reset.sh`, `recover.sh` (recover after a failed deploy), `seed.py` (fixture lists and tasks), `README.md` (the recipe) |
+| `tools/package.mjs` (planned, #196) | `npm run package`: builds `build/cc_projects-<version>.tar.gz`; refuses on a version mismatch, a dirty tree or a stale build. Taken from nc-outliner `tools/package.mjs`; craft-nc-appstore's `build-app.yml` (craft-nc-appstore#23) calls it for the signed release (#42) | M22 |
 | `scripts/deploy-test.sh` | Build and copy into the **test** container, `occ app:enable cc_projects` there, then bump the theming cachebuster (never the app version) |
 | `.gitignore` | `node_modules/`, `vendor/`, `js/` and `css/` build output, `reference/` |
 
@@ -173,7 +174,7 @@ Calls go one way, top to bottom. Only `services/dav.js` talks to the server; the
 | `models/events.js` | `ical.js` | `store/day.js` |
 | `models/timeline.js`, `models/nowCard.js` | nothing | `TimelinePane` |
 | `store/day.js` (planned) | `services/dav.js`, `models/events.js` | `TimelinePane`, `TodayView` |
-| `composables/useClock.js` (planned) | `models/day.js` | `TodayView`, `WheelView`, `TimelinePane` |
+| `composables/useClock.js` | `models/day.js` | `TodayView`, `WheelView`, `TimelinePane` |
 
 ## Mac, PC and Linux
 
