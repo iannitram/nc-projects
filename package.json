@@ -10,6 +10,7 @@
     "dev": "vite build --mode development --watch",
     "lint": "eslint .",
     "lint:php": "node tests/tools/php.mjs lint",
+    "package": "npm run build && node tools/package.mjs",
     "test": "vitest run",
     "test:php": "node tests/tools/php.mjs test"
   },
