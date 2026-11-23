@@ -17,3 +17,5 @@ Everything you need to work here is in this repo. The full pipeline and rules li
 - **Phase 0 first.** P00's checks come before any order or move code.
 - **Develop against the test Nextcloud container** (compose project `nc-projects-test`, in `test-env/`; `test-env/reset.sh` removes only that). Installing into the live Nextcloud needs the owner's yes every time. Never touch the live Nextcloud's compose project or its volumes.
 - **The live data is shared with agents.** Never write to real task lists from tests or scripts. Fixtures are copied shapes, with no personal content.
+
+**Upstream and peers:** see `PEERS.md` at the repo root. When I say "upstream", I mean the repo in its Upstream section; reuse a peer's code only as that file allows.
